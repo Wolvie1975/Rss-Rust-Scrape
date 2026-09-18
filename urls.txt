@@ -1,0 +1,4 @@
+# rust sites
+https://www.rust-lang.org/
+
+https://blog.rust-lang.org/
