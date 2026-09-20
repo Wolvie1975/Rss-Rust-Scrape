@@ -88,6 +88,30 @@ fn scrape(client: &Client, url: &str) -> Result<PageMeta, Box<dyn std::error::Er
     })
 }
 
+/// For feed entries that came without an image, tries each article page's own `og:image`.
+/// An image several articles share is a site-wide logo, not the article's, so it is dropped.
+fn fill_missing_images(client: &Client, pages: &mut [PageMeta]) {
+    let mut found: Vec<(usize, String)> = Vec::new();
+    for (i, p) in pages.iter().enumerate().filter(|(_, p)| p.image_url.is_none()) {
+        let Ok(body) = client
+            .get(&p.url)
+            .send()
+            .and_then(|r| r.error_for_status())
+            .and_then(|r| r.text())
+        else {
+            continue;
+        };
+        if let Some(img) = image_url(&Html::parse_document(&body), &p.url) {
+            found.push((i, img));
+        }
+    }
+    for (i, img) in &found {
+        if found.iter().filter(|(_, other)| other == img).count() == 1 {
+            pages[*i].image_url = Some(img.clone());
+        }
+    }
+}
+
 /// Scrapes one source: each entry of its RSS/Atom feed if it has one, otherwise the
 /// page's own metadata (a single entry). Returns the pages and which method produced them.
 fn scrape_source(
@@ -229,6 +253,14 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 if let Some(cap) = cli.per_source {
                     found.sort_by(|a, b| b.published.cmp(&a.published));
                     found.truncate(cap as usize);
+                }
+                if how == "feed" {
+                    let missing = found.iter().filter(|p| p.image_url.is_none()).count();
+                    fill_missing_images(&client, &mut found);
+                    let still = found.iter().filter(|p| p.image_url.is_none()).count();
+                    if missing > 0 {
+                        eprintln!("{url}: found {} of {missing} missing images on article pages", missing - still);
+                    }
                 }
                 eprintln!("{url}: {total} pages via {how}, using {}", found.len());
                 pages.append(&mut found);

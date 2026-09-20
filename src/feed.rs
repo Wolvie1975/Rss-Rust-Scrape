@@ -38,6 +38,14 @@ fn http_url(raw: &str, base: &str) -> Option<String> {
     matches!(u.scheme(), "http" | "https").then(|| u.to_string())
 }
 
+/// True when the URL's path ends in a common image extension (used when a feed omits the media type).
+fn looks_like_image(url: &str) -> bool {
+    let path = url.split(['?', '#']).next().unwrap_or(url).to_ascii_lowercase();
+    [".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"]
+        .iter()
+        .any(|ext| path.ends_with(ext))
+}
+
 fn first_img_src(html: &str, base: &str) -> Option<String> {
     let sel = Selector::parse("img").ok()?;
     let doc = Html::parse_fragment(html);
@@ -63,6 +71,7 @@ fn parse_entries(body: &str, feed_url: &str, source: &str) -> Result<Vec<PageMet
         .base_uri(Some(feed_url))
         .build()
         .parse(body.as_bytes())?;
+    let now = Utc::now();
     Ok(feed
         .entries
         .into_iter()
@@ -83,11 +92,9 @@ fn parse_entries(body: &str, feed_url: &str, source: &str) -> Result<Vec<PageMet
                 .map(|t| t.content.trim().to_string())
                 .filter(|t| !t.is_empty())
                 .unwrap_or_else(|| link.clone());
-            let html = e
-                .summary
-                .as_ref()
-                .map(|t| t.content.clone())
-                .or_else(|| e.content.as_ref().and_then(|c| c.body.clone()));
+            let summary = e.summary.as_ref().map(|t| t.content.as_str());
+            let body = e.content.as_ref().and_then(|c| c.body.as_deref());
+            let html = summary.or(body);
 
             let media_image = e.media.iter().find_map(|m| {
                 m.thumbnails
@@ -96,20 +103,24 @@ fn parse_entries(body: &str, feed_url: &str, source: &str) -> Result<Vec<PageMet
                     .or_else(|| {
                         m.content
                             .iter()
-                            .find(|c| c.content_type.as_ref().is_some_and(|t| t.to_string().starts_with("image/")))
+                            .find(|c| match &c.content_type {
+                                Some(t) => t.to_string().starts_with("image/"),
+                                None => c.url.as_ref().is_some_and(|u| looks_like_image(u.as_str())),
+                            })
                             .and_then(|c| c.url.as_ref().map(|u| u.to_string()))
                     })
             });
             let image_url = media_image
                 .and_then(|u: String| http_url(&u, &link))
-                .or_else(|| html.as_deref().and_then(|h| first_img_src(h, &link)));
+                .or_else(|| [summary, body].into_iter().flatten().find_map(|h| first_img_src(h, &link)));
 
             Some(PageMeta {
                 source: source.to_string(),
                 url: link,
                 title,
-                description: html.as_deref().and_then(plain_text),
-                published: e.published.or(e.updated).map(|d| d.with_timezone(&Utc)),
+                description: html.and_then(plain_text),
+                // Some feeds mislabel their time zone, which lands dates in the future.
+                published: e.published.or(e.updated).map(|d| d.with_timezone(&Utc).min(now)),
                 image_url,
             })
         })
@@ -142,4 +153,39 @@ pub fn fetch_entries(client: &Client, source: &str) -> Result<Vec<PageMeta>> {
         }
     }
     Err("no RSS/Atom feed found".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn image_extensions_ignore_query_and_case() {
+        assert!(looks_like_image("https://x.test/a/b.JPG?w=300"));
+        assert!(looks_like_image("https://x.test/a.webp#frag"));
+        assert!(!looks_like_image("https://x.test/video.mp4"));
+        assert!(!looks_like_image("https://x.test/article"));
+    }
+
+    const FEED: &str = r#"<?xml version="1.0"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+<channel><title>t</title><link>https://site.test/</link><description>d</description>
+<item><title>untyped media</title><link>https://site.test/1</link>
+  <media:content url="https://cdn.test/a.jpg" medium="image"/></item>
+<item><title>image only in full content</title><link>https://site.test/2</link>
+  <description>short text</description>
+  <content:encoded><![CDATA[<p>hi</p><img src="/b.png">]]></content:encoded></item>
+<item><title>future dated</title><link>https://site.test/3</link><pubDate>Mon, 01 Jan 2091 00:00:00 GMT</pubDate></item>
+<item><title>no image</title><link>https://site.test/4</link><description>plain</description></item>
+</channel></rss>"#;
+
+    #[test]
+    fn feed_entries_find_images_and_cap_dates() {
+        let pages = parse_entries(FEED, "https://site.test/feed", "https://site.test/").unwrap();
+        assert_eq!(pages.len(), 4);
+        assert_eq!(pages[0].image_url.as_deref(), Some("https://cdn.test/a.jpg"));
+        assert_eq!(pages[1].image_url.as_deref(), Some("https://site.test/b.png"));
+        assert!(pages[2].published.unwrap() <= Utc::now());
+        assert_eq!(pages[3].image_url, None);
+    }
 }

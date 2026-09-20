@@ -78,6 +78,10 @@ impl Db {
                  )",
                 "IF COL_LENGTH('dbo.Pages', 'ImageUrl') IS NULL
                  ALTER TABLE dbo.Pages ADD ImageUrl NVARCHAR(2048) NULL",
+                "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Pages_SourceId' AND object_id = OBJECT_ID('dbo.Pages'))
+                 CREATE INDEX IX_Pages_SourceId ON dbo.Pages (SourceId)",
+                "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Sources_SourceCategoryId' AND object_id = OBJECT_ID('dbo.Sources'))
+                 CREATE INDEX IX_Sources_SourceCategoryId ON dbo.Sources (SourceCategoryId)",
             ] {
                 client.execute(ddl, &[]).await?;
             }
@@ -155,8 +159,11 @@ impl Db {
                          USING (SELECT @P2 AS Url) AS s
                          ON t.UrlHash = HASHBYTES('SHA2_256', s.Url)
                          WHEN MATCHED THEN UPDATE SET
-                             Title = @P3, Description = @P4, Published = @P5, ImageUrl = @P6,
-                             SourceId = @sid, ScrapedAt = SYSUTCDATETIME()
+                             Title = @P3,
+                             Description = COALESCE(@P4, t.Description),
+                             Published = COALESCE(@P5, t.Published),
+                             ImageUrl = COALESCE(@P6, t.ImageUrl),
+                             SourceId = @sid
                          WHEN NOT MATCHED THEN INSERT (Url, Title, Description, Published, ImageUrl, SourceId)
                              VALUES (@P2, @P3, @P4, @P5, @P6, @sid);",
                         &[&p.source, &p.url, &title, &p.description, &published, &p.image_url],
