@@ -4,6 +4,7 @@ use std::time::Duration;
 mod db;
 mod events;
 mod feed;
+mod youtube;
 
 use chrono::{DateTime, Utc};
 use clap::error::ErrorKind;
@@ -193,6 +194,15 @@ struct Cli {
     #[arg(long, value_name = "URL")]
     events_feed: Vec<String>,
 
+    /// Also ingest a YouTube channel's Atom feed (https://www.youtube.com/feeds/videos.xml?channel_id=...)
+    /// into the YouTubeVideos table (repeatable; implies --db)
+    #[arg(long, value_name = "URL")]
+    youtube_feed: Vec<String>,
+
+    /// How many of each YouTube channel's newest videos to keep
+    #[arg(long, value_name = "N", default_value_t = 5, value_parser = clap::value_parser!(u32).range(1..))]
+    youtube_latest: u32,
+
     /// Scrape and filter but write nothing to the database; print what would be saved
     #[arg(long, conflicts_with = "save_sources")]
     dry_run: bool,
@@ -213,7 +223,7 @@ fn read_urls_file(path: &Path) -> std::io::Result<Vec<String>> {
 
 /// One full scrape: collect sources, scrape, filter, save, prune, and write the RSS feed.
 fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    let use_db = cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty();
+    let use_db = cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty() || !cli.youtube_feed.is_empty();
     let mut db = if use_db {
         let ado = std::env::var("MSSQL_CONNECTION_STRING")
             .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
@@ -237,8 +247,8 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    if urls.is_empty() && cli.events_feed.is_empty() {
-        Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, --from-db, or --events-feed").exit();
+    if urls.is_empty() && cli.events_feed.is_empty() && cli.youtube_feed.is_empty() {
+        Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, --from-db, --events-feed, or --youtube-feed").exit();
     }
 
     let client = Client::builder()
@@ -347,6 +357,30 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    for feed_url in &cli.youtube_feed {
+        match youtube::fetch_latest(&client, feed_url, cli.youtube_latest as usize) {
+            Ok(found) if cli.dry_run => {
+                eprintln!("{feed_url}: {} videos (dry run, not saved)", found.len());
+                for v in &found {
+                    eprintln!(
+                        "  - {} | {} | {} views | {}",
+                        v.published_at.to_rfc3339(),
+                        v.channel_name.as_deref().unwrap_or("?"),
+                        v.views.map_or("?".into(), |n| n.to_string()),
+                        v.title
+                    );
+                }
+            }
+            Ok(found) => {
+                let db = db.as_mut().unwrap();
+                let n = db.save_videos(&found)?;
+                let pruned = db.prune_videos(cli.youtube_latest)?;
+                eprintln!("{feed_url}: saved {n} videos, pruned {pruned} older (keeping the newest {} per channel)", cli.youtube_latest);
+            }
+            Err(e) => eprintln!("youtube feed {feed_url} failed: {e}"),
+        }
+    }
+
     let items: Vec<_> = pages
         .into_iter()
         .map(|meta| {
@@ -409,7 +443,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if 24 % hours != 0 {
         Cli::command().error(ErrorKind::InvalidValue, "--every-hours must divide 24 (1, 2, 3, 4, 6, 8, 12, 24)").exit();
     }
-    if cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db && cli.events_feed.is_empty() {
+    if cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db && cli.events_feed.is_empty() && cli.youtube_feed.is_empty() {
         Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, or --from-db").exit();
     }
 

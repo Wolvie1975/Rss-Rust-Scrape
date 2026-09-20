@@ -6,6 +6,7 @@ use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 
 use crate::PageMeta;
 use crate::events::Event;
+use crate::youtube::Video;
 
 const DB_NAME: &str = "WebScraper";
 
@@ -107,6 +108,27 @@ impl Db {
                  )",
                 "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SportsEvents_EventDate' AND object_id = OBJECT_ID('dbo.SportsEvents'))
                  CREATE INDEX IX_SportsEvents_EventDate ON dbo.SportsEvents (EventDate)",
+                "IF OBJECT_ID('dbo.YouTubeVideos', 'U') IS NULL
+                 CREATE TABLE dbo.YouTubeVideos (
+                     ID            INT IDENTITY(1,1) PRIMARY KEY,
+                     VideoId       NVARCHAR(20)   NOT NULL,
+                     ChannelId     NVARCHAR(40)   NOT NULL,
+                     ChannelName   NVARCHAR(200)  NULL,
+                     Title         NVARCHAR(500)  NOT NULL,
+                     Url           NVARCHAR(2048) NOT NULL,
+                     PublishedAt   DATETIME2      NOT NULL,
+                     UpdatedAt     DATETIME2      NULL,
+                     ThumbnailUrl  NVARCHAR(2048) NULL,
+                     Description   NVARCHAR(MAX)  NULL,
+                     ViewCount     BIGINT         NULL,
+                     RatingCount   INT            NULL,
+                     RatingAverage DECIMAL(3,2)   NULL,
+                     FirstSeenAt   DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+                     LastSeenAt    DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+                     CONSTRAINT UQ_YouTubeVideos_VideoId UNIQUE (VideoId)
+                 )",
+                "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_YouTubeVideos_Channel_PublishedAt' AND object_id = OBJECT_ID('dbo.YouTubeVideos'))
+                 CREATE INDEX IX_YouTubeVideos_Channel_PublishedAt ON dbo.YouTubeVideos (ChannelId, PublishedAt DESC)",
                 "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Sources_SourceCategoryId' AND object_id = OBJECT_ID('dbo.Sources'))
                  CREATE INDEX IX_Sources_SourceCategoryId ON dbo.Sources (SourceCategoryId)",
             ] {
@@ -279,6 +301,60 @@ impl Db {
                     .await?;
             }
             Ok(events.len())
+        })
+    }
+
+    /// Upserts each video keyed on its YouTube video ID. Title, description and the view/rating
+    /// counts change over time, so they are overwritten; `FirstSeenAt` is kept.
+    /// Returns the number of videos written.
+    pub fn save_videos(&mut self, videos: &[Video]) -> Result<usize> {
+        self.rt.block_on(async {
+            for v in videos {
+                let title: String = v.title.chars().take(500).collect();
+                self.client
+                    .execute(
+                        "MERGE dbo.YouTubeVideos AS t
+                         USING (SELECT @P1 AS VideoId) AS s
+                         ON t.VideoId = s.VideoId
+                         WHEN MATCHED THEN UPDATE SET
+                             ChannelId = @P2, ChannelName = @P3, Title = @P4, Url = @P5,
+                             PublishedAt = @P6, UpdatedAt = @P7, ThumbnailUrl = @P8, Description = @P9,
+                             ViewCount = @P10, RatingCount = @P11, RatingAverage = @P12,
+                             LastSeenAt = SYSUTCDATETIME()
+                         WHEN NOT MATCHED THEN INSERT
+                             (VideoId, ChannelId, ChannelName, Title, Url, PublishedAt, UpdatedAt,
+                              ThumbnailUrl, Description, ViewCount, RatingCount, RatingAverage)
+                             VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12);",
+                        &[
+                            &v.video_id, &v.channel_id, &v.channel_name, &title, &v.url,
+                            &v.published_at, &v.updated_at, &v.thumbnail_url, &v.description,
+                            &v.views, &v.rating_count, &v.rating_average,
+                        ],
+                    )
+                    .await?;
+            }
+            Ok(videos.len())
+        })
+    }
+
+    /// Deletes each channel's oldest videos so at most `keep` remain per channel.
+    /// Returns the number of rows deleted.
+    pub fn prune_videos(&mut self, keep: u32) -> Result<u64> {
+        let keep = keep as i32;
+        self.rt.block_on(async {
+            let res = self
+                .client
+                .execute(
+                    ";WITH ranked AS (
+                         SELECT ROW_NUMBER() OVER (
+                             PARTITION BY ChannelId ORDER BY PublishedAt DESC, ID DESC) AS rn
+                         FROM dbo.YouTubeVideos
+                     )
+                     DELETE FROM ranked WHERE rn > @P1",
+                    &[&keep],
+                )
+                .await?;
+            Ok(res.total())
         })
     }
 }
