@@ -5,6 +5,7 @@ use tokio::runtime::Runtime;
 use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 
 use crate::PageMeta;
+use crate::events::Event;
 
 const DB_NAME: &str = "WebScraper";
 
@@ -80,6 +81,32 @@ impl Db {
                  ALTER TABLE dbo.Pages ADD ImageUrl NVARCHAR(2048) NULL",
                 "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Pages_SourceId' AND object_id = OBJECT_ID('dbo.Pages'))
                  CREATE INDEX IX_Pages_SourceId ON dbo.Pages (SourceId)",
+                "IF OBJECT_ID('dbo.SportsEvents', 'U') IS NULL
+                 CREATE TABLE dbo.SportsEvents (
+                     ID              INT IDENTITY(1,1) PRIMARY KEY,
+                     Url             NVARCHAR(2048) NOT NULL,
+                     UrlHash         AS CAST(HASHBYTES('SHA2_256', Url) AS BINARY(32)) PERSISTED,
+                     GameId          INT            NULL,
+                     Title           NVARCHAR(500)  NOT NULL,
+                     Sport           NVARCHAR(100)  NULL,
+                     Opponent        NVARCHAR(200)  NULL,
+                     IsAway          BIT            NULL,
+                     Location        NVARCHAR(300)  NULL,
+                     EventDate       DATE           NOT NULL,
+                     StartsAtUtc     DATETIME2      NULL,
+                     EndsAtUtc       DATETIME2      NULL,
+                     TimeTbd         BIT            NOT NULL,
+                     Tv              NVARCHAR(200)  NULL,
+                     StreamUrl       NVARCHAR(2048) NULL,
+                     LiveStatsUrl    NVARCHAR(2048) NULL,
+                     TeamLogoUrl     NVARCHAR(2048) NULL,
+                     OpponentLogoUrl NVARCHAR(2048) NULL,
+                     FirstSeenAt     DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+                     LastSeenAt      DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+                     CONSTRAINT UQ_SportsEvents_UrlHash UNIQUE (UrlHash)
+                 )",
+                "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SportsEvents_EventDate' AND object_id = OBJECT_ID('dbo.SportsEvents'))
+                 CREATE INDEX IX_SportsEvents_EventDate ON dbo.SportsEvents (EventDate)",
                 "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Sources_SourceCategoryId' AND object_id = OBJECT_ID('dbo.Sources'))
                  CREATE INDEX IX_Sources_SourceCategoryId ON dbo.Sources (SourceCategoryId)",
             ] {
@@ -217,6 +244,41 @@ impl Db {
                 )
                 .await?;
             Ok(res.total())
+        })
+    }
+
+    /// Upserts each event keyed on its URL. The feed is the source of truth for schedule facts
+    /// (time, TV, location), so those are overwritten; `FirstSeenAt` is kept.
+    /// Returns the number of events written.
+    pub fn save_events(&mut self, events: &[Event]) -> Result<usize> {
+        self.rt.block_on(async {
+            for e in events {
+                let title: String = e.title.chars().take(500).collect();
+                self.client
+                    .execute(
+                        "MERGE dbo.SportsEvents AS t
+                         USING (SELECT @P1 AS Url) AS s
+                         ON t.UrlHash = HASHBYTES('SHA2_256', s.Url)
+                         WHEN MATCHED THEN UPDATE SET
+                             GameId = @P2, Title = @P3, Sport = @P4, Opponent = @P5, IsAway = @P6,
+                             Location = @P7, EventDate = @P8, StartsAtUtc = @P9, EndsAtUtc = @P10,
+                             TimeTbd = @P11, Tv = @P12, StreamUrl = @P13, LiveStatsUrl = @P14,
+                             TeamLogoUrl = @P15, OpponentLogoUrl = @P16, LastSeenAt = SYSUTCDATETIME()
+                         WHEN NOT MATCHED THEN INSERT
+                             (Url, GameId, Title, Sport, Opponent, IsAway, Location, EventDate, StartsAtUtc,
+                              EndsAtUtc, TimeTbd, Tv, StreamUrl, LiveStatsUrl, TeamLogoUrl, OpponentLogoUrl)
+                             VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9,
+                                     @P10, @P11, @P12, @P13, @P14, @P15, @P16);",
+                        &[
+                            &e.url, &e.game_id, &title, &e.sport, &e.opponent, &e.is_away,
+                            &e.location, &e.event_date, &e.starts_at, &e.ends_at, &e.time_tbd,
+                            &e.tv, &e.stream_url, &e.live_stats_url, &e.team_logo_url,
+                            &e.opponent_logo_url,
+                        ],
+                    )
+                    .await?;
+            }
+            Ok(events.len())
         })
     }
 }

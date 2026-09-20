@@ -10,6 +10,7 @@ clap = { version = "4.6.7", features = ["derive"] }
 dotenvy = "0.15.7"
 feed-rs = "2.4.0"
 reqwest = { version = "0.13.5", features = ["blocking"] }
+roxmltree = "0.21.1"
 rss = "2.1.2"
 scraper = "0.27.0"
 tiberius = { version = "0.12.3", default-features = false, features = ["tds73", "rustls", "chrono"] }

@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 mod db;
+mod events;
 mod feed;
 
 use chrono::{DateTime, Utc};
@@ -187,6 +188,11 @@ struct Cli {
     #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..=24))]
     every_hours: Option<u32>,
 
+    /// Also ingest a Sidearm-style calendar RSS feed of games into the SportsEvents table
+    /// (repeatable; implies --db). Runs alongside, and independently of, the page scrape.
+    #[arg(long, value_name = "URL")]
+    events_feed: Vec<String>,
+
     /// Scrape and filter but write nothing to the database; print what would be saved
     #[arg(long, conflicts_with = "save_sources")]
     dry_run: bool,
@@ -207,7 +213,7 @@ fn read_urls_file(path: &Path) -> std::io::Result<Vec<String>> {
 
 /// One full scrape: collect sources, scrape, filter, save, prune, and write the RSS feed.
 fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    let use_db = cli.db || cli.from_db || cli.save_sources;
+    let use_db = cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty();
     let mut db = if use_db {
         let ado = std::env::var("MSSQL_CONNECTION_STRING")
             .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
@@ -231,8 +237,8 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    if urls.is_empty() {
-        Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, or --from-db").exit();
+    if urls.is_empty() && cli.events_feed.is_empty() {
+        Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, --from-db, or --events-feed").exit();
     }
 
     let client = Client::builder()
@@ -303,7 +309,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 p.title
             );
         }
-    } else if let Some(db) = db.as_mut() {
+    } else if let Some(db) = db.as_mut().filter(|_| !urls.is_empty()) {
         let n = db.save_pages(&pages)?;
         eprintln!("saved {n} pages to SQL Server");
         if let Some(cap) = cli.per_source {
@@ -313,6 +319,31 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(keep) = cli.keep {
             let pruned = db.prune_pages(keep)?;
             eprintln!("pruned {pruned} old pages (keeping the newest {keep})");
+        }
+    }
+
+    for feed_url in &cli.events_feed {
+        // A broken calendar feed shouldn't stop the rest of the run.
+        match events::fetch_events(&client, feed_url) {
+            Ok(found) if cli.dry_run => {
+                eprintln!("{feed_url}: {} events (dry run, not saved)", found.len());
+                for e in &found {
+                    eprintln!(
+                        "  - {} | {} {} {} | {} | {}",
+                        e.event_date,
+                        e.sport.as_deref().unwrap_or("?"),
+                        if e.is_away == Some(true) { "at" } else { "vs" },
+                        e.opponent.as_deref().unwrap_or("?"),
+                        e.starts_at.map_or("time TBD".into(), |t| t.to_rfc3339()),
+                        e.tv.as_deref().unwrap_or("no TV listed"),
+                    );
+                }
+            }
+            Ok(found) => {
+                let n = db.as_mut().unwrap().save_events(&found)?;
+                eprintln!("{feed_url}: saved {n} events to SQL Server");
+            }
+            Err(e) => eprintln!("events feed {feed_url} failed: {e}"),
         }
     }
 
@@ -378,7 +409,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if 24 % hours != 0 {
         Cli::command().error(ErrorKind::InvalidValue, "--every-hours must divide 24 (1, 2, 3, 4, 6, 8, 12, 24)").exit();
     }
-    if cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db {
+    if cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db && cli.events_feed.is_empty() {
         Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, or --from-db").exit();
     }
 
