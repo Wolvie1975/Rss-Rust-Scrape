@@ -199,9 +199,17 @@ struct Cli {
     #[arg(long, value_name = "URL")]
     youtube_feed: Vec<String>,
 
+    /// Also ingest every channel listed in the YoutubeVideoFeed table (implies --db)
+    #[arg(long)]
+    youtube_from_db: bool,
+
     /// How many of each YouTube channel's newest videos to keep
     #[arg(long, value_name = "N", default_value_t = 5, value_parser = clap::value_parser!(u32).range(1..))]
     youtube_latest: u32,
+
+    /// Also ingest every calendar feed listed in the SportsEventsType table (implies --db)
+    #[arg(long)]
+    events_from_db: bool,
 
     /// Scrape and filter but write nothing to the database; print what would be saved
     #[arg(long, conflicts_with = "save_sources")]
@@ -223,7 +231,7 @@ fn read_urls_file(path: &Path) -> std::io::Result<Vec<String>> {
 
 /// One full scrape: collect sources, scrape, filter, save, prune, and write the RSS feed.
 fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    let use_db = cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty() || !cli.youtube_feed.is_empty();
+    let use_db = cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty() || cli.events_from_db || !cli.youtube_feed.is_empty() || cli.youtube_from_db;
     let mut db = if use_db {
         let ado = std::env::var("MSSQL_CONNECTION_STRING")
             .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
@@ -247,8 +255,8 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    if urls.is_empty() && cli.events_feed.is_empty() && cli.youtube_feed.is_empty() {
-        Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, --from-db, --events-feed, or --youtube-feed").exit();
+    if urls.is_empty() && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
+        Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, --from-db, --events-feed, --events-from-db, --youtube-feed, or --youtube-from-db").exit();
     }
 
     let client = Client::builder()
@@ -332,7 +340,18 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    for feed_url in &cli.events_feed {
+    // Calendar feeds from --events-feed (type row found or created below) and from the lookup table.
+    let mut event_feeds: Vec<(Option<i32>, String)> =
+        cli.events_feed.iter().map(|u| (None, u.clone())).collect();
+    if cli.events_from_db {
+        for (id, url) in db.as_mut().unwrap().sports_event_feeds()? {
+            match event_feeds.iter_mut().find(|(_, u)| *u == url) {
+                Some(existing) => existing.0 = Some(id),
+                None => event_feeds.push((Some(id), url)),
+            }
+        }
+    }
+    for (known_id, feed_url) in &event_feeds {
         // A broken calendar feed shouldn't stop the rest of the run.
         match events::fetch_events(&client, feed_url) {
             Ok(found) if cli.dry_run => {
@@ -350,14 +369,36 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             Ok(found) => {
-                let n = db.as_mut().unwrap().save_events(&found)?;
-                eprintln!("{feed_url}: saved {n} events to SQL Server");
+                let db = db.as_mut().unwrap();
+                let type_id = match known_id {
+                    Some(id) => *id,
+                    None => {
+                        let name = url::Url::parse(feed_url)
+                            .ok()
+                            .and_then(|u| u.host_str().map(str::to_string))
+                            .unwrap_or_else(|| feed_url.clone());
+                        db.ensure_sports_events_type(feed_url, &name)?
+                    }
+                };
+                let n = db.save_events(type_id, &found)?;
+                eprintln!("{feed_url}: saved {n} events to type {type_id}");
             }
             Err(e) => eprintln!("events feed {feed_url} failed: {e}"),
         }
     }
 
-    for feed_url in &cli.youtube_feed {
+    // Channels from --youtube-feed (feed row found or created below) and from the lookup table.
+    let mut youtube: Vec<(Option<i32>, String)> =
+        cli.youtube_feed.iter().map(|u| (None, u.clone())).collect();
+    if cli.youtube_from_db {
+        for (id, url) in db.as_mut().unwrap().youtube_feeds()? {
+            match youtube.iter_mut().find(|(_, u)| *u == url) {
+                Some(existing) => existing.0 = Some(id),
+                None => youtube.push((Some(id), url)),
+            }
+        }
+    }
+    for (known_id, feed_url) in &youtube {
         match youtube::fetch_latest(&client, feed_url, cli.youtube_latest as usize) {
             Ok(found) if cli.dry_run => {
                 eprintln!("{feed_url}: {} videos (dry run, not saved)", found.len());
@@ -373,9 +414,20 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
             Ok(found) => {
                 let db = db.as_mut().unwrap();
-                let n = db.save_videos(&found)?;
+                let feed_id = match (known_id, found.first()) {
+                    (Some(id), _) => *id,
+                    (None, Some(v)) => db.ensure_youtube_feed(&v.channel_id, v.channel_name.as_deref(), feed_url)?,
+                    (None, None) => {
+                        eprintln!("{feed_url}: the feed has no videos, nothing saved");
+                        continue;
+                    }
+                };
+                let n = db.save_videos(feed_id, &found)?;
                 let pruned = db.prune_videos(cli.youtube_latest)?;
-                eprintln!("{feed_url}: saved {n} videos, pruned {pruned} older (keeping the newest {} per channel)", cli.youtube_latest);
+                eprintln!(
+                    "{feed_url}: saved {n} videos to feed {feed_id}, pruned {pruned} older (keeping the newest {} per channel)",
+                    cli.youtube_latest
+                );
             }
             Err(e) => eprintln!("youtube feed {feed_url} failed: {e}"),
         }
@@ -443,7 +495,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if 24 % hours != 0 {
         Cli::command().error(ErrorKind::InvalidValue, "--every-hours must divide 24 (1, 2, 3, 4, 6, 8, 12, 24)").exit();
     }
-    if cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db && cli.events_feed.is_empty() && cli.youtube_feed.is_empty() {
+    if cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
         Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, or --from-db").exit();
     }
 
