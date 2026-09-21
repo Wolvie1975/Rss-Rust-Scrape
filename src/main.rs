@@ -340,20 +340,28 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Calendar feeds from --events-feed (type row found or created below) and from the lookup table.
-    let mut event_feeds: Vec<(Option<i32>, String)> =
-        cli.events_feed.iter().map(|u| (None, u.clone())).collect();
-    if cli.events_from_db {
-        for (id, url) in db.as_mut().unwrap().sports_event_feeds()? {
-            match event_feeds.iter_mut().find(|(_, u)| *u == url) {
-                Some(existing) => existing.0 = Some(id),
-                None => event_feeds.push((Some(id), url)),
+    // Calendar feeds from --events-feed and from the lookup table, each with its known type row
+    // (if any) and school name. A flagged URL that is already in the table reuses that row.
+    let mut event_feeds: Vec<(Option<i32>, String, Option<String>)> = Vec::new();
+    if !cli.events_feed.is_empty() || cli.events_from_db {
+        let known = db.as_mut().unwrap().sports_event_feeds()?;
+        for url in &cli.events_feed {
+            match known.iter().find(|f| f.url == *url) {
+                Some(f) => event_feeds.push((Some(f.id), url.clone(), f.school.clone())),
+                None => event_feeds.push((None, url.clone(), None)),
+            }
+        }
+        if cli.events_from_db {
+            for f in known {
+                if !event_feeds.iter().any(|(_, u, _)| *u == f.url) {
+                    event_feeds.push((Some(f.id), f.url, f.school));
+                }
             }
         }
     }
-    for (known_id, feed_url) in &event_feeds {
+    for (known_id, feed_url, school) in &event_feeds {
         // A broken calendar feed shouldn't stop the rest of the run.
-        match events::fetch_events(&client, feed_url) {
+        match events::fetch_events(&client, feed_url, school.as_deref()) {
             Ok(found) if cli.dry_run => {
                 eprintln!("{feed_url}: {} events (dry run, not saved)", found.len());
                 for e in &found {
@@ -400,19 +408,20 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
     for (known_id, feed_url) in &youtube {
         match youtube::fetch_latest(&client, feed_url, cli.youtube_latest as usize) {
-            Ok(found) if cli.dry_run => {
-                eprintln!("{feed_url}: {} videos (dry run, not saved)", found.len());
+            Ok((found, how)) if cli.dry_run => {
+                eprintln!("{feed_url}: {} videos via {how} (dry run, not saved)", found.len());
                 for v in &found {
                     eprintln!(
-                        "  - {} | {} | {} views | {}",
+                        "  - {}{} | {} | {} views | {}",
                         v.published_at.to_rfc3339(),
+                        if v.published_is_estimate { " (estimated)" } else { "" },
                         v.channel_name.as_deref().unwrap_or("?"),
                         v.views.map_or("?".into(), |n| n.to_string()),
                         v.title
                     );
                 }
             }
-            Ok(found) => {
+            Ok((found, how)) => {
                 let db = db.as_mut().unwrap();
                 let feed_id = match (known_id, found.first()) {
                     (Some(id), _) => *id,
@@ -425,7 +434,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 let n = db.save_videos(feed_id, &found)?;
                 let pruned = db.prune_videos(cli.youtube_latest)?;
                 eprintln!(
-                    "{feed_url}: saved {n} videos to feed {feed_id}, pruned {pruned} older (keeping the newest {} per channel)",
+                    "{feed_url}: saved {n} videos via {how} to feed {feed_id}, pruned {pruned} older (keeping the newest {} per channel)",
                     cli.youtube_latest
                 );
             }

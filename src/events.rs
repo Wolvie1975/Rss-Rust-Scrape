@@ -26,9 +26,11 @@ pub struct Event {
     pub opponent_logo_url: Option<String>,
 }
 
-pub fn fetch_events(client: &Client, feed_url: &str) -> Result<Vec<Event>> {
+/// `school` is the host school's name as written in the feed ("Kansas"), used to split the
+/// sport off "Volleyball Kansas vs  Grand Canyon". Without it the school is guessed.
+pub fn fetch_events(client: &Client, feed_url: &str, school: Option<&str>) -> Result<Vec<Event>> {
     let body = client.get(feed_url).send()?.error_for_status()?.text()?;
-    parse_events(&body, feed_url)
+    parse_events(&body, feed_url, school)
 }
 
 /// Text of the first child element with this local name (namespace ignored).
@@ -53,6 +55,15 @@ fn http_url(raw: &str, base: &Url) -> Option<String> {
     matches!(u.scheme(), "http" | "https").then(|| u.to_string())
 }
 
+/// Number of trailing words of `words` that are the given school name (case-insensitive), if the
+/// text ends with it and something (the sport) is left over.
+fn named_school_words(school: Option<&str>, words: &[&str]) -> Option<usize> {
+    let school: Vec<&str> = school?.split_whitespace().collect();
+    let n = school.len();
+    (n > 0 && words.len() > n && words[words.len() - n..].iter().zip(&school).all(|(a, b)| a.eq_ignore_ascii_case(b)))
+        .then_some(n)
+}
+
 /// The feed doesn't separate sport from school ("Women's Volleyball Kansas"), so the school is
 /// taken to be the trailing words every matchup shares. Needs at least two different sports;
 /// with one (or none) the split is ambiguous and every sport stays `None`.
@@ -74,7 +85,7 @@ fn school_word_count(lefts: &[&str]) -> usize {
         .unwrap_or(0)
 }
 
-fn parse_events(xml: &str, feed_url: &str) -> Result<Vec<Event>> {
+fn parse_events(xml: &str, feed_url: &str, school: Option<&str>) -> Result<Vec<Event>> {
     let doc = roxmltree::Document::parse(xml.trim_start_matches('\u{feff}'))?;
     let base = Url::parse(feed_url)?;
 
@@ -144,16 +155,18 @@ fn parse_events(xml: &str, feed_url: &str) -> Result<Vec<Event>> {
     }
 
     let lefts: Vec<&str> = rows.iter().filter_map(|(_, l)| l.as_deref()).collect();
-    let school_words = school_word_count(&lefts);
+    let guessed = school_word_count(&lefts);
     Ok(rows
         .into_iter()
         .map(|(mut event, left)| {
-            if school_words > 0
-                && let Some(left) = left
-            {
+            if let Some(left) = left {
                 let words: Vec<&str> = left.split_whitespace().collect();
-                let sport = words[..words.len().saturating_sub(school_words)].join(" ");
-                event.sport = (!sport.is_empty()).then_some(sport);
+                // The configured school wins; otherwise fall back to the shared-words guess.
+                let school_words = named_school_words(school, &words).unwrap_or(guessed);
+                if school_words > 0 {
+                    let sport = words[..words.len().saturating_sub(school_words)].join(" ");
+                    event.sport = (!sport.is_empty()).then_some(sport);
+                }
             }
             event
         })
@@ -200,7 +213,7 @@ Streaming Video: https://www.espn.com/watch/x#a=1&amp;b=2
 </channel></rss>"#;
 
     fn events() -> Vec<Event> {
-        parse_events(FEED, "http://site.test/services/calendar.rss").unwrap()
+        parse_events(FEED, "http://site.test/services/calendar.rss", None).unwrap()
     }
 
     #[test]
@@ -251,5 +264,31 @@ Streaming Video: https://www.espn.com/watch/x#a=1&amp;b=2
         assert_eq!(school_word_count(&["Volleyball Kansas", "Volleyball Kansas"]), 0);
         assert_eq!(school_word_count(&["Volleyball Kansas", "Football Kansas"]), 1);
         assert_eq!(school_word_count(&["Women's Soccer Kansas State", "Football Kansas State"]), 2);
+    }
+
+    #[test]
+    fn a_configured_school_splits_the_sport_even_for_a_single_sport_feed() {
+        let feed = FEED.replace("Football Kansas at  Kansas State", "Volleyball Kansas at  Kansas State");
+        // Guessing can't tell "Volleyball" from "Kansas" here...
+        let guessed = parse_events(&feed, "http://site.test/f", None).unwrap();
+        assert_eq!(guessed[0].sport, None);
+        // ...but the configured school name can.
+        let named = parse_events(&feed, "http://site.test/f", Some("kansas")).unwrap();
+        assert!(named.iter().all(|e| e.sport.as_deref() == Some("Volleyball")));
+        assert_eq!(named[1].opponent.as_deref(), Some("Kansas State"));
+    }
+
+    #[test]
+    fn a_school_name_that_does_not_match_falls_back_to_guessing() {
+        let events = parse_events(FEED, "http://site.test/f", Some("Nebraska")).unwrap();
+        assert_eq!(events[0].sport.as_deref(), Some("Volleyball"));
+        assert_eq!(events[1].sport.as_deref(), Some("Football"));
+    }
+
+    #[test]
+    fn multi_word_school_names_are_matched() {
+        assert_eq!(named_school_words(Some("Kansas State"), &["Women's", "Soccer", "Kansas", "State"]), Some(2));
+        assert_eq!(named_school_words(Some("Kansas"), &["Kansas"]), None, "nothing left for the sport");
+        assert_eq!(named_school_words(None, &["Football", "Kansas"]), None);
     }
 }

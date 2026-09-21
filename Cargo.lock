@@ -2442,6 +2442,7 @@ dependencies = [
  "roxmltree",
  "rss",
  "scraper",
+ "serde_json",
  "tiberius",
  "tokio",
  "tokio-util",

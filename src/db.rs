@@ -21,6 +21,14 @@ async fn connect(ado: &str, database: &str) -> Result<Conn> {
     Ok(Client::connect(config, tcp.compat_write()).await?)
 }
 
+/// A row of the `SportsEventsType` lookup table: one calendar feed.
+pub struct EventFeed {
+    pub id: i32,
+    pub url: String,
+    /// The host school as written in the feed's titles, e.g. "Kansas".
+    pub school: Option<String>,
+}
+
 /// A single SQL Server session on the `WebScraper` database.
 pub struct Db {
     rt: Runtime,
@@ -88,6 +96,7 @@ impl Db {
                      RssUrl         NVARCHAR(450) NOT NULL,
                      EventsTypeName NVARCHAR(200) NOT NULL,
                      DateAdded      DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
+                     SchoolName     NVARCHAR(100) NULL,
                      CONSTRAINT UQ_SportsEventsType_RssUrl UNIQUE (RssUrl)
                  )",
                 "IF OBJECT_ID('dbo.SportsEvents', 'U') IS NULL
@@ -116,6 +125,8 @@ impl Db {
                      LastSeenAt      DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
                      CONSTRAINT UQ_SportsEvents_UrlHash UNIQUE (UrlHash)
                  )",
+                "IF COL_LENGTH('dbo.SportsEventsType', 'SchoolName') IS NULL
+                 ALTER TABLE dbo.SportsEventsType ADD SchoolName NVARCHAR(100) NULL",
                 "IF COL_LENGTH('dbo.SportsEvents', 'SportsEventsTypeId') IS NULL
                  ALTER TABLE dbo.SportsEvents ADD SportsEventsTypeId INT NULL
                      CONSTRAINT FK_SportsEvents_SportsEventsType REFERENCES dbo.SportsEventsType (ID)",
@@ -339,6 +350,8 @@ impl Db {
 
     /// Upserts each video keyed on its YouTube video ID, linked to its `YoutubeVideoFeed` row. Title, description and the view/rating
     /// counts change over time, so they are overwritten; `FirstSeenAt` is kept.
+    /// A value the source didn't supply (`None`) never blanks a stored one, and an estimated
+    /// publish date is only used for a video that isn't stored yet.
     /// Returns the number of videos written.
     pub fn save_videos(&mut self, feed_id: i32, videos: &[Video]) -> Result<usize> {
         self.rt.block_on(async {
@@ -350,9 +363,12 @@ impl Db {
                          USING (SELECT @P1 AS VideoId) AS s
                          ON t.VideoId = s.VideoId
                          WHEN MATCHED THEN UPDATE SET
-                             ChannelId = @P2, ChannelName = @P3, Title = @P4, Url = @P5,
-                             PublishedAt = @P6, UpdatedAt = @P7, ThumbnailUrl = @P8, Description = @P9,
-                             ViewCount = @P10, RatingCount = @P11, RatingAverage = @P12,
+                             ChannelId = @P2, ChannelName = COALESCE(@P3, t.ChannelName), Title = @P4, Url = @P5,
+                             PublishedAt = CASE WHEN @P14 = 1 THEN t.PublishedAt ELSE @P6 END,
+                             UpdatedAt = COALESCE(@P7, t.UpdatedAt), ThumbnailUrl = COALESCE(@P8, t.ThumbnailUrl),
+                             Description = COALESCE(@P9, t.Description), ViewCount = COALESCE(@P10, t.ViewCount),
+                             RatingCount = COALESCE(@P11, t.RatingCount),
+                             RatingAverage = COALESCE(@P12, t.RatingAverage),
                              YoutubeVideoFeedId = @P13, LastSeenAt = SYSUTCDATETIME()
                          WHEN NOT MATCHED THEN INSERT
                              (VideoId, ChannelId, ChannelName, Title, Url, PublishedAt, UpdatedAt,
@@ -362,7 +378,7 @@ impl Db {
                         &[
                             &v.video_id, &v.channel_id, &v.channel_name, &title, &v.url,
                             &v.published_at, &v.updated_at, &v.thumbnail_url, &v.description,
-                            &v.views, &v.rating_count, &v.rating_average, &feed_id,
+                            &v.views, &v.rating_count, &v.rating_average, &feed_id, &v.published_is_estimate,
                         ],
                     )
                     .await?;
@@ -371,18 +387,24 @@ impl Db {
         })
     }
 
-    /// `(ID, RssUrl)` of every calendar feed in the `SportsEventsType` lookup table.
-    pub fn sports_event_feeds(&mut self) -> Result<Vec<(i32, String)>> {
+    /// Every calendar feed in the `SportsEventsType` lookup table.
+    pub fn sports_event_feeds(&mut self) -> Result<Vec<EventFeed>> {
         self.rt.block_on(async {
             let rows = self
                 .client
-                .query("SELECT ID, RssUrl FROM dbo.SportsEventsType ORDER BY ID", &[])
+                .query("SELECT ID, RssUrl, SchoolName FROM dbo.SportsEventsType ORDER BY ID", &[])
                 .await?
                 .into_first_result()
                 .await?;
             Ok(rows
                 .iter()
-                .filter_map(|r| Some((r.get::<i32, _>(0)?, r.get::<&str, _>(1)?.to_string())))
+                .filter_map(|r| {
+                    Some(EventFeed {
+                        id: r.get::<i32, _>(0)?,
+                        url: r.get::<&str, _>(1)?.to_string(),
+                        school: r.get::<&str, _>(2).map(str::trim).filter(|s| !s.is_empty()).map(str::to_string),
+                    })
+                })
                 .collect())
         })
     }
