@@ -1,0 +1,665 @@
+{
+  "calendars": [
+    {
+      "candidate_count": 18,
+      "category": "subscription",
+      "url": "https://whentostream.com/streaming-october-2026/"
+    },
+    {
+      "candidate_count": 16,
+      "category": "digital",
+      "url": "https://www.dvdsreleasedates.com/digital-releases/2026/10/digital-hd-releases-october-2026"
+    },
+    {
+      "candidate_count": 15,
+      "category": "theatrical",
+      "url": "https://www.dvdsreleasedates.com/new-movies-2026/"
+    },
+    {
+      "candidate_count": 8,
+      "category": "disc",
+      "url": "https://www.dvdsreleasedates.com/releases/2026/10/new-dvd-releases-october-2026"
+    }
+  ],
+  "candidate_count": 56,
+  "counts": {
+    "digital": 16,
+    "disc": 9,
+    "subscription": 9,
+    "theatrical": 5
+  },
+  "database_written": false,
+  "excluded_tv": [
+    {
+      "reason": "excluded apparent TV title/season edition: The Madison",
+      "url": "https://www.dvdsreleasedates.com/movies/12847/the-madison"
+    },
+    {
+      "reason": "excluded apparent TV title/season edition: Chicago Fire",
+      "url": "https://www.dvdsreleasedates.com/movies/6458/Chicago-Fire-TV-Series-2012.html"
+    },
+    {
+      "reason": "excluded apparent TV title/season edition: Chicago P.D.",
+      "url": "https://www.dvdsreleasedates.com/movies/6933/chicago-p.d."
+    },
+    {
+      "reason": "excluded apparent TV title/season edition: Chicago Med",
+      "url": "https://www.dvdsreleasedates.com/movies/8037/chicago-med"
+    }
+  ],
+  "issues": [],
+  "no_matching_release": [
+    {
+      "categories": [
+        "subscription"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://whentostream.com/black-zombie-2026/"
+    },
+    {
+      "categories": [
+        "subscription"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://whentostream.com/colony-2026/"
+    },
+    {
+      "categories": [
+        "subscription"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://whentostream.com/fall-2-deadpoint-2026/"
+    },
+    {
+      "categories": [
+        "subscription"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://whentostream.com/insidious-out-of-the-further-2026/"
+    },
+    {
+      "categories": [
+        "subscription"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://whentostream.com/late-fame-2025/"
+    },
+    {
+      "categories": [
+        "subscription"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://whentostream.com/onslaught-2026/"
+    },
+    {
+      "categories": [
+        "subscription"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://whentostream.com/parasomnia-2025/"
+    },
+    {
+      "categories": [
+        "subscription"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://whentostream.com/spider-man-brand-new-day-2026/"
+    },
+    {
+      "categories": [
+        "subscription"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://whentostream.com/the-librarians-2025/"
+    },
+    {
+      "categories": [
+        "subscription"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://whentostream.com/the-salt-path-2024/"
+    },
+    {
+      "categories": [
+        "theatrical"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://www.dvdsreleasedates.com/movies/12158/sacrifice"
+    },
+    {
+      "categories": [
+        "theatrical"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://www.dvdsreleasedates.com/movies/12309/verity"
+    },
+    {
+      "categories": [
+        "theatrical"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://www.dvdsreleasedates.com/movies/12597/street-fighter"
+    },
+    {
+      "categories": [
+        "theatrical"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://www.dvdsreleasedates.com/movies/12650/digger"
+    },
+    {
+      "categories": [
+        "theatrical"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://www.dvdsreleasedates.com/movies/12827/whalefall"
+    },
+    {
+      "categories": [
+        "theatrical"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://www.dvdsreleasedates.com/movies/12913/rolling-loud-the-movie"
+    },
+    {
+      "categories": [
+        "theatrical"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://www.dvdsreleasedates.com/movies/12923/your-mother-your-mother-your-mother"
+    },
+    {
+      "categories": [
+        "theatrical"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://www.dvdsreleasedates.com/movies/12928/trust-me,-im-a-doctor"
+    },
+    {
+      "categories": [
+        "theatrical"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://www.dvdsreleasedates.com/movies/12929/you-can-see-everything"
+    },
+    {
+      "categories": [
+        "theatrical"
+      ],
+      "reason": "no announced detail date in the selected week/category",
+      "url": "https://www.dvdsreleasedates.com/movies/12930/beware-boi%C3%BAna"
+    }
+  ],
+  "releases": [
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "platform": "Hulu",
+      "release_date": "2026-10-05",
+      "release_type": "subscription",
+      "source": "whentostream",
+      "source_url": "https://whentostream.com/olmo-2025/",
+      "title": "Olmo (2025)"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt10433222",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12938/a-merry-christmas-match",
+      "title": "A Merry Christmas Match"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt6523546",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12413/american-summer",
+      "title": "American Summer"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "DVD",
+      "imdb_id": "tt32649961",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "disc",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12806/blades-of-the-guardians-wind-rises-in-the-desert",
+      "title": "Blades of the Guardians: Wind Rises in the Desert",
+      "upc": "810199990866"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "4K UHD + Blu-ray",
+      "imdb_id": "tt32649961",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "disc",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12806/blades-of-the-guardians-wind-rises-in-the-desert",
+      "title": "Blades of the Guardians: Wind Rises in the Desert",
+      "upc": "810199990859"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt9202096",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12933/christmas-bells-are-ringing",
+      "title": "Christmas Bells Are Ringing"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt7038632",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12934/christmas-festival-of-ice",
+      "title": "Christmas Festival of Ice"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt34385135",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12881/colony",
+      "title": "Colony"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt16114052",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12940/dolph-unbreakable",
+      "title": "Dolph: Unbreakable"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt31192372",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12888/fall-2-deadpoint",
+      "title": "Fall 2: Deadpoint"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt6879446",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/9133/hidden-strike",
+      "title": "Hidden Strike"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt9032562",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12935/homegrown-christmas",
+      "title": "Homegrown Christmas"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt32393988",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12646/insidious-out-of-the-further",
+      "title": "Insidious: Out of the Further"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "DVD",
+      "imdb_id": "tt39316472",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "disc",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12808/jackass-best-and-last",
+      "title": "Jackass: Best and Last",
+      "upc": "843501683996"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Blu-ray",
+      "imdb_id": "tt39316472",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "disc",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12808/jackass-best-and-last",
+      "title": "Jackass: Best and Last",
+      "upc": "843501684009"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt9168384",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12936/jingle-around-the-clock",
+      "title": "Jingle Around the Clock"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt32298494",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12732/late-fame",
+      "title": "Late Fame"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "DVD",
+      "imdb_id": "tt32298494",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "disc",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12732/late-fame",
+      "title": "Late Fame",
+      "upc": "876964018975"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Blu-ray",
+      "imdb_id": "tt32298494",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "disc",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12732/late-fame",
+      "title": "Late Fame",
+      "upc": "876964018982"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "DVD",
+      "imdb_id": "tt27419466",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "disc",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/11703/moana",
+      "title": "Moana",
+      "upc": "043396650404"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "DVD + Digital",
+      "imdb_id": "tt27419466",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "disc",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/11703/moana",
+      "title": "Moana",
+      "upc": "043396650411"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "4K UHD + Blu-ray + Digital",
+      "imdb_id": "tt27419466",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "disc",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/11703/moana",
+      "title": "Moana",
+      "upc": "043396650428"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt10571920",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12937/nostalgic-christmas",
+      "title": "Nostalgic Christmas"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt32268691",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12889/onslaught",
+      "title": "Onslaught"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt22084616",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/11346/spider-man-brand-new-day",
+      "title": "Spider-Man: Brand New Day"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": "Digital HD",
+      "imdb_id": "tt27766440",
+      "platform": null,
+      "release_date": "2026-10-06",
+      "release_type": "digital",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12932/the-salt-path",
+      "title": "The Salt Path"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "imdb_id": "tt28498219",
+      "platform": null,
+      "release_date": "2026-10-08",
+      "release_type": "theatrical",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12321/matchbox-the-movie",
+      "title": "Matchbox the Movie"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "platform": "Lionsgate+ on Prime Video",
+      "release_date": "2026-10-08",
+      "release_type": "subscription",
+      "source": "whentostream",
+      "source_url": "https://whentostream.com/the-birthday-party-2025/",
+      "title": "The Birthday Party (2025)"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "imdb_id": "tt39850240",
+      "platform": null,
+      "release_date": "2026-10-09",
+      "release_type": "theatrical",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12916/angel-and-the-badman",
+      "title": "Angel and the Badman"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "platform": "Netflix",
+      "release_date": "2026-10-09",
+      "release_type": "subscription",
+      "source": "whentostream",
+      "source_url": "https://whentostream.com/animals-2026/",
+      "title": "Animals (2026)"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "imdb_id": "tt18259538",
+      "platform": null,
+      "release_date": "2026-10-09",
+      "release_type": "theatrical",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/11919/avatar-aang-the-last-airbender",
+      "title": "Avatar Aang: The Last Airbender"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "platform": "Peacock",
+      "release_date": "2026-10-09",
+      "release_type": "subscription",
+      "source": "whentostream",
+      "source_url": "https://whentostream.com/disclosure-day-2026/",
+      "title": "Disclosure Day (2026)"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "platform": "Apple TV",
+      "release_date": "2026-10-09",
+      "release_type": "subscription",
+      "source": "whentostream",
+      "source_url": "https://whentostream.com/matchbox-the-movie-2026/",
+      "title": "Matchbox The Movie (2026)"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "platform": "Disney+",
+      "release_date": "2026-10-09",
+      "release_type": "subscription",
+      "source": "whentostream",
+      "source_url": "https://whentostream.com/dont-look-back-in-anger-2026/",
+      "title": "Oasis: Don’t Look Back in Anger (2026)"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "platform": "Hulu",
+      "release_date": "2026-10-09",
+      "release_type": "subscription",
+      "source": "whentostream",
+      "source_url": "https://whentostream.com/dont-look-back-in-anger-2026/",
+      "title": "Oasis: Don’t Look Back in Anger (2026)"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "imdb_id": "tt36586020",
+      "platform": null,
+      "release_date": "2026-10-09",
+      "release_type": "theatrical",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12846/other-mommy",
+      "title": "Other Mommy"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "imdb_id": "tt37510326",
+      "platform": null,
+      "release_date": "2026-10-09",
+      "release_type": "theatrical",
+      "source": "dvdsreleasedates",
+      "source_url": "https://www.dvdsreleasedates.com/movies/12652/the-social-reckoning",
+      "title": "The Social Reckoning"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "platform": "Shudder",
+      "release_date": "2026-10-09",
+      "release_type": "subscription",
+      "source": "whentostream",
+      "source_url": "https://whentostream.com/v-h-s-mixtape-2026/",
+      "title": "V/H/S Mixtape (2026)"
+    },
+    {
+      "country_code": "US",
+      "date_status": "announced",
+      "format": null,
+      "platform": "Hulu",
+      "release_date": "2026-10-10",
+      "release_type": "subscription",
+      "source": "whentostream",
+      "source_url": "https://whentostream.com/hokum-2026/",
+      "title": "Hokum (2026)"
+    }
+  ],
+  "week_end": "2026-10-11",
+  "week_start": "2026-10-05"
+}

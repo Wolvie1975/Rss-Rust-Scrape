@@ -3,6 +3,32 @@
 Written 2026-09-21 to continue this project in a new chat. Read this first. It records where things
 stand, what was decided, and what is still open. It contains no passwords.
 
+## Movie release extension (2026-10-08)
+
+- Scope: **U.S. only**, theatrical, digital purchase/rental, subscription streaming,
+  and DVD/Blu-ray/4K releases; user chose **free public sources**.
+- Source recommendation: DVDs Release Dates for theatrical/digital/disc, When To
+  Stream for subscription dates. Calendar and sample streaming detail HTTP access
+  verified. Movie Insider detail access returned 403; Watchmode paid API not selected.
+- Four new tables created in live `WebScraper`: `MovieReleaseSources`, `Movies`,
+  `MovieSourceLinks`, `MovieReleases`. No movie/source rows populated.
+- Migration: `sql/movie_releases.sql`, included in `Db::open`. Standalone setup:
+  `cargo run --example setup_movie_schema`; append `-- --verify` for rollback-only
+  SQL fixtures. Migration rerun and SQL integration checks passed, as did 19 unit tests.
+- Read `docs/movie-releases.md` for source evidence, fields, identity/rescheduling
+  rules, weekly query, and limitations. Dates are DATE; audit timestamps are UTC.
+- **Read-only movie preview implemented** in `src/movies.rs`, exposed through
+  `cargo run --example movie_preview -- --week-of YYYY-MM-DD --output report.json`.
+  It opens no DB connection. Calendar discovery and detail-date extraction cover
+  theatrical, digital, disc, and subscription releases. Eight parser tests pass.
+  Main CLI ingestion/database upserts remain unimplemented. No scheduler changes.
+- Live preview for 2026-10-05 through 2026-10-11 completed: 5 theatrical, 16 digital,
+  9 subscription records (8 titles), 9 disc editions (4 titles). Checked 56 detail
+  pages with zero HTTP/parser issues after fixes; excluded 4 TV series. No DB writes.
+  Reports: `reports/movie-preview-2026-10-05.md` and `.json`. All 27 Rust tests pass.
+- Live schema inspection also found `ResultFollows` and `ResultGames`, beyond the
+  seven original tables documented below. They were not changed.
+
 ## What this project is
 
 A Rust CLI (`/workspaces/Rust_Projects/web_scraper`, branch `feature/next-stage-build`, remote

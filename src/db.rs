@@ -176,6 +176,11 @@ impl Db {
             ] {
                 client.execute(ddl, &[]).await?;
             }
+            client
+                .simple_query(include_str!("../sql/movie_releases.sql"))
+                .await?
+                .into_results()
+                .await?;
             Result::Ok(client)
         })?;
         Ok(Db { rt, client })
