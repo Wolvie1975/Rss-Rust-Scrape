@@ -234,6 +234,39 @@ impl Db {
         })
     }
 
+    pub fn setup_tv(&mut self,seed:bool)->Result<()> {
+        self.rt.block_on(async {
+            self.client.simple_query(include_str!("../sql/tvmaze.sql")).await?.into_results().await?;
+            if seed {self.client.simple_query(include_str!("../sql/tvmaze_seed.sql")).await?.into_results().await?;}
+            Ok(())
+        })
+    }
+    pub fn tv_jobs(&mut self)->Result<Vec<(i32,String)>> {
+        self.rt.block_on(async {
+            let rows=self.client.query("SELECT TvmazeShowId,ExpectedTitle FROM dbo.TvTrackedSeries WHERE Enabled=1 ORDER BY ID",&[]).await?.into_first_result().await?;
+            Ok(rows.iter().map(|r|(r.get::<i32,_>(0).unwrap(),r.get::<&str,_>(1).unwrap().to_owned())).collect())
+        })
+    }
+    pub fn claim_tv_series(&mut self,id:i32,force:bool)->Result<Option<String>> {
+        self.rt.block_on(async {
+            let rows=self.client.query("UPDATE dbo.TvTrackedSeries WITH(UPDLOCK,ROWLOCK) SET LastAttemptAt=SYSUTCDATETIME(),LeaseUntil=DATEADD(minute,10,SYSUTCDATETIME()),LeaseToken=NEWID() OUTPUT CONVERT(VARCHAR(36),inserted.LeaseToken) WHERE TvmazeShowId=@P1 AND Enabled=1 AND (LeaseUntil IS NULL OR LeaseUntil<=SYSUTCDATETIME()) AND (@P2=1 OR ((CacheExpiresAt IS NULL OR CacheExpiresAt<=SYSUTCDATETIME()) AND (RetryAfter IS NULL OR RetryAfter<=SYSUTCDATETIME())))",&[&id,&force]).await?.into_first_result().await?;
+            Ok(rows.first().and_then(|r|r.get::<&str,_>(0)).map(str::to_owned))
+        })
+    }
+    pub fn save_tv_snapshot(&mut self,id:i32,lease:&str,payload:&serde_json::Value)->Result<String> {
+        let payload=serde_json::to_string(payload)?;
+        self.rt.block_on(async {
+            let rows=self.client.query(include_str!("../sql/upsert_tvmaze_snapshot.sql"),&[&id,&payload,&lease]).await?.into_first_result().await?;
+            Ok(rows.first().and_then(|r|r.get::<&str,_>("Outcome")).unwrap_or("unknown").to_owned())
+        })
+    }
+    pub fn fail_tv_series(&mut self,id:i32,lease:&str,error:&str,retry:i32)->Result<()> {
+        let error=error.chars().take(1000).collect::<String>();
+        self.rt.block_on(async {
+            self.client.execute("UPDATE dbo.TvTrackedSeries SET LastError=@P3,LastIssueCount=1,RetryAfter=DATEADD(second,@P4,SYSUTCDATETIME()),LeaseUntil=NULL,LeaseToken=NULL WHERE TvmazeShowId=@P1 AND LeaseToken=TRY_CONVERT(UNIQUEIDENTIFIER,@P2)",&[&id,&lease,&error,&retry]).await?;Ok(())
+        })
+    }
+
     pub fn tracked_movie_urls(&mut self) -> Result<Vec<String>> {
         self.rt.block_on(async {
             let rows = self.client.query("SELECT DISTINCT l.Url FROM dbo.MovieSourceLinks l JOIN dbo.MovieReleaseSources s ON s.ID=l.MovieReleaseSourceId WHERE s.Enabled=1", &[]).await?.into_first_result().await?;
@@ -950,4 +983,37 @@ mod poster_tests {
         })();
         db.rt.block_on(async{db.client.simple_query("IF @@TRANCOUNT>0 ROLLBACK TRANSACTION").await?.into_results().await})?;result
     }
+}
+
+#[cfg(test)]
+mod tvmaze_tests {
+ use super::*;
+ #[test]
+ #[ignore="requires named TVmaze staging database; test failures/status changes isolated to staging"]
+ fn tv_snapshots_reschedule_preserve_history_and_disabled_settings()->Result<()> {
+  let _=dotenvy::dotenv();let mut db=Db::open_named(&std::env::var("MSSQL_CONNECTION_STRING")?,"WebScraper_Tvmaze_Validation_20261009")?;db.setup_tv(true)?;
+  let before=db.rt.block_on(async{db.client.query("SELECT ID,FirstSeenAt FROM dbo.TvEpisodes WHERE TvmazeEpisodeId=3682283",&[]).await?.into_first_result().await})?;
+  let original_id=before[0].get::<i32,_>(0);let original_seen=before[0].get::<chrono::NaiveDateTime,_>(1);
+  db.rt.block_on(async{db.client.simple_query("BEGIN TRANSACTION").await?.into_results().await})?;
+  let phase=(||->Result<()> {
+   let(s,mut e)=crate::tvmaze::tests::fixtures(83073);e[0]["airdate"]=serde_json::json!("2026-10-11");let(p,_)=crate::tvmaze::normalize(83073,&s,&e)?;
+   for _ in 0..2 {let lease=db.claim_tv_series(83073,true)?.unwrap();assert_eq!(db.save_tv_snapshot(83073,&lease,&p)?,"saved");}
+   db.rt.block_on(async {
+    let rows=db.client.query("SELECT ID,FirstSeenAt,Airdate,StartsAtUtc,IsDateOnly FROM dbo.TvEpisodes WHERE TvmazeEpisodeId=3682283",&[]).await?.into_first_result().await?;
+    assert_eq!(rows.len(),1);assert_eq!(rows[0].get::<i32,_>(0),original_id);assert_eq!(rows[0].get::<chrono::NaiveDateTime,_>(1),original_seen);assert_eq!(rows[0].get::<chrono::NaiveDate,_>(2),chrono::NaiveDate::from_ymd_opt(2026,10,11));assert!(rows[0].get::<chrono::NaiveDateTime,_>(3).is_none());assert_eq!(rows[0].get::<bool,_>(4),Some(true));
+    db.client.execute("UPDATE dbo.TvTrackedSeries SET Enabled=0 WHERE TvmazeShowId=83073",&[]).await?;Ok::<_,Box<dyn std::error::Error>>(())
+   })?;
+   db.setup_tv(true)?;assert!(!db.tv_jobs()?.iter().any(|(id,_)|*id==83073));assert!(db.claim_tv_series(83073,true)?.is_none());assert_eq!(db.save_tv_snapshot(83073,"00000000-0000-0000-0000-000000000000",&p)?,"disabled_or_superseded");Ok(())
+  })();
+  db.rt.block_on(async{db.client.simple_query("IF @@TRANCOUNT>0 ROLLBACK TRANSACTION").await?.into_results().await})?;phase?;
+  let(s,mut e)=crate::tvmaze::tests::fixtures(83073);e.as_array_mut().unwrap().pop();let(p,_)=crate::tvmaze::normalize(83073,&s,&e)?;let lease=db.claim_tv_series(83073,true)?.unwrap();assert!(db.save_tv_snapshot(83073,&lease,&p).is_err());db.fail_tv_series(83073,&lease,"fixture incomplete response",900)?;
+  let lease=db.claim_tv_series(64950,true)?.unwrap();db.fail_tv_series(64950,&lease,"fixture HTTP 503",900)?;
+  let(s,e)=crate::tvmaze::tests::fixtures(45039);let(p,_)=crate::tvmaze::normalize(45039,&s,&e)?;let lease=db.claim_tv_series(45039,true)?.unwrap();assert_eq!(db.save_tv_snapshot(45039,&lease,&p)?,"saved");
+  db.rt.block_on(async {
+   let rows=db.client.query("SELECT COUNT(*) FROM dbo.TvEpisodes",&[]).await?.into_first_result().await?;assert_eq!(rows[0].get::<i32,_>(0),Some(90));
+   let rows=db.client.query("SELECT LastSuccessAt,EpisodeCount,LastError FROM dbo.TvTrackedSeries WHERE TvmazeShowId=83073",&[]).await?.into_first_result().await?;assert!(rows[0].get::<chrono::NaiveDateTime,_>(0).is_some());assert_eq!(rows[0].get::<i32,_>(1),Some(13));assert_eq!(rows[0].get::<&str,_>(2),Some("fixture incomplete response"));
+   let rows=db.client.query("SELECT ID,FirstSeenAt,Airdate FROM dbo.TvEpisodes WHERE TvmazeEpisodeId=3682283",&[]).await?.into_first_result().await?;assert_eq!(rows[0].get::<i32,_>(0),original_id);assert_eq!(rows[0].get::<chrono::NaiveDateTime,_>(1),original_seen);assert_eq!(rows[0].get::<chrono::NaiveDate,_>(2),chrono::NaiveDate::from_ymd_opt(2026,10,9));
+   Ok::<_,Box<dyn std::error::Error>>(())
+  })?;Ok(())
+ }
 }

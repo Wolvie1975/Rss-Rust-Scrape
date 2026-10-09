@@ -1,0 +1,729 @@
+[
+  {
+    "id": 2141182,
+    "url": "https://www.tvmaze.com/episodes/2141182/the-lord-of-the-rings-the-rings-of-power-1x01-a-shadow-of-the-past",
+    "name": "A Shadow of the Past",
+    "season": 1,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2022-09-02",
+    "airtime": "",
+    "airstamp": "2022-09-02T12:00:00+00:00",
+    "runtime": 65,
+    "rating": {
+      "average": 7.1
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/421/1052789.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/421/1052789.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2141182"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2276050,
+    "url": "https://www.tvmaze.com/episodes/2276050/the-lord-of-the-rings-the-rings-of-power-1x02-adrift",
+    "name": "Adrift",
+    "season": 1,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2022-09-02",
+    "airtime": "",
+    "airstamp": "2022-09-02T12:00:00+00:00",
+    "runtime": 67,
+    "rating": {
+      "average": 7.4
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/421/1052784.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/421/1052784.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2276050"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2275060,
+    "url": "https://www.tvmaze.com/episodes/2275060/the-lord-of-the-rings-the-rings-of-power-1x03-adar",
+    "name": "Adar",
+    "season": 1,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2022-09-09",
+    "airtime": "",
+    "airstamp": "2022-09-09T12:00:00+00:00",
+    "runtime": 69,
+    "rating": {
+      "average": 7.3
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/421/1053901.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/421/1053901.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2275060"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2275061,
+    "url": "https://www.tvmaze.com/episodes/2275061/the-lord-of-the-rings-the-rings-of-power-1x04-the-great-wave",
+    "name": "The Great Wave",
+    "season": 1,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2022-09-16",
+    "airtime": "",
+    "airstamp": "2022-09-16T12:00:00+00:00",
+    "runtime": 71,
+    "rating": {
+      "average": 7.4
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/422/1056498.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/422/1056498.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2275061"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2275062,
+    "url": "https://www.tvmaze.com/episodes/2275062/the-lord-of-the-rings-the-rings-of-power-1x05-partings",
+    "name": "Partings",
+    "season": 1,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2022-09-23",
+    "airtime": "",
+    "airstamp": "2022-09-23T12:00:00+00:00",
+    "runtime": 72,
+    "rating": {
+      "average": 7.3
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/423/1057763.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/423/1057763.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2275062"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2275064,
+    "url": "https://www.tvmaze.com/episodes/2275064/the-lord-of-the-rings-the-rings-of-power-1x06-udun",
+    "name": "Ud\u00fbn",
+    "season": 1,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2022-09-30",
+    "airtime": "",
+    "airstamp": "2022-09-30T12:00:00+00:00",
+    "runtime": 69,
+    "rating": {
+      "average": 8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/424/1060200.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/424/1060200.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2275064"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2275065,
+    "url": "https://www.tvmaze.com/episodes/2275065/the-lord-of-the-rings-the-rings-of-power-1x07-the-eye",
+    "name": "The Eye",
+    "season": 1,
+    "number": 7,
+    "type": "regular",
+    "airdate": "2022-10-07",
+    "airtime": "",
+    "airstamp": "2022-10-07T12:00:00+00:00",
+    "runtime": 72,
+    "rating": {
+      "average": 7.6
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/425/1062886.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/425/1062886.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2275065"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2275059,
+    "url": "https://www.tvmaze.com/episodes/2275059/the-lord-of-the-rings-the-rings-of-power-1x08-alloyed",
+    "name": "Alloyed",
+    "season": 1,
+    "number": 8,
+    "type": "regular",
+    "airdate": "2022-10-14",
+    "airtime": "",
+    "airstamp": "2022-10-14T12:00:00+00:00",
+    "runtime": 72,
+    "rating": {
+      "average": 7.7
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/426/1065910.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/426/1065910.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2275059"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2867111,
+    "url": "https://www.tvmaze.com/episodes/2867111/the-lord-of-the-rings-the-rings-of-power-2x01-elven-kings-under-the-sky",
+    "name": "Elven Kings Under the Sky",
+    "season": 2,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2024-08-29",
+    "airtime": "",
+    "airstamp": "2024-08-29T12:00:00+00:00",
+    "runtime": 76,
+    "rating": {
+      "average": 7.8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/533/1333470.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/533/1333470.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2867111"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2879210,
+    "url": "https://www.tvmaze.com/episodes/2879210/the-lord-of-the-rings-the-rings-of-power-2x02-where-the-stars-are-strange",
+    "name": "Where the Stars are Strange",
+    "season": 2,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2024-08-29",
+    "airtime": "",
+    "airstamp": "2024-08-29T12:00:00+00:00",
+    "runtime": 62,
+    "rating": {
+      "average": 7.9
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/533/1333471.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/533/1333471.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2879210"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2879211,
+    "url": "https://www.tvmaze.com/episodes/2879211/the-lord-of-the-rings-the-rings-of-power-2x03-the-eagle-and-the-sceptre",
+    "name": "The Eagle and the Sceptre",
+    "season": 2,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2024-08-29",
+    "airtime": "",
+    "airstamp": "2024-08-29T12:00:00+00:00",
+    "runtime": 66,
+    "rating": {
+      "average": 7.8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/533/1333472.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/533/1333472.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2879211"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2957342,
+    "url": "https://www.tvmaze.com/episodes/2957342/the-lord-of-the-rings-the-rings-of-power-2x04-eldest",
+    "name": "Eldest",
+    "season": 2,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2024-09-05",
+    "airtime": "",
+    "airstamp": "2024-09-05T12:00:00+00:00",
+    "runtime": 65,
+    "rating": {
+      "average": 8.1
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/534/1335419.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/534/1335419.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2957342"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2957343,
+    "url": "https://www.tvmaze.com/episodes/2957343/the-lord-of-the-rings-the-rings-of-power-2x05-halls-of-stone",
+    "name": "Halls of Stone",
+    "season": 2,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2024-09-12",
+    "airtime": "",
+    "airstamp": "2024-09-12T12:00:00+00:00",
+    "runtime": 61,
+    "rating": {
+      "average": 7.9
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/535/1338007.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/535/1338007.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2957343"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2957344,
+    "url": "https://www.tvmaze.com/episodes/2957344/the-lord-of-the-rings-the-rings-of-power-2x06-where-is-he",
+    "name": "Where Is He?",
+    "season": 2,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2024-09-19",
+    "airtime": "",
+    "airstamp": "2024-09-19T12:00:00+00:00",
+    "runtime": 63,
+    "rating": {
+      "average": 8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/536/1340391.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/536/1340391.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2957344"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2957345,
+    "url": "https://www.tvmaze.com/episodes/2957345/the-lord-of-the-rings-the-rings-of-power-2x07-doomed-to-die",
+    "name": "Doomed to Die",
+    "season": 2,
+    "number": 7,
+    "type": "regular",
+    "airdate": "2024-09-26",
+    "airtime": "",
+    "airstamp": "2024-09-26T12:00:00+00:00",
+    "runtime": 72,
+    "rating": {
+      "average": 8.2
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/537/1342668.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/537/1342668.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2957345"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2957346,
+    "url": "https://www.tvmaze.com/episodes/2957346/the-lord-of-the-rings-the-rings-of-power-2x08-shadow-and-flame",
+    "name": "Shadow and Flame",
+    "season": 2,
+    "number": 8,
+    "type": "regular",
+    "airdate": "2024-10-03",
+    "airtime": "",
+    "airstamp": "2024-10-03T12:00:00+00:00",
+    "runtime": 73,
+    "rating": {
+      "average": 8.1
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/537/1344782.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/537/1344782.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2957346"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 3615601,
+    "url": "https://www.tvmaze.com/episodes/3615601/the-lord-of-the-rings-the-rings-of-power-3x01-the-life-of-celeborn",
+    "name": "The Life of Celeborn",
+    "season": 3,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2026-11-11",
+    "airtime": "",
+    "airstamp": "2026-11-11T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3615601"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 3682718,
+    "url": "https://www.tvmaze.com/episodes/3682718/the-lord-of-the-rings-the-rings-of-power-3x02-istar",
+    "name": "Istar",
+    "season": 3,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2026-11-11",
+    "airtime": "",
+    "airstamp": "2026-11-11T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3682718"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 3682719,
+    "url": "https://www.tvmaze.com/episodes/3682719/the-lord-of-the-rings-the-rings-of-power-3x03-halls-of-honor",
+    "name": "Halls of Honor",
+    "season": 3,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2026-11-11",
+    "airtime": "",
+    "airstamp": "2026-11-11T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3682719"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 3682720,
+    "url": "https://www.tvmaze.com/episodes/3682720/the-lord-of-the-rings-the-rings-of-power-3x04-gothmog",
+    "name": "Gothmog",
+    "season": 3,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2026-11-11",
+    "airtime": "",
+    "airstamp": "2026-11-11T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3682720"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 3682721,
+    "url": "https://www.tvmaze.com/episodes/3682721/the-lord-of-the-rings-the-rings-of-power-3x05-triangle-of-sadness",
+    "name": "Triangle of Sadness",
+    "season": 3,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2026-11-18",
+    "airtime": "",
+    "airstamp": "2026-11-18T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3682721"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 3682722,
+    "url": "https://www.tvmaze.com/episodes/3682722/the-lord-of-the-rings-the-rings-of-power-3x06-mairon",
+    "name": "Mairon",
+    "season": 3,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2026-11-18",
+    "airtime": "",
+    "airstamp": "2026-11-18T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3682722"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 3682723,
+    "url": "https://www.tvmaze.com/episodes/3682723/the-lord-of-the-rings-the-rings-of-power-3x07-amon-amarth",
+    "name": "Amon Amarth",
+    "season": 3,
+    "number": 7,
+    "type": "regular",
+    "airdate": "2026-11-25",
+    "airtime": "",
+    "airstamp": "2026-11-25T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3682723"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 3682724,
+    "url": "https://www.tvmaze.com/episodes/3682724/the-lord-of-the-rings-the-rings-of-power-3x08-the-one-ring",
+    "name": "The One Ring",
+    "season": 3,
+    "number": 8,
+    "type": "regular",
+    "airdate": "2026-11-25",
+    "airtime": "",
+    "airstamp": "2026-11-25T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3682724"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 3546144,
+    "url": "https://www.tvmaze.com/episodes/3546144/the-lord-of-the-rings-the-rings-of-power-s01-special-stories-of-the-second-age-lindon",
+    "name": "Stories of the Second Age \u2013 Lindon",
+    "season": 1,
+    "number": null,
+    "type": "insignificant_special",
+    "airdate": "2022-09-09",
+    "airtime": "",
+    "airstamp": "2022-09-09T12:00:00+00:00",
+    "runtime": 1,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3546144"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  },
+  {
+    "id": 2435773,
+    "url": "https://www.tvmaze.com/episodes/2435773/the-lord-of-the-rings-the-rings-of-power-s01-special-the-making-of-the-rings-of-power",
+    "name": "The Making of The Rings of Power",
+    "season": 1,
+    "number": null,
+    "type": "insignificant_special",
+    "airdate": "2022-11-21",
+    "airtime": "",
+    "airstamp": "2022-11-21T12:00:00+00:00",
+    "runtime": 43,
+    "rating": {
+      "average": 6.6
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/431/1079587.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/431/1079587.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2435773"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/33352",
+        "name": "The Lord of the Rings: The Rings of Power"
+      }
+    }
+  }
+]

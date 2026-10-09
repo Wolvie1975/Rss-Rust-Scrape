@@ -1,0 +1,193 @@
+[
+  {
+    "id": 3650901,
+    "url": "https://www.tvmaze.com/episodes/3650901/line-of-fire-1x01-pilot",
+    "name": "Pilot",
+    "season": 1,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2026-09-21",
+    "airtime": "22:00",
+    "airstamp": "2026-09-22T02:00:00+00:00",
+    "runtime": 60,
+    "rating": {
+      "average": 6.3
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/642/1606340.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/642/1606340.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3650901"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/90632",
+        "name": "Line of Fire"
+      }
+    }
+  },
+  {
+    "id": 3654224,
+    "url": "https://www.tvmaze.com/episodes/3654224/line-of-fire-1x02-a-bigger-picture",
+    "name": "A Bigger Picture",
+    "season": 1,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2026-09-28",
+    "airtime": "22:00",
+    "airstamp": "2026-09-29T02:00:00+00:00",
+    "runtime": 60,
+    "rating": {
+      "average": 7.1
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/643/1608768.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/643/1608768.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3654224"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/90632",
+        "name": "Line of Fire"
+      }
+    }
+  },
+  {
+    "id": 3654225,
+    "url": "https://www.tvmaze.com/episodes/3654225/line-of-fire-1x03-there-are-two-wolves",
+    "name": "There Are Two Wolves",
+    "season": 1,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2026-10-05",
+    "airtime": "22:00",
+    "airstamp": "2026-10-06T02:00:00+00:00",
+    "runtime": 60,
+    "rating": {
+      "average": 7.5
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/644/1611587.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/644/1611587.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3654225"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/90632",
+        "name": "Line of Fire"
+      }
+    }
+  },
+  {
+    "id": 3654226,
+    "url": "https://www.tvmaze.com/episodes/3654226/line-of-fire-1x04-paper-trails",
+    "name": "Paper Trails",
+    "season": 1,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2026-10-12",
+    "airtime": "22:00",
+    "airstamp": "2026-10-13T02:00:00+00:00",
+    "runtime": 60,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3654226"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/90632",
+        "name": "Line of Fire"
+      }
+    }
+  },
+  {
+    "id": 3654227,
+    "url": "https://www.tvmaze.com/episodes/3654227/line-of-fire-1x05-cul-de-sac",
+    "name": "Cul-de-sac",
+    "season": 1,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2026-10-19",
+    "airtime": "22:00",
+    "airstamp": "2026-10-20T02:00:00+00:00",
+    "runtime": 60,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3654227"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/90632",
+        "name": "Line of Fire"
+      }
+    }
+  },
+  {
+    "id": 3654228,
+    "url": "https://www.tvmaze.com/episodes/3654228/line-of-fire-1x06-episode-6",
+    "name": "Episode 6",
+    "season": 1,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2026-10-26",
+    "airtime": "22:00",
+    "airstamp": "2026-10-27T02:00:00+00:00",
+    "runtime": 60,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3654228"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/90632",
+        "name": "Line of Fire"
+      }
+    }
+  },
+  {
+    "id": 3654229,
+    "url": "https://www.tvmaze.com/episodes/3654229/line-of-fire-1x07-episode-7",
+    "name": "Episode 7",
+    "season": 1,
+    "number": 7,
+    "type": "regular",
+    "airdate": "2026-11-02",
+    "airtime": "22:00",
+    "airstamp": "2026-11-03T03:00:00+00:00",
+    "runtime": 60,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3654229"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/90632",
+        "name": "Line of Fire"
+      }
+    }
+  }
+]

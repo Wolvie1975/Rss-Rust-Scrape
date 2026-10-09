@@ -1,0 +1,55 @@
+{
+  "id": 64950,
+  "url": "https://www.tvmaze.com/shows/64950/visionquest",
+  "name": "VisionQuest",
+  "type": "Scripted",
+  "language": "English",
+  "genres": [
+    "Action",
+    "Science-Fiction"
+  ],
+  "status": "In Development",
+  "runtime": null,
+  "averageRuntime": null,
+  "premiered": "2026-10-14",
+  "ended": null,
+  "officialSite": null,
+  "schedule": {
+    "time": "",
+    "days": [
+      "Wednesday"
+    ]
+  },
+  "rating": {
+    "average": null
+  },
+  "weight": 99,
+  "network": null,
+  "webChannel": {
+    "id": 287,
+    "name": "Disney+",
+    "country": null,
+    "officialSite": "https://www.disneyplus.com/"
+  },
+  "dvdCountry": null,
+  "externals": {
+    "tvrage": null,
+    "thetvdb": 426606,
+    "imdb": "tt23112594"
+  },
+  "image": {
+    "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/636/1592334.jpg",
+    "original": "https://static.tvmaze.com/uploads/images/original_untouched/636/1592334.jpg"
+  },
+  "summary": null,
+  "updated": 1791394437,
+  "_links": {
+    "self": {
+      "href": "https://api.tvmaze.com/shows/64950"
+    },
+    "nextepisode": {
+      "href": "https://api.tvmaze.com/episodes/3616304",
+      "name": "TBA"
+    }
+  }
+}

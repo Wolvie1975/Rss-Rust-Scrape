@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 mod db;
+mod tvmaze;
 mod big12;
 mod movies;
 mod movie_metadata;
@@ -138,6 +139,15 @@ fn scrape_source(
 #[derive(Parser)]
 #[command(version, about)]
 struct Cli {
+    /// Apply the TV schema and seed the five explicit provider IDs without scraping.
+    #[arg(long,conflicts_with_all=["dry_run","every_hours"])]
+    configure_tv: bool,
+    /// Collect enabled tracked TVmaze series and full episode lists (implies --db).
+    #[arg(long)]
+    tv_from_db: bool,
+    /// Ignore the TV request cache for an explicit validation/manual refresh.
+    #[arg(long,requires="tv_from_db",conflicts_with="every_hours")]
+    tv_force_refresh: bool,
     /// Target SQL database; use a separate database for staging validation.
     #[arg(long, default_value="WebScraper")]
     database: String,
@@ -255,7 +265,7 @@ fn read_urls_file(path: &Path) -> std::io::Result<Vec<String>> {
 
 /// One full scrape: collect sources, scrape, filter, save, prune, and write the RSS feed.
 fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    let use_db = cli.movie_posters || cli.configure_big12 || cli.enable_big12 || cli.movies || cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty() || cli.events_from_db || !cli.youtube_feed.is_empty() || cli.youtube_from_db;
+    let use_db = cli.configure_tv || cli.tv_from_db || cli.movie_posters || cli.configure_big12 || cli.enable_big12 || cli.movies || cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty() || cli.events_from_db || !cli.youtube_feed.is_empty() || cli.youtube_from_db;
     let mut db = if use_db {
         let ado = std::env::var("MSSQL_CONNECTION_STRING")
             .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
@@ -264,6 +274,8 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
+    if cli.configure_tv || cli.tv_from_db {db.as_mut().unwrap().setup_tv(cli.configure_tv)?;}
+    if cli.configure_tv {eprintln!("TVmaze schema ready; five tracking rows seeded without changing existing Enabled settings");return Ok(());}
     if cli.configure_big12 || cli.enable_big12 {
         let client=Client::builder().timeout(Duration::from_secs(20)).user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)").build()?;
         let members=big12::current_members(&client)?;
@@ -294,7 +306,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    if !cli.movies && urls.is_empty() && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
+    if !cli.tv_from_db && !cli.movies && urls.is_empty() && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
         Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, --from-db, --events-feed, --events-from-db, --youtube-feed, or --youtube-from-db").exit();
     }
 
@@ -634,6 +646,13 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         if let Err(e) = result { eprintln!("movie ingestion failed: {e}"); }
     }
 
+    if cli.tv_from_db {
+        match tvmaze::collect(db.as_mut().unwrap(),cli.dry_run,cli.tv_force_refresh) {
+            Ok(report)=>eprintln!("TVmaze collection report: {}",report),
+            Err(e)=>eprintln!("TVmaze collector failed: {e}"),
+        }
+    }
+
     let items: Vec<_> = pages
         .into_iter()
         .map(|meta| {
@@ -696,7 +715,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if 24 % hours != 0 {
         Cli::command().error(ErrorKind::InvalidValue, "--every-hours must divide 24 (1, 2, 3, 4, 6, 8, 12, 24)").exit();
     }
-    if !cli.movies && cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
+    if !cli.tv_from_db && !cli.movies && cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
         Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, or --from-db").exit();
     }
 

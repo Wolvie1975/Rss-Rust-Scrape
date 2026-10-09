@@ -3,6 +3,29 @@
 Written 2026-09-21 to continue this project in a new chat. Read this first. It records where things
 stand, what was decided, and what is still open. It contains no passwords.
 
+## TVmaze episode tracking (2026-10-09)
+
+- Added TvSeries, TvEpisodes and TvTrackedSeries using `sql/tvmaze.sql`; seed script
+  tracks explicit IDs 83073,64950,45039,33352,90632 idempotently, preserving disabled settings.
+- Final schema/column contract delivered before production migration to chat and
+  MyNewsFeed checkout (`db/tvmaze.sql`, `db/tvmaze_seed.sql`,
+  `deployment/tvmaze-developer-handoff.md`). No TV frontend UI implemented here.
+- `src/tvmaze.rs` fetches full episode lists with specials. Production has 5 series,
+  90 episodes (83 date-only, 7 timed, 2 specials); no collection errors.
+  Blank airtime/noon airstamp -> NULL confirmed UTC time, with raw fields retained.
+- Original scheduling only: NBC Line of Fire is ID90632 (2026), not the 2003 show.
+  Never derive Peacock or regional availability from these tables.
+- Configure `--configure-tv`, collect `--tv-from-db`, manual cache bypass
+  `--tv-force-refresh`. Hourly Docker command includes --tv-from-db. Tracking
+  has enabled, last-attempt/success/error/count, one-hour validated JSON cache,
+  retry-after and per-series lease controls. No episode deletion on missing lists.
+- Staging/SQL/mock tests passed for IDs, batch/special/date-only semantics,
+  reschedules, disabled seeds, incomplete snapshots, cache and failure isolation.
+  API data: CC BY-SA 4.0; app attribution/license links required.
+- Docs: tvmaze.md and tvmaze-developer-handoff.md; initial-import report in reports.
+  Runtime rollback image before-tvmaze-20261009; staging database
+  WebScraper_Tvmaze_Validation_20261009 retained for inspection.
+
 ## Movie posters (2026-10-09)
 
 - Source-first poster enrichment implemented in `src/movie_metadata.rs` and `src/posters.rs`.

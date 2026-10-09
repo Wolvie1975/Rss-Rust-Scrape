@@ -1,0 +1,210 @@
+[
+  {
+    "id": 3616304,
+    "url": "https://www.tvmaze.com/episodes/3616304/visionquest-1x01-tba",
+    "name": "TBA",
+    "season": 1,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2026-10-14",
+    "airtime": "",
+    "airstamp": "2026-10-14T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3616304"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/64950",
+        "name": "VisionQuest"
+      }
+    }
+  },
+  {
+    "id": 3616305,
+    "url": "https://www.tvmaze.com/episodes/3616305/visionquest-1x02-tba",
+    "name": "TBA",
+    "season": 1,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2026-10-14",
+    "airtime": "",
+    "airstamp": "2026-10-14T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3616305"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/64950",
+        "name": "VisionQuest"
+      }
+    }
+  },
+  {
+    "id": 3616306,
+    "url": "https://www.tvmaze.com/episodes/3616306/visionquest-1x03-tba",
+    "name": "TBA",
+    "season": 1,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2026-10-21",
+    "airtime": "",
+    "airstamp": "2026-10-21T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3616306"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/64950",
+        "name": "VisionQuest"
+      }
+    }
+  },
+  {
+    "id": 3616307,
+    "url": "https://www.tvmaze.com/episodes/3616307/visionquest-1x04-tba",
+    "name": "TBA",
+    "season": 1,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2026-10-21",
+    "airtime": "",
+    "airstamp": "2026-10-21T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3616307"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/64950",
+        "name": "VisionQuest"
+      }
+    }
+  },
+  {
+    "id": 3616308,
+    "url": "https://www.tvmaze.com/episodes/3616308/visionquest-1x05-tba",
+    "name": "TBA",
+    "season": 1,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2026-10-28",
+    "airtime": "",
+    "airstamp": "2026-10-28T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3616308"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/64950",
+        "name": "VisionQuest"
+      }
+    }
+  },
+  {
+    "id": 3616309,
+    "url": "https://www.tvmaze.com/episodes/3616309/visionquest-1x06-tba",
+    "name": "TBA",
+    "season": 1,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2026-10-28",
+    "airtime": "",
+    "airstamp": "2026-10-28T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3616309"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/64950",
+        "name": "VisionQuest"
+      }
+    }
+  },
+  {
+    "id": 3616310,
+    "url": "https://www.tvmaze.com/episodes/3616310/visionquest-1x07-tba",
+    "name": "TBA",
+    "season": 1,
+    "number": 7,
+    "type": "regular",
+    "airdate": "2026-11-04",
+    "airtime": "",
+    "airstamp": "2026-11-04T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3616310"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/64950",
+        "name": "VisionQuest"
+      }
+    }
+  },
+  {
+    "id": 3616311,
+    "url": "https://www.tvmaze.com/episodes/3616311/visionquest-1x08-tba",
+    "name": "TBA",
+    "season": 1,
+    "number": 8,
+    "type": "regular",
+    "airdate": "2026-11-11",
+    "airtime": "",
+    "airstamp": "2026-11-11T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3616311"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/64950",
+        "name": "VisionQuest"
+      }
+    }
+  }
+]

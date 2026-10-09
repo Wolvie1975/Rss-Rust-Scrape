@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     env_file: .env
     command: ["--from-db", "--per-source", "10", "--every-hours", "1",
-              "-o", "/data/feed.xml", "--events-from-db", "--youtube-from-db", "--movies"]
+              "-o", "/data/feed.xml", "--events-from-db", "--youtube-from-db", "--movies", "--tv-from-db"]
     volumes:
       - scraper-data:/data
     networks:

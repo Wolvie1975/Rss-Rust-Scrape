@@ -1,0 +1,57 @@
+{
+  "id": 83073,
+  "url": "https://www.tvmaze.com/shows/83073/avatar-seven-havens",
+  "name": "Avatar: Seven Havens",
+  "type": "Animation",
+  "language": "English",
+  "genres": [
+    "Action",
+    "Adventure"
+  ],
+  "status": "Running",
+  "runtime": null,
+  "averageRuntime": null,
+  "premiered": "2026-10-09",
+  "ended": null,
+  "officialSite": "https://www.paramountplus.com/shows/avatar-seven-havens/",
+  "schedule": {
+    "time": "",
+    "days": []
+  },
+  "rating": {
+    "average": null
+  },
+  "weight": 98,
+  "network": null,
+  "webChannel": {
+    "id": 107,
+    "name": "Paramount+",
+    "country": null,
+    "officialSite": "https://www.paramountplus.com/"
+  },
+  "dvdCountry": null,
+  "externals": {
+    "tvrage": null,
+    "thetvdb": 460458,
+    "imdb": "tt35854736"
+  },
+  "image": {
+    "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/640/1601845.jpg",
+    "original": "https://static.tvmaze.com/uploads/images/original_untouched/640/1601845.jpg"
+  },
+  "summary": null,
+  "updated": 1791533291,
+  "_links": {
+    "self": {
+      "href": "https://api.tvmaze.com/shows/83073"
+    },
+    "previousepisode": {
+      "href": "https://api.tvmaze.com/episodes/3757405",
+      "name": "Episode 3"
+    },
+    "nextepisode": {
+      "href": "https://api.tvmaze.com/episodes/3757406",
+      "name": "Episode 4"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "id": 90632,
+  "url": "https://www.tvmaze.com/shows/90632/line-of-fire",
+  "name": "Line of Fire",
+  "type": "Scripted",
+  "language": "English",
+  "genres": [
+    "Drama",
+    "Action",
+    "Crime"
+  ],
+  "status": "Running",
+  "runtime": 60,
+  "averageRuntime": 60,
+  "premiered": "2026-09-21",
+  "ended": null,
+  "officialSite": "https://www.nbc.com/line-of-fire",
+  "schedule": {
+    "time": "22:00",
+    "days": [
+      "Monday"
+    ]
+  },
+  "rating": {
+    "average": 6.2
+  },
+  "weight": 99,
+  "network": {
+    "id": 1,
+    "name": "NBC",
+    "country": {
+      "name": "United States",
+      "code": "US",
+      "timezone": "America/New_York"
+    },
+    "officialSite": "https://www.nbc.com/"
+  },
+  "webChannel": null,
+  "dvdCountry": null,
+  "externals": {
+    "tvrage": null,
+    "thetvdb": 477711,
+    "imdb": "tt42496001"
+  },
+  "image": {
+    "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/641/1604426.jpg",
+    "original": "https://static.tvmaze.com/uploads/images/original_untouched/641/1604426.jpg"
+  },
+  "summary": null,
+  "updated": 1791288414,
+  "_links": {
+    "self": {
+      "href": "https://api.tvmaze.com/shows/90632"
+    },
+    "previousepisode": {
+      "href": "https://api.tvmaze.com/episodes/3654225",
+      "name": "There Are Two Wolves"
+    },
+    "nextepisode": {
+      "href": "https://api.tvmaze.com/episodes/3654226",
+      "name": "Paper Trails"
+    }
+  }
+}

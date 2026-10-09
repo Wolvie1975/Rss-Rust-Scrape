@@ -1,0 +1,60 @@
+{
+  "id": 45039,
+  "url": "https://www.tvmaze.com/shows/45039/slow-horses",
+  "name": "Slow Horses",
+  "type": "Scripted",
+  "language": "English",
+  "genres": [
+    "Drama",
+    "Thriller",
+    "Espionage"
+  ],
+  "status": "Running",
+  "runtime": null,
+  "averageRuntime": 45,
+  "premiered": "2022-04-01",
+  "ended": null,
+  "officialSite": "https://tv.apple.com/us/show/slow-horses/umc.cmc.2szz3fdt71tl1ulnbp8utgq5o",
+  "schedule": {
+    "time": "",
+    "days": [
+      "Wednesday"
+    ]
+  },
+  "rating": {
+    "average": 8.1
+  },
+  "weight": 100,
+  "network": null,
+  "webChannel": {
+    "id": 310,
+    "name": "Apple TV",
+    "country": null,
+    "officialSite": "https://tv.apple.com/"
+  },
+  "dvdCountry": null,
+  "externals": {
+    "tvrage": null,
+    "thetvdb": 372264,
+    "imdb": "tt5875444"
+  },
+  "image": {
+    "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/641/1604425.jpg",
+    "original": "https://static.tvmaze.com/uploads/images/original_untouched/641/1604425.jpg"
+  },
+  "summary": null,
+  "updated": 1791357101,
+  "_links": {
+    "self": {
+      "href": "https://api.tvmaze.com/shows/45039"
+    },
+    "previousepisode": {
+      "href": "https://api.tvmaze.com/episodes/3643508",
+      "name": "Lost and Found"
+    },
+    "nextepisode": {
+      "href": "https://api.tvmaze.com/episodes/3643509",
+      "name": "Sayonara"
+    }
+  }
+}

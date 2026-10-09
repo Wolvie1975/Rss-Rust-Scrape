@@ -1,0 +1,60 @@
+{
+  "id": 33352,
+  "url": "https://www.tvmaze.com/shows/33352/the-lord-of-the-rings-the-rings-of-power",
+  "name": "The Lord of the Rings: The Rings of Power",
+  "type": "Scripted",
+  "language": "English",
+  "genres": [
+    "Drama",
+    "Adventure",
+    "Fantasy"
+  ],
+  "status": "Running",
+  "runtime": null,
+  "averageRuntime": 68,
+  "premiered": "2022-09-02",
+  "ended": null,
+  "officialSite": "https://www.amazon.com/dp/B09QH98YG1",
+  "schedule": {
+    "time": "",
+    "days": [
+      "Wednesday"
+    ]
+  },
+  "rating": {
+    "average": 7.1
+  },
+  "weight": 100,
+  "network": null,
+  "webChannel": {
+    "id": 3,
+    "name": "Prime Video",
+    "country": null,
+    "officialSite": "https://www.primevideo.com"
+  },
+  "dvdCountry": null,
+  "externals": {
+    "tvrage": null,
+    "thetvdb": 367506,
+    "imdb": "tt7631058"
+  },
+  "image": {
+    "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/633/1584401.jpg",
+    "original": "https://static.tvmaze.com/uploads/images/original_untouched/633/1584401.jpg"
+  },
+  "summary": null,
+  "updated": 1787438051,
+  "_links": {
+    "self": {
+      "href": "https://api.tvmaze.com/shows/33352"
+    },
+    "previousepisode": {
+      "href": "https://api.tvmaze.com/episodes/2957346",
+      "name": "Shadow and Flame"
+    },
+    "nextepisode": {
+      "href": "https://api.tvmaze.com/episodes/3615601",
+      "name": "The Life of Celeborn"
+    }
+  }
+}

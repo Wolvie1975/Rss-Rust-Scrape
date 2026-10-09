@@ -1,0 +1,1040 @@
+[
+  {
+    "id": 2270552,
+    "url": "https://www.tvmaze.com/episodes/2270552/slow-horses-1x01-failures-contagious",
+    "name": "Failure's Contagious",
+    "season": 1,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2022-04-01",
+    "airtime": "",
+    "airstamp": "2022-04-01T12:00:00+00:00",
+    "runtime": 53,
+    "rating": {
+      "average": 7.5
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/402/1006221.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/402/1006221.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2270552"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2270553,
+    "url": "https://www.tvmaze.com/episodes/2270553/slow-horses-1x02-work-drinks",
+    "name": "Work Drinks",
+    "season": 1,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2022-04-01",
+    "airtime": "",
+    "airstamp": "2022-04-01T12:00:00+00:00",
+    "runtime": 48,
+    "rating": {
+      "average": 7.7
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/402/1006222.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/402/1006222.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2270553"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2270554,
+    "url": "https://www.tvmaze.com/episodes/2270554/slow-horses-1x03-bad-tradecraft",
+    "name": "Bad Tradecraft",
+    "season": 1,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2022-04-08",
+    "airtime": "",
+    "airstamp": "2022-04-08T12:00:00+00:00",
+    "runtime": 41,
+    "rating": {
+      "average": 7.9
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/402/1006223.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/402/1006223.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2270554"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2270555,
+    "url": "https://www.tvmaze.com/episodes/2270555/slow-horses-1x04-visiting-hours",
+    "name": "Visiting Hours",
+    "season": 1,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2022-04-15",
+    "airtime": "",
+    "airstamp": "2022-04-15T12:00:00+00:00",
+    "runtime": 43,
+    "rating": {
+      "average": 8.1
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/404/1010524.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/404/1010524.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2270555"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2270556,
+    "url": "https://www.tvmaze.com/episodes/2270556/slow-horses-1x05-fiasco",
+    "name": "Fiasco",
+    "season": 1,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2022-04-22",
+    "airtime": "",
+    "airstamp": "2022-04-22T12:00:00+00:00",
+    "runtime": 42,
+    "rating": {
+      "average": 8.4
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/404/1011038.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/404/1011038.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2270556"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2270557,
+    "url": "https://www.tvmaze.com/episodes/2270557/slow-horses-1x06-follies",
+    "name": "Follies",
+    "season": 1,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2022-04-29",
+    "airtime": "",
+    "airstamp": "2022-04-29T12:00:00+00:00",
+    "runtime": 53,
+    "rating": {
+      "average": 8.3
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/405/1014917.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/405/1014917.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2270557"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2403834,
+    "url": "https://www.tvmaze.com/episodes/2403834/slow-horses-2x01-last-stop",
+    "name": "Last Stop",
+    "season": 2,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2022-12-02",
+    "airtime": "",
+    "airstamp": "2022-12-02T12:00:00+00:00",
+    "runtime": 44,
+    "rating": {
+      "average": 8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/432/1081846.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/432/1081846.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2403834"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2406245,
+    "url": "https://www.tvmaze.com/episodes/2406245/slow-horses-2x02-from-upshott-with-love",
+    "name": "From Upshott with Love",
+    "season": 2,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2022-12-02",
+    "airtime": "",
+    "airstamp": "2022-12-02T12:00:00+00:00",
+    "runtime": 49,
+    "rating": {
+      "average": 8.2
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/432/1081847.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/432/1081847.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2406245"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2406246,
+    "url": "https://www.tvmaze.com/episodes/2406246/slow-horses-2x03-drinking-games",
+    "name": "Drinking Games",
+    "season": 2,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2022-12-09",
+    "airtime": "",
+    "airstamp": "2022-12-09T12:00:00+00:00",
+    "runtime": 53,
+    "rating": {
+      "average": 8.2
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/432/1081848.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/432/1081848.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2406246"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2406247,
+    "url": "https://www.tvmaze.com/episodes/2406247/slow-horses-2x04-cicada",
+    "name": "Cicada",
+    "season": 2,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2022-12-16",
+    "airtime": "",
+    "airstamp": "2022-12-16T12:00:00+00:00",
+    "runtime": 45,
+    "rating": {
+      "average": 8.3
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/435/1088290.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/435/1088290.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2406247"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2406248,
+    "url": "https://www.tvmaze.com/episodes/2406248/slow-horses-2x05-boardroom-politics",
+    "name": "Boardroom Politics",
+    "season": 2,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2022-12-23",
+    "airtime": "",
+    "airstamp": "2022-12-23T12:00:00+00:00",
+    "runtime": 41,
+    "rating": {
+      "average": 8.4
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/436/1091304.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/436/1091304.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2406248"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2406249,
+    "url": "https://www.tvmaze.com/episodes/2406249/slow-horses-2x06-old-scores",
+    "name": "Old Scores",
+    "season": 2,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2022-12-30",
+    "airtime": "",
+    "airstamp": "2022-12-30T12:00:00+00:00",
+    "runtime": 44,
+    "rating": {
+      "average": 8.7
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/436/1091306.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/436/1091306.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2406249"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2649160,
+    "url": "https://www.tvmaze.com/episodes/2649160/slow-horses-3x01-strange-games",
+    "name": "Strange Games",
+    "season": 3,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2023-11-29",
+    "airtime": "",
+    "airstamp": "2023-11-29T12:00:00+00:00",
+    "runtime": 44,
+    "rating": {
+      "average": 8.3
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/494/1236213.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/494/1236213.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2649160"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2649161,
+    "url": "https://www.tvmaze.com/episodes/2649161/slow-horses-3x02-hard-lessons",
+    "name": "Hard Lessons",
+    "season": 3,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2023-11-29",
+    "airtime": "",
+    "airstamp": "2023-11-29T12:00:00+00:00",
+    "runtime": 41,
+    "rating": {
+      "average": 8.4
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/485/1214286.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/485/1214286.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2649161"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2649233,
+    "url": "https://www.tvmaze.com/episodes/2649233/slow-horses-3x03-negotiating-with-tigers",
+    "name": "Negotiating With Tigers",
+    "season": 3,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2023-12-06",
+    "airtime": "",
+    "airstamp": "2023-12-06T12:00:00+00:00",
+    "runtime": 44,
+    "rating": {
+      "average": 8.5
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/494/1236212.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/494/1236212.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2649233"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2649234,
+    "url": "https://www.tvmaze.com/episodes/2649234/slow-horses-3x04-uninvited-guests",
+    "name": "Uninvited Guests",
+    "season": 3,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2023-12-13",
+    "airtime": "",
+    "airstamp": "2023-12-13T12:00:00+00:00",
+    "runtime": 45,
+    "rating": {
+      "average": 8.7
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/494/1236211.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/494/1236211.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2649234"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2649235,
+    "url": "https://www.tvmaze.com/episodes/2649235/slow-horses-3x05-cleaning-up",
+    "name": "Cleaning Up",
+    "season": 3,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2023-12-20",
+    "airtime": "",
+    "airstamp": "2023-12-20T12:00:00+00:00",
+    "runtime": 41,
+    "rating": {
+      "average": 8.8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/494/1236210.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/494/1236210.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2649235"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2649236,
+    "url": "https://www.tvmaze.com/episodes/2649236/slow-horses-3x06-footprints",
+    "name": "Footprints",
+    "season": 3,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2023-12-27",
+    "airtime": "",
+    "airstamp": "2023-12-27T12:00:00+00:00",
+    "runtime": 45,
+    "rating": {
+      "average": 8.8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/494/1236214.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/494/1236214.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2649236"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2930557,
+    "url": "https://www.tvmaze.com/episodes/2930557/slow-horses-4x01-identity-theft",
+    "name": "Identity Theft",
+    "season": 4,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2024-09-04",
+    "airtime": "",
+    "airstamp": "2024-09-04T12:00:00+00:00",
+    "runtime": 43,
+    "rating": {
+      "average": 8.7
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/533/1334979.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/533/1334979.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2930557"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2930558,
+    "url": "https://www.tvmaze.com/episodes/2930558/slow-horses-4x02-a-stranger-comes-to-town",
+    "name": "A Stranger Comes to Town",
+    "season": 4,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2024-09-11",
+    "airtime": "",
+    "airstamp": "2024-09-11T12:00:00+00:00",
+    "runtime": 46,
+    "rating": {
+      "average": 8.6
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/533/1334980.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/533/1334980.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2930558"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2930563,
+    "url": "https://www.tvmaze.com/episodes/2930563/slow-horses-4x03-penny-for-your-thoughts",
+    "name": "Penny for Your Thoughts",
+    "season": 4,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2024-09-18",
+    "airtime": "",
+    "airstamp": "2024-09-18T12:00:00+00:00",
+    "runtime": 46,
+    "rating": {
+      "average": 8.4
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/535/1339862.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/535/1339862.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2930563"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2930565,
+    "url": "https://www.tvmaze.com/episodes/2930565/slow-horses-4x04-returns",
+    "name": "Returns",
+    "season": 4,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2024-09-25",
+    "airtime": "",
+    "airstamp": "2024-09-25T12:00:00+00:00",
+    "runtime": 42,
+    "rating": {
+      "average": 8.1
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/536/1342285.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/536/1342285.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2930565"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2930566,
+    "url": "https://www.tvmaze.com/episodes/2930566/slow-horses-4x05-grave-danger",
+    "name": "Grave Danger",
+    "season": 4,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2024-10-02",
+    "airtime": "",
+    "airstamp": "2024-10-02T12:00:00+00:00",
+    "runtime": 40,
+    "rating": {
+      "average": 8.5
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/537/1344362.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/537/1344362.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2930566"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 2930567,
+    "url": "https://www.tvmaze.com/episodes/2930567/slow-horses-4x06-hello-goodbye",
+    "name": "Hello Goodbye",
+    "season": 4,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2024-10-09",
+    "airtime": "",
+    "airstamp": "2024-10-09T12:00:00+00:00",
+    "runtime": 52,
+    "rating": {
+      "average": 8.9
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/537/1344363.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/537/1344363.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/2930567"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3267455,
+    "url": "https://www.tvmaze.com/episodes/3267455/slow-horses-5x01-bad-dates",
+    "name": "Bad Dates",
+    "season": 5,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2025-09-24",
+    "airtime": "",
+    "airstamp": "2025-09-24T12:00:00+00:00",
+    "runtime": 45,
+    "rating": {
+      "average": 8.2
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/589/1472566.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/589/1472566.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3267455"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3267470,
+    "url": "https://www.tvmaze.com/episodes/3267470/slow-horses-5x02-incommunicado",
+    "name": "Incommunicado",
+    "season": 5,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2025-10-01",
+    "airtime": "",
+    "airstamp": "2025-10-01T12:00:00+00:00",
+    "runtime": 47,
+    "rating": {
+      "average": 8.8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/589/1472567.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/589/1472567.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3267470"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3267474,
+    "url": "https://www.tvmaze.com/episodes/3267474/slow-horses-5x03-tall-tales",
+    "name": "Tall Tales",
+    "season": 5,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2025-10-08",
+    "airtime": "",
+    "airstamp": "2025-10-08T12:00:00+00:00",
+    "runtime": 39,
+    "rating": {
+      "average": 8.6
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/590/1475490.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/590/1475490.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3267474"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3267478,
+    "url": "https://www.tvmaze.com/episodes/3267478/slow-horses-5x04-missiles",
+    "name": "Missiles",
+    "season": 5,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2025-10-15",
+    "airtime": "",
+    "airstamp": "2025-10-15T12:00:00+00:00",
+    "runtime": 39,
+    "rating": {
+      "average": 8.7
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/591/1478245.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/591/1478245.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3267478"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3267481,
+    "url": "https://www.tvmaze.com/episodes/3267481/slow-horses-5x05-circus",
+    "name": "Circus",
+    "season": 5,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2025-10-22",
+    "airtime": "",
+    "airstamp": "2025-10-22T12:00:00+00:00",
+    "runtime": 44,
+    "rating": {
+      "average": 8.8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/592/1481523.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/592/1481523.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3267481"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3267485,
+    "url": "https://www.tvmaze.com/episodes/3267485/slow-horses-5x06-scars",
+    "name": "Scars",
+    "season": 5,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2025-10-29",
+    "airtime": "",
+    "airstamp": "2025-10-29T12:00:00+00:00",
+    "runtime": 51,
+    "rating": {
+      "average": 9.1
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/594/1485111.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/594/1485111.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3267485"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3643494,
+    "url": "https://www.tvmaze.com/episodes/3643494/slow-horses-6x01-circle-of-life",
+    "name": "Circle of Life",
+    "season": 6,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2026-09-16",
+    "airtime": "",
+    "airstamp": "2026-09-16T12:00:00+00:00",
+    "runtime": 48,
+    "rating": {
+      "average": 8.5
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/643/1609087.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/643/1609087.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3643494"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3643506,
+    "url": "https://www.tvmaze.com/episodes/3643506/slow-horses-6x02-daddy-issues",
+    "name": "Daddy Issues",
+    "season": 6,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2026-09-23",
+    "airtime": "",
+    "airstamp": "2026-09-23T12:00:00+00:00",
+    "runtime": 47,
+    "rating": {
+      "average": 8.1
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/643/1609086.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/643/1609086.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3643506"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3643507,
+    "url": "https://www.tvmaze.com/episodes/3643507/slow-horses-6x03-resurrection",
+    "name": "Resurrection",
+    "season": 6,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2026-09-30",
+    "airtime": "",
+    "airstamp": "2026-09-30T12:00:00+00:00",
+    "runtime": 49,
+    "rating": {
+      "average": 8.6
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/643/1609085.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/643/1609085.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3643507"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3643508,
+    "url": "https://www.tvmaze.com/episodes/3643508/slow-horses-6x04-lost-and-found",
+    "name": "Lost and Found",
+    "season": 6,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2026-10-07",
+    "airtime": "",
+    "airstamp": "2026-10-07T12:00:00+00:00",
+    "runtime": 50,
+    "rating": {
+      "average": 8.8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_landscape/643/1609084.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/643/1609084.jpg"
+    },
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3643508"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3643509,
+    "url": "https://www.tvmaze.com/episodes/3643509/slow-horses-6x05-sayonara",
+    "name": "Sayonara",
+    "season": 6,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2026-10-14",
+    "airtime": "",
+    "airstamp": "2026-10-14T12:00:00+00:00",
+    "runtime": 47,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3643509"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  },
+  {
+    "id": 3643510,
+    "url": "https://www.tvmaze.com/episodes/3643510/slow-horses-6x06-judgment-day",
+    "name": "Judgment Day",
+    "season": 6,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2026-10-21",
+    "airtime": "",
+    "airstamp": "2026-10-21T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3643510"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/45039",
+        "name": "Slow Horses"
+      }
+    }
+  }
+]

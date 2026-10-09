@@ -1,0 +1,340 @@
+[
+  {
+    "id": 3682283,
+    "url": "https://www.tvmaze.com/episodes/3682283/avatar-seven-havens-1x01-episode-1",
+    "name": "Episode 1",
+    "season": 1,
+    "number": 1,
+    "type": "regular",
+    "airdate": "2026-10-09",
+    "airtime": "",
+    "airstamp": "2026-10-09T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3682283"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757404,
+    "url": "https://www.tvmaze.com/episodes/3757404/avatar-seven-havens-1x02-episode-2",
+    "name": "Episode 2",
+    "season": 1,
+    "number": 2,
+    "type": "regular",
+    "airdate": "2026-10-09",
+    "airtime": "",
+    "airstamp": "2026-10-09T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757404"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757405,
+    "url": "https://www.tvmaze.com/episodes/3757405/avatar-seven-havens-1x03-episode-3",
+    "name": "Episode 3",
+    "season": 1,
+    "number": 3,
+    "type": "regular",
+    "airdate": "2026-10-09",
+    "airtime": "",
+    "airstamp": "2026-10-09T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757405"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757406,
+    "url": "https://www.tvmaze.com/episodes/3757406/avatar-seven-havens-1x04-episode-4",
+    "name": "Episode 4",
+    "season": 1,
+    "number": 4,
+    "type": "regular",
+    "airdate": "2026-10-16",
+    "airtime": "",
+    "airstamp": "2026-10-16T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757406"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757407,
+    "url": "https://www.tvmaze.com/episodes/3757407/avatar-seven-havens-1x05-episode-5",
+    "name": "Episode 5",
+    "season": 1,
+    "number": 5,
+    "type": "regular",
+    "airdate": "2026-10-16",
+    "airtime": "",
+    "airstamp": "2026-10-16T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757407"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757408,
+    "url": "https://www.tvmaze.com/episodes/3757408/avatar-seven-havens-1x06-episode-6",
+    "name": "Episode 6",
+    "season": 1,
+    "number": 6,
+    "type": "regular",
+    "airdate": "2026-10-16",
+    "airtime": "",
+    "airstamp": "2026-10-16T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757408"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757409,
+    "url": "https://www.tvmaze.com/episodes/3757409/avatar-seven-havens-1x07-episode-7",
+    "name": "Episode 7",
+    "season": 1,
+    "number": 7,
+    "type": "regular",
+    "airdate": "2026-10-23",
+    "airtime": "",
+    "airstamp": "2026-10-23T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757409"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757410,
+    "url": "https://www.tvmaze.com/episodes/3757410/avatar-seven-havens-1x08-episode-8",
+    "name": "Episode 8",
+    "season": 1,
+    "number": 8,
+    "type": "regular",
+    "airdate": "2026-10-23",
+    "airtime": "",
+    "airstamp": "2026-10-23T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757410"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757411,
+    "url": "https://www.tvmaze.com/episodes/3757411/avatar-seven-havens-1x09-episode-9",
+    "name": "Episode 9",
+    "season": 1,
+    "number": 9,
+    "type": "regular",
+    "airdate": "2026-10-23",
+    "airtime": "",
+    "airstamp": "2026-10-23T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757411"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757412,
+    "url": "https://www.tvmaze.com/episodes/3757412/avatar-seven-havens-1x10-episode-10",
+    "name": "Episode 10",
+    "season": 1,
+    "number": 10,
+    "type": "regular",
+    "airdate": "2026-10-30",
+    "airtime": "",
+    "airstamp": "2026-10-30T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757412"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757413,
+    "url": "https://www.tvmaze.com/episodes/3757413/avatar-seven-havens-1x11-episode-11",
+    "name": "Episode 11",
+    "season": 1,
+    "number": 11,
+    "type": "regular",
+    "airdate": "2026-10-30",
+    "airtime": "",
+    "airstamp": "2026-10-30T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757413"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757414,
+    "url": "https://www.tvmaze.com/episodes/3757414/avatar-seven-havens-1x12-episode-12",
+    "name": "Episode 12",
+    "season": 1,
+    "number": 12,
+    "type": "regular",
+    "airdate": "2026-10-30",
+    "airtime": "",
+    "airstamp": "2026-10-30T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757414"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  },
+  {
+    "id": 3757415,
+    "url": "https://www.tvmaze.com/episodes/3757415/avatar-seven-havens-1x13-episode-13",
+    "name": "Episode 13",
+    "season": 1,
+    "number": 13,
+    "type": "regular",
+    "airdate": "2026-10-30",
+    "airtime": "",
+    "airstamp": "2026-10-30T12:00:00+00:00",
+    "runtime": null,
+    "rating": {
+      "average": null
+    },
+    "image": null,
+    "summary": null,
+    "_links": {
+      "self": {
+        "href": "https://api.tvmaze.com/episodes/3757415"
+      },
+      "show": {
+        "href": "https://api.tvmaze.com/shows/83073",
+        "name": "Avatar: Seven Havens"
+      }
+    }
+  }
+]
