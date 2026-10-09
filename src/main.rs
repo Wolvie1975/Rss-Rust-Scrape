@@ -4,6 +4,9 @@ use std::time::Duration;
 mod db;
 mod tvmaze;
 mod big12;
+mod nwsl;
+mod espn_schedule;
+mod wnba;
 mod movies;
 mod movie_metadata;
 mod posters;
@@ -151,6 +154,12 @@ struct Cli {
     /// Target SQL database; use a separate database for staging validation.
     #[arg(long, default_value="WebScraper")]
     database: String,
+    /// Register the WNBA league schedule disabled; preserve existing settings.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_wnba: bool,
+    /// Register Kansas City Current schedule feed disabled; preserve existing settings.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_nwsl: bool,
     /// Register verified Big 12 member feeds disabled, preserving existing feed settings.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_big12: bool,
@@ -265,7 +274,7 @@ fn read_urls_file(path: &Path) -> std::io::Result<Vec<String>> {
 
 /// One full scrape: collect sources, scrape, filter, save, prune, and write the RSS feed.
 fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    let use_db = cli.configure_tv || cli.tv_from_db || cli.movie_posters || cli.configure_big12 || cli.enable_big12 || cli.movies || cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty() || cli.events_from_db || !cli.youtube_feed.is_empty() || cli.youtube_from_db;
+    let use_db = cli.configure_wnba || cli.configure_nwsl || cli.configure_tv || cli.tv_from_db || cli.movie_posters || cli.configure_big12 || cli.enable_big12 || cli.movies || cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty() || cli.events_from_db || !cli.youtube_feed.is_empty() || cli.youtube_from_db;
     let mut db = if use_db {
         let ado = std::env::var("MSSQL_CONNECTION_STRING")
             .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
@@ -274,6 +283,16 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
+    if cli.configure_wnba {
+        db.as_mut().unwrap().configure_wnba()?;
+        eprintln!("WNBA schedule registered; enable it in SportsEventsType to import");
+        return Ok(());
+    }
+    if cli.configure_nwsl {
+        db.as_mut().unwrap().configure_nwsl()?;
+        eprintln!("Kansas City Current schedule registered; enable it in SportsEventsType to import");
+        return Ok(());
+    }
     if cli.configure_tv || cli.tv_from_db {db.as_mut().unwrap().setup_tv(cli.configure_tv)?;}
     if cli.configure_tv {eprintln!("TVmaze schema ready; five tracking rows seeded without changing existing Enabled settings");return Ok(());}
     if cli.configure_big12 || cli.enable_big12 {
@@ -532,6 +551,63 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
         if !cli.dry_run {if let Some(id)=known_id {db.as_mut().unwrap().event_attempt(*id)?;}}
+
+        if nwsl::is_feed(feed_url) || wnba::is_feed(feed_url) {
+            let is_wnba = wnba::is_feed(feed_url);
+            let label = if is_wnba { "WNBA" } else { "NWSL" };
+            let fetched = if is_wnba {
+                wnba::fetch(&client, feed_url)
+            } else {
+                nwsl::fetch(&client, feed_url)
+            };
+            match fetched {
+                Ok(fixtures) => {
+                    eprintln!(
+                        "{feed_url}: {} {label} fixtures{}",
+                        fixtures.len(),
+                        if cli.dry_run { " (dry run)" } else { "" }
+                    );
+                    if cli.dry_run {
+                        for f in &fixtures {
+                            eprintln!(
+                                "{} | {} | {:?} | {}",
+                                f.event.event_date, f.event.title, f.event.starts_at, f.status
+                            );
+                        }
+                    } else {
+                        let db = db.as_mut().unwrap();
+                        let id = match known_id {
+                            Some(id) => *id,
+                            None => db.ensure_sports_events_type(
+                                feed_url,
+                                if is_wnba {
+                                    "WNBA"
+                                } else {
+                                    "Kansas City Current"
+                                },
+                            )?,
+                        };
+                        let n = db.save_espn_schedule(id, &fixtures)?;
+                        db.event_result(id, true, n as i32, 0, None)?;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{label} schedule {feed_url} failed: {e}");
+                    if !cli.dry_run {
+                        if let Some(id) = known_id {
+                            db.as_mut().unwrap().event_result(
+                                *id,
+                                false,
+                                0,
+                                1,
+                                Some(&e.to_string()),
+                            )?;
+                        }
+                    }
+                }
+            }
+            continue;
+        }
 
         // A broken calendar feed shouldn't stop the rest of the run.
         match events::fetch_events(&client, feed_url, school.as_deref()) {

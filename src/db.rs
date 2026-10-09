@@ -192,6 +192,7 @@ impl Db {
                 .await?;
             client.simple_query(include_str!("../sql/movie_posters.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/big12_events.sql")).await?.into_results().await?;
+            client.simple_query(include_str!("../sql/nwsl_events.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/big12_views.sql")).await?.into_results().await?;
             Result::Ok(client)
         })?;
@@ -471,6 +472,69 @@ impl Db {
                     .await?;
             }
             Ok(events.len())
+        })
+    }
+
+    pub fn configure_nwsl(&mut self) -> Result<()> {
+        self.rt.block_on(async {
+            self.client
+                .simple_query(include_str!("../sql/nwsl_seed.sql"))
+                .await?
+                .into_results()
+                .await?;
+            Ok(())
+        })
+    }
+
+    pub fn configure_wnba(&mut self) -> Result<()> {
+        self.rt.block_on(async {
+            self.client
+                .simple_query(include_str!("../sql/wnba_seed.sql"))
+                .await?
+                .into_results()
+                .await?;
+            Ok(())
+        })
+    }
+
+    pub fn save_espn_schedule(
+        &mut self,
+        type_id: i32,
+        fixtures: &[crate::espn_schedule::Fixture],
+    ) -> Result<usize> {
+        self.rt.block_on(async {
+            let mut saved=0;
+            for fixture in fixtures {
+                let e = &fixture.event;
+                let title: String = e.title.chars().take(500).collect();
+                let result=self.client
+                    .execute(
+                        "MERGE dbo.SportsEvents WITH (HOLDLOCK) AS t
+                         USING (SELECT @P1 AS Url WHERE EXISTS (SELECT 1 FROM dbo.SportsEventsType WHERE ID=@P17 AND Enabled=1)) AS s
+                         ON t.CanonicalKey = @P19 OR t.UrlHash = HASHBYTES('SHA2_256', s.Url)
+                         WHEN MATCHED THEN UPDATE SET
+                             GameId = @P2, Title = @P3, Sport = @P4, Opponent = @P5, IsAway = @P6,
+                             Location = @P7, EventDate = @P8, StartsAtUtc = @P9, EndsAtUtc = @P10,
+                             TimeTbd = @P11, Tv = @P12, StreamUrl = @P13, LiveStatsUrl = @P14,
+                             TeamLogoUrl = @P15, OpponentLogoUrl = @P16, SportsEventsTypeId = @P17,
+                             ProviderKey = @P21, SchoolName = @P22, SchoolId = @P23, OpponentSchoolId = @P24, CanonicalKey = @P19, CalendarTimeZone = 'America/Chicago', ScheduleStatus = @P18, IsNeutral = @P20, LastSeenAt = SYSUTCDATETIME()
+                         WHEN NOT MATCHED THEN INSERT
+                             (Url, GameId, Title, Sport, Opponent, IsAway, Location, EventDate, StartsAtUtc,
+                              EndsAtUtc, TimeTbd, Tv, StreamUrl, LiveStatsUrl, TeamLogoUrl, OpponentLogoUrl,
+                              SportsEventsTypeId, ProviderKey, CanonicalKey, CalendarTimeZone, ScheduleStatus, IsNeutral, SchoolName, SchoolId, OpponentSchoolId)
+                             VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9,
+                                     @P10, @P11, @P12, @P13, @P14, @P15, @P16, @P17, @P21, @P19, 'America/Chicago', @P18, @P20, @P22, @P23, @P24);",
+                        &[
+                            &e.url, &e.game_id, &title, &e.sport, &e.opponent, &e.is_away,
+                            &e.location, &e.event_date, &e.starts_at, &e.ends_at, &e.time_tbd,
+                            &e.tv, &e.stream_url, &e.live_stats_url, &e.team_logo_url,
+                            &e.opponent_logo_url, &type_id, &fixture.status, &fixture.league.canonical_key(e.game_id.unwrap()), &fixture.neutral, &fixture.league.provider_key(), &fixture.team_name, &fixture.team_id, &fixture.opponent_id,
+                        ],
+                    )
+                    .await?;
+                saved += result.total() as usize;
+            }
+            Ok(saved)
         })
     }
 
@@ -1016,4 +1080,219 @@ mod tvmaze_tests {
    Ok::<_,Box<dyn std::error::Error>>(())
   })?;Ok(())
  }
+}
+
+#[cfg(test)]
+mod nwsl_tests {
+    use super::*;
+    #[test]
+    #[ignore = "requires MSSQL_CONNECTION_STRING and NWSL_TEST_DATABASE (isolated staging); fixture writes roll back"]
+    fn schedule_reimports_reschedules_and_cancellation_preserve_rows() -> Result<()> {
+        let _ = dotenvy::dotenv();
+        let name = std::env::var("NWSL_TEST_DATABASE")?;
+        if !name.starts_with("WebScraper_Nwsl_Validation") {
+            return Err("use an isolated WebScraper_Nwsl_Validation database".into());
+        }
+        let mut db = Db::open_named(&std::env::var("MSSQL_CONNECTION_STRING")?, &name)?;
+        db.rt.block_on(async {
+            db.client
+                .simple_query("BEGIN TRANSACTION")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        let result = (|| -> Result<()> {
+            db.configure_nwsl()?;
+            let id=db.ensure_sports_events_type("https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/scoreboard?team=20907","Kansas City Current")?;
+            let mut fixtures = crate::nwsl::parse(&crate::nwsl::tests::sample(), "20907")?;
+            assert_eq!(db.save_espn_schedule(id, &fixtures)?, 0); // Disabled configuration stays disabled.
+            db.rt.block_on(async {
+                db.client
+                    .execute(
+                        "UPDATE dbo.SportsEventsType SET Enabled=1 WHERE ID=@P1",
+                        &[&id],
+                    )
+                    .await?;
+                Ok::<_, Box<dyn std::error::Error>>(())
+            })?;
+            db.configure_nwsl()?; // Reconfiguration must preserve Enabled.
+            assert_eq!(db.save_espn_schedule(id, &fixtures)?, 3);
+            let read = |db: &mut Db| -> Result<Vec<tiberius::Row>> {
+                Ok(db.rt.block_on(async {db.client.query("SELECT ID,FirstSeenAt,GameId,ScheduleStatus,EventDate,StartsAtUtc FROM dbo.SportsEvents WHERE SportsEventsTypeId=@P1 ORDER BY GameId",&[&id]).await?.into_first_result().await})?)
+            };
+            let before = read(&mut db)?;
+            db.save_espn_schedule(id, &fixtures)?;
+            fixtures[0].event.event_date = chrono::NaiveDate::from_ymd_opt(2026, 11, 7).unwrap();
+            fixtures[0].event.starts_at = Some(
+                chrono::DateTime::parse_from_rfc3339("2026-11-08T01:00:00Z")?.with_timezone(&Utc),
+            );
+            db.save_espn_schedule(id, &fixtures)?;
+            let rescheduled = read(&mut db)?;
+            let game = rescheduled
+                .iter()
+                .find(|r| r.get::<i32, _>("GameId") == fixtures[0].event.game_id)
+                .unwrap();
+            assert_eq!(
+                game.get::<chrono::NaiveDateTime, _>("StartsAtUtc"),
+                fixtures[0].event.starts_at.map(|t| t.naive_utc())
+            );
+            fixtures[0].event.starts_at = None;
+            fixtures[0].event.time_tbd = true;
+            fixtures[0].status = "STATUS_CANCELED".into();
+            db.save_espn_schedule(id, &fixtures)?;
+            db.save_espn_schedule(id, &[])?; // Missing observations never delete games.
+            let after = read(&mut db)?;
+            assert_eq!(before.len(), 3);
+            assert_eq!(after.len(), 3);
+            for (a, b) in before.iter().zip(&after) {
+                assert_eq!(a.get::<i32, _>("ID"), b.get::<i32, _>("ID"));
+                assert_eq!(
+                    a.get::<chrono::NaiveDateTime, _>("FirstSeenAt"),
+                    b.get::<chrono::NaiveDateTime, _>("FirstSeenAt")
+                );
+            }
+            let canceled = after
+                .iter()
+                .find(|r| r.get::<i32, _>("GameId") == fixtures[0].event.game_id)
+                .unwrap();
+            assert_eq!(
+                canceled.get::<&str, _>("ScheduleStatus"),
+                Some("STATUS_CANCELED")
+            );
+            assert!(
+                canceled
+                    .get::<chrono::NaiveDateTime, _>("StartsAtUtc")
+                    .is_none()
+            );
+            assert_eq!(
+                canceled.get::<chrono::NaiveDate, _>("EventDate"),
+                Some(fixtures[0].event.event_date)
+            );
+            Ok(())
+        })();
+        db.rt.block_on(async {
+            db.client
+                .simple_query("IF @@TRANCOUNT>0 ROLLBACK TRANSACTION")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        result
+    }
+}
+
+#[cfg(test)]
+mod wnba_tests {
+    use super::*;
+    #[test]
+    #[ignore = "requires MSSQL_CONNECTION_STRING and WNBA_TEST_DATABASE (isolated staging); fixture writes roll back"]
+    fn wnba_configuration_and_schedule_updates_keep_identity_and_other_leagues() -> Result<()> {
+        let _ = dotenvy::dotenv();
+        let name = std::env::var("WNBA_TEST_DATABASE")?;
+        if !name.starts_with("WebScraper_Wnba_Validation") {
+            return Err("use an isolated WebScraper_Wnba_Validation database".into());
+        }
+        let mut db = Db::open_named(&std::env::var("MSSQL_CONNECTION_STRING")?, &name)?;
+        db.rt.block_on(async {
+            db.client
+                .simple_query("BEGIN TRANSACTION")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        let result = (|| -> Result<()> {
+            db.configure_wnba()?;
+            let id = db.ensure_sports_events_type(
+                "https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/scoreboard",
+                "WNBA",
+            )?;
+            let mut fixtures = crate::espn_schedule::parse(
+                &crate::wnba::tests::sample(),
+                crate::espn_schedule::League::Wnba,
+                None,
+            )?;
+            assert_eq!(db.save_espn_schedule(id, &fixtures)?, 0);
+            db.rt.block_on(async {db.client.execute("UPDATE dbo.SportsEventsType SET Enabled=1,RssUrl=RssUrl+'?season=2026' WHERE ID=@P1",&[&id]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+            db.configure_wnba()?;
+            assert_eq!(
+                db.sports_event_feeds()?
+                    .iter()
+                    .filter(|f| f.id == id)
+                    .count(),
+                1
+            );
+            assert_eq!(
+                db.sports_event_feeds()?
+                    .iter()
+                    .find(|f| f.id == id)
+                    .unwrap()
+                    .url,
+                "https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/scoreboard?season=2026"
+            );
+            assert_eq!(db.save_espn_schedule(id, &fixtures)?, 2);
+            let read = |db: &mut Db| -> Result<Vec<tiberius::Row>> {
+                Ok(db.rt.block_on(async {db.client.query("SELECT ID,FirstSeenAt,GameId,ProviderKey,CanonicalKey,ScheduleStatus,EventDate,StartsAtUtc,SchoolName,Opponent FROM dbo.SportsEvents WHERE SportsEventsTypeId=@P1 ORDER BY GameId",&[&id]).await?.into_first_result().await})?)
+            };
+            let before = read(&mut db)?;
+            db.save_espn_schedule(id, &fixtures)?;
+            fixtures[0].event.event_date = chrono::NaiveDate::from_ymd_opt(2026, 11, 4).unwrap();
+            fixtures[0].event.starts_at = Some(
+                chrono::DateTime::parse_from_rfc3339("2026-11-05T01:00:00Z")?.with_timezone(&Utc),
+            );
+            db.save_espn_schedule(id, &fixtures)?;
+            fixtures[0].status = "STATUS_POSTPONED".into();
+            fixtures[0].event.starts_at = None;
+            fixtures[0].event.time_tbd = true;
+            db.save_espn_schedule(id, &fixtures)?;
+            db.save_espn_schedule(id, &[])?;
+            let after = read(&mut db)?;
+            assert_eq!(after.len(), 2);
+            for (a, b) in before.iter().zip(&after) {
+                assert_eq!(a.get::<i32, _>("ID"), b.get::<i32, _>("ID"));
+                assert_eq!(
+                    a.get::<chrono::NaiveDateTime, _>("FirstSeenAt"),
+                    b.get::<chrono::NaiveDateTime, _>("FirstSeenAt")
+                );
+                assert_eq!(b.get::<&str, _>("ProviderKey"), Some("espn-wnba"));
+            }
+            let f = after
+                .iter()
+                .find(|r| r.get::<i32, _>("GameId") == fixtures[0].event.game_id)
+                .unwrap();
+            assert_eq!(f.get::<&str, _>("SchoolName"), Some("Atlanta Dream"));
+            assert_eq!(f.get::<&str, _>("Opponent"), Some("Connecticut Sun"));
+            assert_eq!(f.get::<&str, _>("ScheduleStatus"), Some("STATUS_POSTPONED"));
+            assert!(f.get::<chrono::NaiveDateTime, _>("StartsAtUtc").is_none());
+            assert_eq!(
+                f.get::<chrono::NaiveDate, _>("EventDate"),
+                Some(fixtures[0].event.event_date)
+            );
+            // Equal numeric IDs in another league remain independent public rows.
+            let soccer_id = db.ensure_sports_events_type(
+                "https://example.invalid/wnba-test-nwsl",
+                "Other league",
+            )?;
+            let mut soccer = crate::nwsl::parse(&crate::nwsl::tests::sample(), "20907")?.remove(0);
+            soccer.event.game_id = fixtures[0].event.game_id;
+            soccer.event.url = format!(
+                "https://www.espn.com/soccer/match/_/gameId/{}",
+                soccer.event.game_id.unwrap()
+            );
+            assert_eq!(db.save_espn_schedule(soccer_id, &[soccer])?, 1);
+            assert_eq!(read(&mut db)?.len(), 2);
+            Ok(())
+        })();
+        db.rt.block_on(async {
+            db.client
+                .simple_query("IF @@TRANCOUNT>0 ROLLBACK TRANSACTION")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        result
+    }
 }

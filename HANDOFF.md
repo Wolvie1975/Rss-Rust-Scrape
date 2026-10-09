@@ -3,6 +3,33 @@
 Written 2026-09-21 to continue this project in a new chat. Read this first. It records where things
 stand, what was decided, and what is still open. It contains no passwords.
 
+## WNBA schedule (2026-10-09)
+
+- Both ESPN schedule imports now request current-month through next-year fixtures
+  and return only today-or-later Central dates with unfinished status. Future
+  cancellations remain available for reconciliation; page queries exclude them.
+  Historical rows retained; My-Newsfeed must also apply its Central-today cutoff.
+- WNBA league schedules use `src/wnba.rs` and shared `src/espn_schedule.rs` parsing;
+  Kansas City continues through its provider wrapper. Scores/results untouched.
+- `--configure-wnba` registers a disabled SportsEventsType row; existing hourly
+  `--events-from-db` imports enabled feeds. Optional `season` and ESPN team-ID filters.
+- One home-perspective row per game, WNBA-namespaced stable IDs, Central dates,
+  UTC confirmed times, venues, links, logos, schedule status and cancellation handling.
+- No extra schema beyond shared ScheduleStatus; seed `sql/wnba_seed.sql`.
+  My-Newsfeed query/model/UI handoff: `docs/wnba-schedule.md`; app checkout absent.
+  No production enabling, deployment or scheduler restart performed.
+
+## Kansas City Current schedule (2026-10-09)
+
+- `src/nwsl.rs` imports ESPN NWSL monthly scoreboards, filtering competitor 20907,
+  into existing SportsEvents; separate My-Newsfeed results sync is untouched.
+- `--configure-nwsl` registers a disabled feed; enable via SportsEventsType and
+  existing `--events-from-db` handles collection. RssUrl supports `&season=YYYY`.
+- Additive `sql/nwsl_events.sql`: nullable ScheduleStatus; canonical ESPN IDs,
+  locked upserts, Central dates/UTC starts, explicit cancellations retained.
+- Guide/My-Newsfeed query/model contract: `docs/kansas-city-current-schedule.md`.
+  My-Newsfeed source not present here; no production enable/deployment performed.
+
 ## TVmaze episode tracking (2026-10-09)
 
 - Added TvSeries, TvEpisodes and TvTrackedSeries using `sql/tvmaze.sql`; seed script
