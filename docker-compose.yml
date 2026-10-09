@@ -1,0 +1,19 @@
+name: webscraper
+services:
+  scraper:
+    build: .
+    image: web-scraper:latest
+    container_name: web-scraper
+    restart: unless-stopped
+    env_file: .env
+    command: ["--from-db", "--per-source", "10", "--every-hours", "1",
+              "-o", "/data/feed.xml", "--events-from-db", "--youtube-from-db", "--movies"]
+    volumes:
+      - scraper-data:/data
+    networks:
+      - dev-bridge
+networks:
+  dev-bridge:
+    external: true
+volumes:
+  scraper-data:

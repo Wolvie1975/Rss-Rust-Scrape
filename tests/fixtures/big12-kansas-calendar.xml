@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:rdf="https://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:ev="https://purl.org/rss/1.0/modules/event/" xmlns:s="https://sidearmsports.com/schemas/cal_rss/1.0" xmlns:atom="https://www.w3.org/2005/Atom" xmlns:dc="https://purl.org/dc/elements/1.1/"> 
+<channel>
+<title>big12sports.com</title><link>http://big12sports.com</link><atom:link rel="self" href="http://big12sports.com/services/responsive-calendar-subscription.ashx/calendar.rss?sport_id=0&amp;school_id=3&amp;schedule_id=0" />
+<description> </description>
+<item>
+<title>10/10 9:15 PM Football Kansas at  Utah</title>
+<description>Football Kansas at  Utah
+ http://big12sports.com/calendar.aspx?id=179871</description>
+<link>http://big12sports.com/calendar.aspx?id=179871</link><guid isPermaLink="true">http://big12sports.com/calendar.aspx?id=179871</guid><ev:location>Salt Lake City, Utah / Rice-Eccles Stadium</ev:location>
+<ev:startdate>2026-10-11T02:15:00.0000000Z</ev:startdate>
+<ev:enddate>2026-10-11T05:15:00.0000000Z</ev:enddate>
+<s:localstartdate>2026-10-10T21:15:00.0000000</s:localstartdate>
+<s:localenddate>2026-10-11T00:15:00.0000000</s:localenddate>
+<s:teamlogo>http://big12sports.com/images/logos/site/site.png</s:teamlogo>
+<s:opponentlogo>/images/logos/UtahUtesLogo.png</s:opponentlogo>
+<s:gameid>179871</s:gameid>
+<s:links>
+</s:links>
+</item>
+<item>
+<title>10/11 12:00 PM Volleyball Kansas at  UCF</title>
+<description>Volleyball Kansas at  UCF
+TV: ESPN+
+Streaming Video: https://www.espn.com/watch/catalog/4f080ef0-4cf0-4e0f-9c60-b43a982d5cc8/big-12-conference#bucketId=29789&amp;sourceCollection=channels
+ http://big12sports.com/calendar.aspx?id=182073</description>
+<link>http://big12sports.com/calendar.aspx?id=182073</link><guid isPermaLink="true">http://big12sports.com/calendar.aspx?id=182073</guid><ev:location>Orlando, Fla. </ev:location>
+<ev:startdate>2026-10-11T17:00:00.0000000Z</ev:startdate>
+<ev:enddate>2026-10-11T20:00:00.0000000Z</ev:enddate>
+<s:localstartdate>2026-10-11T12:00:00.0000000</s:localstartdate>
+<s:localenddate>2026-10-11T15:00:00.0000000</s:localenddate>
+<s:teamlogo>http://big12sports.com/images/logos/site/site.png</s:teamlogo>
+<s:opponentlogo>/images/logos/UCF.png</s:opponentlogo>
+<s:gameid>182073</s:gameid>
+<s:links>
+<s:livestats>https://stats.statbroadcast.com/broadcast/?id=671629&amp;vislive=kan</s:livestats>
+</s:links>
+</item>
+</channel></rss>

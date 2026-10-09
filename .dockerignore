@@ -1,0 +1,7 @@
+target
+.git
+.env
+*.log
+reports
+feed.xml
+.deployment-backups

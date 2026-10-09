@@ -1,10 +1,13 @@
 use chrono::{DateTime, NaiveDate, Timelike, Utc};
 use reqwest::blocking::Client;
+use scraper::{Html, Selector};
+use serde_json::Value;
 use url::Url;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /// One game from a Sidearm-style calendar RSS feed (custom `ev:` / `s:` fields).
+#[derive(Clone)]
 pub struct Event {
     pub url: String,
     pub game_id: Option<i32>,
@@ -26,11 +29,118 @@ pub struct Event {
     pub opponent_logo_url: Option<String>,
 }
 
-/// `school` is the host school's name as written in the feed ("Kansas"), used to split the
-/// sport off "Volleyball Kansas vs  Grand Canyon". Without it the school is guessed.
-pub fn fetch_events(client: &Client, feed_url: &str, school: Option<&str>) -> Result<Vec<Event>> {
+/// Parsed events and the resolved identity/logo for a single-school calendar.
+pub struct FetchedEvents {
+    pub events: Vec<Event>,
+    /// Present only for a calendar restricted to one school; zero means all schools.
+    pub school_id: Option<u32>,
+    pub team_logo_url: Option<String>,
+}
+
+/// `school` splits the sport from matchup text. Logo identity comes from the feed's school_id.
+pub fn fetch_events(
+    client: &Client,
+    feed_url: &str,
+    school: Option<&str>,
+) -> Result<FetchedEvents> {
     let body = client.get(feed_url).send()?.error_for_status()?.text()?;
-    parse_events(&body, feed_url, school)
+    let base = Url::parse(feed_url)?;
+    let school_id = calendar_school_id(&base);
+    let calendar = if school_id.is_some() {
+        let url = base.join("/calendar.aspx")?;
+        match client
+            .get(url)
+            .send()
+            .and_then(|r| r.error_for_status())
+            .and_then(|r| r.text())
+        {
+            Ok(html) => Some(html),
+            Err(e) => {
+                eprintln!("{feed_url}: school logo metadata unavailable: {e}; storing NULL");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    parse_feed(&body, feed_url, school, calendar.as_deref())
+}
+
+fn calendar_school_id(base: &Url) -> Option<u32> {
+    // This is the single-school filter used by the inspected Sidearm conference calendar.
+    if base.path() != "/services/responsive-calendar-subscription.ashx/calendar.rss" {
+        return None;
+    }
+    base.query_pairs()
+        .find(|(k, _)| k == "school_id")
+        .and_then(|(_, v)| v.parse::<u32>().ok())
+        .filter(|id| *id > 0)
+}
+
+fn generic_logo(url: &str) -> bool {
+    Url::parse(url).ok().is_some_and(|u| {
+        u.path()
+            .to_ascii_lowercase()
+            .contains("/images/logos/site/")
+    })
+}
+
+/// The RSS item points to the conference logo. Calendar members metadata supplies
+/// the authoritative school ID -> image.url mapping; never synthesize a filename.
+fn calendar_school_logo(html: &str, base: &Url, school_id: u32) -> Option<String> {
+    let document = Html::parse_document(html);
+    let scripts = Selector::parse("script").expect("static selector");
+    for script in document.select(&scripts) {
+        let text = script.text().collect::<String>();
+        for candidate in text.split("var component =").skip(1) {
+            let Some(Ok(component)) = serde_json::Deserializer::from_str(candidate.trim_start())
+                .into_iter::<Value>()
+                .next()
+            else {
+                continue;
+            };
+            if component["type"] != "members" {
+                continue;
+            }
+            let Some(members) = component["data"].as_array() else {
+                continue;
+            };
+            if let Some(member) = members
+                .iter()
+                .find(|m| m["id"].as_u64() == Some(u64::from(school_id)))
+            {
+                return member["image"]["url"]
+                    .as_str()
+                    .filter(|s| !s.trim().is_empty())
+                    .and_then(|s| http_url(s, base))
+                    .filter(|s| !generic_logo(s));
+            }
+        }
+    }
+    None
+}
+
+pub(crate) fn parse_feed(
+    xml: &str,
+    feed_url: &str,
+    school: Option<&str>,
+    calendar: Option<&str>,
+) -> Result<FetchedEvents> {
+    let base = Url::parse(feed_url)?;
+    let school_id = calendar_school_id(&base);
+    let team_logo_url =
+        school_id.and_then(|id| calendar.and_then(|html| calendar_school_logo(html, &base, id)));
+    let mut events = parse_events(xml, feed_url, school)?;
+    if school_id.is_some() {
+        for event in &mut events {
+            event.team_logo_url = team_logo_url.clone();
+        }
+    }
+    Ok(FetchedEvents {
+        events,
+        school_id,
+        team_logo_url,
+    })
 }
 
 /// Text of the first child element with this local name (namespace ignored).
@@ -44,10 +154,12 @@ fn child_text(node: roxmltree::Node, name: &str) -> Option<String> {
 
 /// Splits "Volleyball Kansas at  Colorado" into ("Volleyball Kansas", is_away, "Colorado").
 fn split_matchup(line: &str) -> Option<(String, bool, String)> {
-    [(" vs  ", false), (" at  ", true)].into_iter().find_map(|(sep, away)| {
-        let (left, right) = line.split_once(sep)?;
-        Some((left.trim().to_string(), away, right.trim().to_string()))
-    })
+    [(" vs  ", false), (" at  ", true)]
+        .into_iter()
+        .find_map(|(sep, away)| {
+            let (left, right) = line.split_once(sep)?;
+            Some((left.trim().to_string(), away, right.trim().to_string()))
+        })
 }
 
 fn http_url(raw: &str, base: &Url) -> Option<String> {
@@ -60,8 +172,13 @@ fn http_url(raw: &str, base: &Url) -> Option<String> {
 fn named_school_words(school: Option<&str>, words: &[&str]) -> Option<usize> {
     let school: Vec<&str> = school?.split_whitespace().collect();
     let n = school.len();
-    (n > 0 && words.len() > n && words[words.len() - n..].iter().zip(&school).all(|(a, b)| a.eq_ignore_ascii_case(b)))
-        .then_some(n)
+    (n > 0
+        && words.len() > n
+        && words[words.len() - n..]
+            .iter()
+            .zip(&school)
+            .all(|(a, b)| a.eq_ignore_ascii_case(b)))
+    .then_some(n)
 }
 
 /// The feed doesn't separate sport from school ("Women's Volleyball Kansas"), so the school is
@@ -74,7 +191,10 @@ fn school_word_count(lefts: &[&str]) -> usize {
     if distinct.len() < 2 {
         return 0;
     }
-    let words: Vec<Vec<&str>> = distinct.iter().map(|l| l.split_whitespace().collect()).collect();
+    let words: Vec<Vec<&str>> = distinct
+        .iter()
+        .map(|l| l.split_whitespace().collect())
+        .collect();
     let shortest = words.iter().map(Vec::len).min().unwrap_or(0);
     (1..shortest)
         .take_while(|k| {
@@ -88,6 +208,12 @@ fn school_word_count(lefts: &[&str]) -> usize {
 fn parse_events(xml: &str, feed_url: &str, school: Option<&str>) -> Result<Vec<Event>> {
     let doc = roxmltree::Document::parse(xml.trim_start_matches('\u{feff}'))?;
     let base = Url::parse(feed_url)?;
+    let channel_logo = doc
+        .descendants()
+        .find(|n| n.has_tag_name("channel"))
+        .and_then(|n| n.children().find(|c| c.has_tag_name("image")))
+        .and_then(|n| child_text(n, "url"))
+        .and_then(|u| http_url(&u, &base));
 
     // Each event is kept with the "Sport School" text left of vs/at, to split afterwards.
     let mut rows: Vec<(Event, Option<String>)> = Vec::new();
@@ -111,7 +237,10 @@ fn parse_events(xml: &str, feed_url: &str, school: Option<&str>) -> Result<Vec<E
                 .ok()
                 .and_then(|d| d.with_timezone(&Utc).with_nanosecond(0))
         };
-        let starts_at = start_raw.as_deref().filter(|s| s.contains('T')).and_then(parse_utc);
+        let starts_at = start_raw
+            .as_deref()
+            .filter(|s| s.contains('T'))
+            .and_then(parse_utc);
         let ends_at = starts_at
             .and_then(|_| child_text(item, "enddate"))
             .as_deref()
@@ -146,7 +275,8 @@ fn parse_events(xml: &str, feed_url: &str, school: Option<&str>) -> Result<Vec<E
             tv: line_value("TV:"),
             stream_url: line_value("Streaming Video:").and_then(|u| http_url(&u, &base)),
             live_stats_url,
-            team_logo_url: logo("teamlogo"),
+            team_logo_url: logo("teamlogo")
+                .filter(|u| !generic_logo(u) && Some(u) != channel_logo.as_ref()),
             opponent_logo_url: logo("opponentlogo"),
             sport: None,
             url,
@@ -190,7 +320,7 @@ Streaming Video: https://www.espn.com/watch/x#a=1&amp;b=2
 <ev:startdate>2026-09-20T19:00:00.0000000Z</ev:startdate>
 <ev:enddate>2026-09-20T22:00:00.0000000Z</ev:enddate>
 <s:localstartdate>2026-09-20T14:00:00.0000000</s:localstartdate>
-<s:teamlogo>http://site.test/images/site.png</s:teamlogo>
+<s:teamlogo>http://site.test/images/logos/site/site.png</s:teamlogo>
 <s:opponentlogo></s:opponentlogo>
 <s:gameid>1</s:gameid>
 <s:links><s:livestats>https://stats.test/?id=9</s:livestats></s:links></item>
@@ -212,6 +342,92 @@ Streaming Video: https://www.espn.com/watch/x#a=1&amp;b=2
 <s:gameid>3</s:gameid></item>
 </channel></rss>"#;
 
+    const KANSAS_RSS: &str = include_str!("../tests/fixtures/big12-kansas-calendar.xml");
+    const MEMBERS_HTML: &str = include_str!("../tests/fixtures/big12-calendar-members.html");
+    const KANSAS_URL: &str = "https://big12sports.com/services/responsive-calendar-subscription.ashx/calendar.rss?sport_id=0&school_id=3&schedule_id=0";
+
+    #[test]
+    fn kansas_feed_uses_member_logo_and_preserves_opponent_logos() {
+        let batch = parse_feed(KANSAS_RSS, KANSAS_URL, Some("Kansas"), Some(MEMBERS_HTML)).unwrap();
+        assert_eq!(batch.school_id, Some(3));
+        assert_eq!(batch.events.len(), 2);
+        let logo = "https://big12sports.com/images/logos/jhwk4C_RF_OL%20(3).png";
+        assert_eq!(batch.team_logo_url.as_deref(), Some(logo));
+        assert!(
+            batch
+                .events
+                .iter()
+                .all(|e| e.team_logo_url.as_deref() == Some(logo))
+        );
+        assert_eq!(
+            batch.events[0].opponent_logo_url.as_deref(),
+            Some("https://big12sports.com/images/logos/UtahUtesLogo.png")
+        );
+        assert_eq!(
+            batch.events[1].opponent_logo_url.as_deref(),
+            Some("https://big12sports.com/images/logos/UCF.png")
+        );
+    }
+
+    #[test]
+    fn school_identity_comes_from_feed_filter_not_configured_name() {
+        let url = KANSAS_URL.replace("school_id=3", "school_id=4");
+        let batch = parse_feed(KANSAS_RSS, &url, Some("Kansas"), Some(MEMBERS_HTML)).unwrap();
+        assert_eq!(batch.school_id, Some(4));
+        assert!(batch.events.iter().all(|e| e.team_logo_url.as_deref()
+            == Some("https://big12sports.com/images/logos/Kansas_State.png")));
+    }
+
+    #[test]
+    fn standalone_school_logo_is_kept_but_channel_image_is_not() {
+        let xml = FEED.replace(
+            "http://site.test/images/logos/site/site.png",
+            "http://site.test/kansas.png",
+        );
+        let events = parse_events(
+            &xml,
+            "http://site.test/services/calendar.rss",
+            Some("Kansas"),
+        )
+        .unwrap();
+        assert_eq!(
+            events[0].team_logo_url.as_deref(),
+            Some("http://site.test/kansas.png")
+        );
+        let xml = xml.replace(
+            "<channel><title>x</title>",
+            "<channel><title>x</title><image><url>http://site.test/kansas.png</url></image>",
+        );
+        let events = parse_events(
+            &xml,
+            "http://site.test/services/calendar.rss",
+            Some("Kansas"),
+        )
+        .unwrap();
+        assert_eq!(events[0].team_logo_url, None);
+    }
+
+    #[test]
+    fn missing_school_logo_never_falls_back_to_conference_logo() {
+        for metadata in [
+            None,
+            Some("<html></html>"),
+            Some(
+                "<script>var component = {\"type\":\"members\",\"data\":[{\"id\":3,\"image\":null}]};</script>",
+            ),
+        ] {
+            let batch = parse_feed(KANSAS_RSS, KANSAS_URL, Some("Kansas"), metadata).unwrap();
+            assert!(batch.events.iter().all(|e| e.team_logo_url.is_none()));
+        }
+        let url = KANSAS_URL.replace("school_id=3", "school_id=999");
+        let batch = parse_feed(KANSAS_RSS, &url, Some("Kansas"), Some(MEMBERS_HTML)).unwrap();
+        assert!(batch.events.iter().all(|e| e.team_logo_url.is_none()));
+        let url = KANSAS_URL.replace("school_id=3", "school_id=0");
+        let batch = parse_feed(KANSAS_RSS, &url, Some("Kansas"), Some(MEMBERS_HTML)).unwrap();
+        assert_eq!(batch.school_id, None);
+        assert!(batch.events.iter().all(|e| e.team_logo_url.is_none()));
+    }
+
     fn events() -> Vec<Event> {
         parse_events(FEED, "http://site.test/services/calendar.rss", None).unwrap()
     }
@@ -225,13 +441,22 @@ Streaming Video: https://www.espn.com/watch/x#a=1&amp;b=2
         assert_eq!(e.is_away, Some(false));
         assert_eq!(e.location.as_deref(), Some("Lawrence, Kan."));
         assert_eq!(e.event_date.to_string(), "2026-09-20");
-        assert_eq!(e.starts_at.unwrap().to_rfc3339(), "2026-09-20T19:00:00+00:00");
+        assert_eq!(
+            e.starts_at.unwrap().to_rfc3339(),
+            "2026-09-20T19:00:00+00:00"
+        );
         assert_eq!(e.ends_at.unwrap().to_rfc3339(), "2026-09-20T22:00:00+00:00");
         assert!(!e.time_tbd);
         assert_eq!(e.tv.as_deref(), Some("ESPN+"));
-        assert_eq!(e.stream_url.as_deref(), Some("https://www.espn.com/watch/x#a=1&b=2"));
-        assert_eq!(e.live_stats_url.as_deref(), Some("https://stats.test/?id=9"));
-        assert_eq!(e.team_logo_url.as_deref(), Some("http://site.test/images/site.png"));
+        assert_eq!(
+            e.stream_url.as_deref(),
+            Some("https://www.espn.com/watch/x#a=1&b=2")
+        );
+        assert_eq!(
+            e.live_stats_url.as_deref(),
+            Some("https://stats.test/?id=9")
+        );
+        assert_eq!(e.team_logo_url, None);
         assert_eq!(e.opponent_logo_url, None);
     }
 
@@ -243,10 +468,16 @@ Streaming Video: https://www.espn.com/watch/x#a=1&amp;b=2
         assert_eq!(e.is_away, Some(true));
         assert!(e.time_tbd);
         assert_eq!(e.starts_at, None);
-        assert_eq!(e.ends_at, None, "the feed's placeholder end time must not be kept");
+        assert_eq!(
+            e.ends_at, None,
+            "the feed's placeholder end time must not be kept"
+        );
         assert_eq!(e.event_date.to_string(), "2026-10-10");
         assert_eq!(e.location.as_deref(), Some("Manhattan, Kan."));
-        assert_eq!(e.opponent_logo_url.as_deref(), Some("http://site.test/images/logos/ksu.png"));
+        assert_eq!(
+            e.opponent_logo_url.as_deref(),
+            Some("http://site.test/images/logos/ksu.png")
+        );
     }
 
     #[test]
@@ -261,20 +492,36 @@ Streaming Video: https://www.espn.com/watch/x#a=1&amp;b=2
 
     #[test]
     fn sport_is_left_empty_when_it_cannot_be_told_from_the_school() {
-        assert_eq!(school_word_count(&["Volleyball Kansas", "Volleyball Kansas"]), 0);
-        assert_eq!(school_word_count(&["Volleyball Kansas", "Football Kansas"]), 1);
-        assert_eq!(school_word_count(&["Women's Soccer Kansas State", "Football Kansas State"]), 2);
+        assert_eq!(
+            school_word_count(&["Volleyball Kansas", "Volleyball Kansas"]),
+            0
+        );
+        assert_eq!(
+            school_word_count(&["Volleyball Kansas", "Football Kansas"]),
+            1
+        );
+        assert_eq!(
+            school_word_count(&["Women's Soccer Kansas State", "Football Kansas State"]),
+            2
+        );
     }
 
     #[test]
     fn a_configured_school_splits_the_sport_even_for_a_single_sport_feed() {
-        let feed = FEED.replace("Football Kansas at  Kansas State", "Volleyball Kansas at  Kansas State");
+        let feed = FEED.replace(
+            "Football Kansas at  Kansas State",
+            "Volleyball Kansas at  Kansas State",
+        );
         // Guessing can't tell "Volleyball" from "Kansas" here...
         let guessed = parse_events(&feed, "http://site.test/f", None).unwrap();
         assert_eq!(guessed[0].sport, None);
         // ...but the configured school name can.
         let named = parse_events(&feed, "http://site.test/f", Some("kansas")).unwrap();
-        assert!(named.iter().all(|e| e.sport.as_deref() == Some("Volleyball")));
+        assert!(
+            named
+                .iter()
+                .all(|e| e.sport.as_deref() == Some("Volleyball"))
+        );
         assert_eq!(named[1].opponent.as_deref(), Some("Kansas State"));
     }
 
@@ -287,8 +534,18 @@ Streaming Video: https://www.espn.com/watch/x#a=1&amp;b=2
 
     #[test]
     fn multi_word_school_names_are_matched() {
-        assert_eq!(named_school_words(Some("Kansas State"), &["Women's", "Soccer", "Kansas", "State"]), Some(2));
-        assert_eq!(named_school_words(Some("Kansas"), &["Kansas"]), None, "nothing left for the sport");
+        assert_eq!(
+            named_school_words(
+                Some("Kansas State"),
+                &["Women's", "Soccer", "Kansas", "State"]
+            ),
+            Some(2)
+        );
+        assert_eq!(
+            named_school_words(Some("Kansas"), &["Kansas"]),
+            None,
+            "nothing left for the sport"
+        );
         assert_eq!(named_school_words(None, &["Football", "Kansas"]), None);
     }
 }

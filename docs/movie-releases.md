@@ -1,8 +1,8 @@
 # U.S. movie releases
 
 Scope agreed 2026-10-08: U.S. theatrical releases, digital purchase/rental,
-subscription streaming, and physical discs. The database schema and a read-only live preview are implemented. Database upserts,
-main-CLI movie ingestion, and a weekly movie job are not implemented.
+subscription streaming, and physical discs. The database schema, read-only preview, and main-CLI database ingestion are implemented.
+`--movies` imports the current Central-time week and refreshes tracked movie detail pages on each run.
 
 ## Sources investigated
 
@@ -167,3 +167,34 @@ Zero calendar candidates require review rather than silently proving no releases
 The report preserves source URLs and disc UPCs when supplied. Multiple disc editions
 of one film count as separate release rows. Source claims are not independently
 verified against studios or platform catalogs. No movie data is saved to SQL Server.
+
+
+## Scheduled ingestion
+
+`cargo run --locked -- --movies` imports movie releases into SQL Server. Combine
+`--movies` with the existing news/events/YouTube flags and `--every-hours 1` for
+hourly collection. `--dry-run` parses movies without writing movie/source rows.
+The standalone Docker Compose service includes `--movies` and keeps its existing
+persistent feed volume and hourly Central-time schedule.
+
+The two supported movie sources are registered enabled on their first import.
+Existing disabled source rows remain disabled, and their release rows are skipped.
+Tracked detail URLs are revisited so date changes outside the current week can
+update the same release. Absent entries do not delete or cancel releases.
+IMDb IDs link verified DVD-source identities; titles alone never merge movies.
+Streaming identities remain separate when no verified shared ID is available.
+Disc keys use UPC when available, otherwise a unique format within the report.
+Ambiguous duplicate keys abort movie ingestion and are logged for review.
+The source exposes one theatrical/digital event per movie; separate reissues
+without explicit source identity cannot be distinguished automatically.
+
+Verification: `cargo test --locked --all-targets`; live rollback-only upsert test:
+`cargo test --locked --bin web_scraper movie_upserts_are_repeatable -- --ignored`.
+
+
+## Posters
+
+Movie ingestion now performs optional source-first poster enrichment after release
+upserts. See [the poster guide](movie-posters.md) for exact-ID/title-year matching,
+portrait validation, cache policy and backfill commands. Poster failures are logged
+separately; movie/release ingestion continues. MyNewsFeed uses the existing PosterUrl.

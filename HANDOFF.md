@@ -3,6 +3,78 @@
 Written 2026-09-21 to continue this project in a new chat. Read this first. It records where things
 stand, what was decided, and what is still open. It contains no passwords.
 
+## Movie posters (2026-10-09)
+
+- Source-first poster enrichment implemented in `src/movie_metadata.rs` and `src/posters.rs`.
+  The existing Movies.PosterUrl field now has 28 HTTPS posters across 33 movie rows.
+  All movie/source-link/release IDs and counts (33/33/76) preserved; OriginalYear populated
+  from movie-specific source metadata. No title-only or release-week-year matching.
+- Prefer linked DVD movie portrait posters; WTS landscape stills rejected. Cross-source
+  title/original-year matching uses verified source pages and excludes ambiguities.
+  IMDb/TMDB matches take precedence; existing valid posters remain intact.
+- Additive `sql/movie_posters.sql` creates cache and status/provenance/retry fields.
+  Positive lookups/validity cached 30 days, misses 7 days, source errors 6 hours.
+  Normal `--movies` reuses metadata from already fetched details. Failure cannot undo
+  release ingestion. Warm deployed-container run: 28 preserved, 33 hits, 0 source requests.
+- Poster-only backfill: `--movie-posters`; force cached misses: `--retry-missing-posters`
+  alongside it. Audit: `cargo run --example audit_movies -- WebScraper /tmp/movie-audit.json`.
+- User selected linked source posters plus a generic local UI placeholder, not an
+  API fallback (2026-10-09). MyNewsFeed's Movies/home poster areas use shared
+  `img/movie-placeholder.svg`; missing or failed image links reveal it. NULL remains
+  in the DB for unmatched movies so enrichment can retry. Host app source updated
+  at `/home/jcarpio/Projects/My-Newsfeed`; rollback image tag:
+  `mynewsfeed-web:before-movie-placeholder-20261009`.
+- Five unmatched: Olmo (2025), The Birthday Party (2025), Animals (2026), Oasis: Don’t
+  Look Back in Anger (2026), V/H/S Mixtape (2026). Leave NULL; no metadata API keys
+  configured in scraper or MyNewsFeed. TMDB would require credentials and attribution
+  plus an API client; current implementation uses existing free sources only.
+- Six saved posters visually/HTTP verified. MyNewsFeed Movies/home HTML renders them,
+  including five Friday theater posters. Standalone service updated, hourly flags unchanged.
+- Guide/report: `docs/movie-posters.md`, `reports/movie-posters-2026-10-09.md`.
+  Rollback image: before-posters-20261009; host backup: `.deployment-backups/20261009-posters/`.
+
+## Big 12 expansion (2026-10-09)
+
+- All 16 current provider full-member school feeds are enabled. Scope is Football,
+  Men's Basketball, Women's Basketball, Soccer and Volleyball; Oklahoma State has
+  no volleyball feed coverage. Kansas retains configuration ID 1 and its historical IDs.
+- `src/big12.rs` caches school metadata, collects school RSS, and loads structured
+  identity metadata in bounded monthly requests. Linked game IDs produce one public
+  SportsEvents row with per-feed records in SportsEventSources. Invalid identity data
+  is quarantined; known timing conflicts retain primary RSS times and record warnings.
+- Additive schema: `sql/big12_events.sql`, source backfill/upsert scripts, and
+  `dbo.SportsEventSchoolCalendar` view. School-filtered .NET queries should use this
+  view, not only SportsEvents.SportsEventsTypeId. The .NET repo was not changed.
+- Production: 943 public events, 1,444 source observations, 3 quarantined provider
+  records. All 101 original Kansas IDs, FirstSeenAt, primary source, opponents and
+  logos preserved. All 16 logo URLs load. Per-feed attempts/success/error/counts saved.
+- Setup: `--configure-big12` registers new feeds disabled; `--enable-big12` explicitly
+  enables them. Existing settings are preserved by configuration alone. Neither flag
+  can run with `--dry-run` or `--every-hours`. Existing hourly `--events-from-db` works.
+- Full staging runs repeated concurrently without count/ID changes. Staging database:
+  `WebScraper_Big12_Validation_20261009`; fixture/import SQL tests are opt-in and rollback.
+- Guide: `docs/big12-sports.md`. Read-only audit: `cargo run --example audit_sports --
+  WebScraper /tmp/sports-audit.json`. Production rollback image: before-big12-20261009;
+  host source/sports snapshot: `.deployment-backups/20261009-big12/`.
+
+## School logos (2026-10-09)
+
+- Conference RSS `<s:teamlogo>` was the Big 12 site logo. `fetch_events` now
+  resolves the feed's nonzero `school_id` through `/calendar.aspx` members
+  metadata (`id` -> `image.url`), keeping opponent logo extraction unchanged.
+  Missing metadata/image produces NULL, never a conference/channel fallback.
+- Existing RSS events update via the URL-keyed upsert; retained older events
+  receive a TeamLogoUrl-only update scoped to the single-school feed type.
+- Representative live Kansas RSS and calendar metadata fixtures are in
+  `tests/fixtures`; tests cover Kansas, Kansas State, missing images, all-schools
+  feeds, standalone school logos, and conference/channel rejection.
+- Kansas member ID 3 supplies `/images/logos/jhwk4C_RF_OL (3).png`.
+  HTTP 200 and visual Jayhawk verification completed.
+- Deployed and refreshed all 101 existing Kansas rows: 91 live RSS upserts plus
+  10 retained-event logo updates. Row count stayed 101; IDs, URLs, FirstSeenAt and
+  opponent logos were unchanged. Report: `reports/kansas-logo-fix-2026-10-09.md`.
+  43 all-target tests and the rollback-only school-logo SQL test passed.
+
 ## Movie release extension (2026-10-08)
 
 - Scope: **U.S. only**, theatrical, digital purchase/rental, subscription streaming,
@@ -11,7 +83,7 @@ stand, what was decided, and what is still open. It contains no passwords.
   Stream for subscription dates. Calendar and sample streaming detail HTTP access
   verified. Movie Insider detail access returned 403; Watchmode paid API not selected.
 - Four new tables created in live `WebScraper`: `MovieReleaseSources`, `Movies`,
-  `MovieSourceLinks`, `MovieReleases`. No movie/source rows populated.
+  `MovieSourceLinks`, `MovieReleases`. Movie ingestion is populated and active.
 - Migration: `sql/movie_releases.sql`, included in `Db::open`. Standalone setup:
   `cargo run --example setup_movie_schema`; append `-- --verify` for rollback-only
   SQL fixtures. Migration rerun and SQL integration checks passed, as did 19 unit tests.
@@ -21,7 +93,7 @@ stand, what was decided, and what is still open. It contains no passwords.
   `cargo run --example movie_preview -- --week-of YYYY-MM-DD --output report.json`.
   It opens no DB connection. Calendar discovery and detail-date extraction cover
   theatrical, digital, disc, and subscription releases. Eight parser tests pass.
-  Main CLI ingestion/database upserts remain unimplemented. No scheduler changes.
+  Main CLI ingestion/database upserts are now implemented via `--movies`; the standalone Docker service includes movies in its hourly runs.
 - Live preview for 2026-10-05 through 2026-10-11 completed: 5 theatrical, 16 digital,
   9 subscription records (8 titles), 9 disc editions (4 titles). Checked 56 detail
   pages with zero HTTP/parser issues after fixes; excluded 4 TV series. No DB writes.
@@ -90,19 +162,22 @@ Scraper-owned columns are overwritten on each run; lookup tables are managed by 
 - Any DB flag (`--from-db`, `--events-*`, `--youtube-*`, `--save-sources`) implies saving. Quote URLs
   containing `&` in the shell.
 
-## Current state (end of 2026-09-20 session)
+## Runtime state (2026-10-08)
 
-- **The hourly scheduler is STOPPED (user's request, 2026-09-21 ~08:24 Central; its last run finished
-  at 08:00). Do not start it until the user says so.** It had run hourly overnight after being restarted
-  that day. Check with `pgrep -af "^./target/release/web_scraper"`.
-  It is a plain background process (no cron/systemd in this container), so it also stops if the
-  container restarts. Log: `scraper.log` (git-ignored). Start command (release binary is current):
-  ```
-  cd /workspaces/Rust_Projects/web_scraper
-  nohup ./target/release/web_scraper --from-db --per-source 10 --every-hours 1 -o feed.xml \
-    --events-from-db --youtube-from-db >> scraper.log 2>&1 &
-  ```
-  Rebuild first (`cargo build --release`) after any code change. Stop with `pkill -f "^./target/release/web_scraper"`.
+- The standalone `web-scraper` Docker service runs hourly independently of VS Code,
+  with news, sports, YouTube and `--movies`. Restart policy: `unless-stopped`.
+- Host Compose checkout: `/home/jcarpio/Projects/Rss-Rust-Scrape`.
+  Workspace checkout: `/workspaces/Rust_Projects/Rss-Rust-Scrape`.
+  Both were updated for movie ingestion. Future changes must reach the host checkout
+  before `docker compose up -d --build` is run there.
+- Logs: `docker logs --tail 50 -f web-scraper`. Stop: `docker stop web-scraper`.
+  Persistent RSS output: `/data/feed.xml` in volume `webscraper_scraper-data`.
+- First live import saved 39 current-week releases. A refresh inside the rebuilt
+  container saved 73 releases including other announced dates on tracked movies,
+  with zero source issues. SQL repeat-import, reschedule and disabled-source tests
+  passed with rollback-only fixtures; 29 main-binary tests and 10 preview tests pass.
+- Rollback image: `web-scraper:before-movies-20261008`; host source backup:
+  `.deployment-backups/20261008-movies/source.tar`. No credentials are in this file.
 - Git: working tree was clean at last check; the user commits and **pushes themselves**
   (the container has no GitHub credentials). Do not commit unless asked. `feed.xml` is tracked and is
   rewritten by every run, so it shows as modified.

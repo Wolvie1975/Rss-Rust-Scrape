@@ -1,4 +1,8 @@
 //! Preview live movie releases without opening SQL Server.
+#[allow(dead_code)]
+#[path="../src/movie_metadata.rs"]
+mod movie_metadata;
+#[allow(dead_code)] // This example uses only the read-only portion of the shared module.
 #[path = "../src/movies.rs"]
 mod movies;
 use chrono::{Datelike, Duration, NaiveDate, Utc};

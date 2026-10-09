@@ -2,6 +2,10 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 mod db;
+mod big12;
+mod movies;
+mod movie_metadata;
+mod posters;
 mod events;
 mod feed;
 mod youtube;
@@ -134,6 +138,15 @@ fn scrape_source(
 #[derive(Parser)]
 #[command(version, about)]
 struct Cli {
+    /// Target SQL database; use a separate database for staging validation.
+    #[arg(long, default_value="WebScraper")]
+    database: String,
+    /// Register verified Big 12 member feeds disabled, preserving existing feed settings.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_big12: bool,
+    /// Explicitly enable registered Big 12 feeds (also configures current members).
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    enable_big12: bool,
     /// Page URLs to include in the feed
     urls: Vec<String>,
 
@@ -203,6 +216,17 @@ struct Cli {
     #[arg(long)]
     youtube_from_db: bool,
 
+    /// Backfill/validate movie posters without scraping releases or other feeds.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    movie_posters: bool,
+    /// Retry cached missing posters now; valid existing posters are preserved.
+    #[arg(long, requires="movie_posters")]
+    retry_missing_posters: bool,
+
+    /// Ingest this week's U.S. movie releases from public calendars (implies --db).
+    #[arg(long)]
+    movies: bool,
+
     /// How many of each YouTube channel's newest videos to keep
     #[arg(long, value_name = "N", default_value_t = 5, value_parser = clap::value_parser!(u32).range(1..))]
     youtube_latest: u32,
@@ -231,14 +255,29 @@ fn read_urls_file(path: &Path) -> std::io::Result<Vec<String>> {
 
 /// One full scrape: collect sources, scrape, filter, save, prune, and write the RSS feed.
 fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    let use_db = cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty() || cli.events_from_db || !cli.youtube_feed.is_empty() || cli.youtube_from_db;
+    let use_db = cli.movie_posters || cli.configure_big12 || cli.enable_big12 || cli.movies || cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty() || cli.events_from_db || !cli.youtube_feed.is_empty() || cli.youtube_from_db;
     let mut db = if use_db {
         let ado = std::env::var("MSSQL_CONNECTION_STRING")
             .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
-        Some(db::Db::open(&ado)?)
+        Some(db::Db::open_named(&ado, &cli.database)?)
     } else {
         None
     };
+
+    if cli.configure_big12 || cli.enable_big12 {
+        let client=Client::builder().timeout(Duration::from_secs(20)).user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)").build()?;
+        let members=big12::current_members(&client)?;
+        db.as_mut().unwrap().configure_big12(&members,cli.enable_big12)?;
+        eprintln!("configured {} current Big 12 members; new feeds {}",members.len(),if cli.enable_big12 {"enabled"} else {"disabled"});
+        return Ok(());
+    }
+
+    if cli.movie_posters {
+        if cli.retry_missing_posters {db.as_mut().unwrap().retry_missing_posters()?;}
+        let report=posters::enrich(db.as_mut().unwrap(),&std::collections::BTreeMap::new())?;
+        println!("{}",serde_json::to_string_pretty(&report)?);
+        return Ok(());
+    }
 
     let mut urls = cli.urls.clone();
     if let Some(path) = &cli.urls_file {
@@ -255,7 +294,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    if urls.is_empty() && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
+    if !cli.movies && urls.is_empty() && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
         Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, --from-db, --events-feed, --events-from-db, --youtube-feed, or --youtube-from-db").exit();
     }
 
@@ -359,12 +398,134 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+    let big12_feeds: Vec<_> = event_feeds
+        .iter()
+        .filter(|(_, url, _)| big12::school_id(url).is_some())
+        .filter_map(|(id, url, school)| {
+            id.map(|id| db::EventFeed {
+                id,
+                url: url.clone(),
+                school: school.clone(),
+            })
+        })
+        .collect();
+    if !big12_feeds.is_empty() {
+        if !cli.dry_run {
+            for f in &big12_feeds {
+                db.as_mut().unwrap().event_attempt(f.id)?;
+            }
+        }
+        match big12::collect(&client, &big12_feeds) {
+            Ok(results) => {
+                use std::collections::BTreeMap;
+                let mut counts: BTreeMap<i32, (i32, i32, Vec<String>, bool)> = results
+                    .iter()
+                    .map(|r| (r.id, (0, 0, r.warnings.clone(), r.error.is_none())))
+                    .collect();
+                for r in &results {
+                    if let Some(e) = &r.error {
+                        counts.get_mut(&r.id).unwrap().2.push(e.clone());
+                    }
+                }
+                // New events choose a home perspective first; existing primary IDs never flip.
+                let mut observations: Vec<_> = results
+                    .iter()
+                    .flat_map(|r| r.observations.iter().map(move |o| (r.id, o)))
+                    .collect();
+                observations.sort_by_key(|(feed, o)| {
+                    (
+                        o["event"]["is_away"] == true,
+                        *feed,
+                        o["provider_game_id"].as_i64().unwrap_or(0),
+                    )
+                });
+                for (index, (feed, observation)) in observations.into_iter().enumerate() {
+                    if index % 100 == 0 {
+                        eprintln!("Big 12 source observation {}", index + 1);
+                    }
+                    let (saved, quarantined, errors, success) = counts.get_mut(&feed).unwrap();
+                    if let Some(issue) = observation["issue"].as_str() {
+                        errors.push(format!("{}: {issue}", observation["provider_game_id"]));
+                    }
+                    if cli.dry_run {
+                        if observation["issue"].is_null() {
+                            *saved += 1;
+                        } else {
+                            *quarantined += 1;
+                        }
+                    } else {
+                        match db
+                            .as_mut()
+                            .unwrap()
+                            .save_big12_observation(feed, observation)
+                        {
+                            Ok(outcome) if outcome == "saved" => *saved += 1,
+                            Ok(outcome) => {
+                                *quarantined += 1;
+                                if observation["issue"].is_null() {
+                                    errors.push(format!(
+                                        "{}: {outcome}",
+                                        observation["provider_game_id"]
+                                    ));
+                                }
+                            }
+                            Err(e) => {
+                                *quarantined += 1;
+                                *success = false;
+                                errors.push(e.to_string());
+                            }
+                        }
+                    }
+                }
+                for result in results {
+                    let (saved, quarantined, errors, success) = counts.remove(&result.id).unwrap();
+                    eprintln!(
+                        "Big 12 {}: {saved} source observations saved, {quarantined} quarantined, {} issues{}",
+                        result.school,
+                        errors.len(),
+                        if cli.dry_run { " (dry run)" } else { "" }
+                    );
+                    if !cli.dry_run {
+                        let error = (!errors.is_empty()).then(|| errors.join("; "));
+                        db.as_mut().unwrap().event_result(
+                            result.id,
+                            success,
+                            result.observations.len() as i32,
+                            errors.len() as i32,
+                            error.as_deref(),
+                        )?;
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Big 12 collection failed: {e}");
+                if !cli.dry_run {
+                    for f in &big12_feeds {
+                        db.as_mut().unwrap().event_result(
+                            f.id,
+                            false,
+                            0,
+                            1,
+                            Some(&e.to_string()),
+                        )?;
+                    }
+                }
+            }
+        }
+    }
     for (known_id, feed_url, school) in &event_feeds {
+        if big12::is_provider_feed(feed_url) {
+            if known_id.is_none() {eprintln!("{feed_url}: register and enable this school using --configure-big12 / --enable-big12");}
+            else if big12::school_id(feed_url).is_none() {eprintln!("{feed_url}: conference-wide RSS is not supported for ingestion; use registered school feeds");}
+            continue;
+        }
+        if !cli.dry_run {if let Some(id)=known_id {db.as_mut().unwrap().event_attempt(*id)?;}}
+
         // A broken calendar feed shouldn't stop the rest of the run.
         match events::fetch_events(&client, feed_url, school.as_deref()) {
-            Ok(found) if cli.dry_run => {
-                eprintln!("{feed_url}: {} events (dry run, not saved)", found.len());
-                for e in &found {
+            Ok(batch) if cli.dry_run => {
+                eprintln!("{feed_url}: {} events (dry run, not saved)", batch.events.len());
+                for e in &batch.events {
                     eprintln!(
                         "  - {} | {} {} {} | {} | {}",
                         e.event_date,
@@ -376,7 +537,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                     );
                 }
             }
-            Ok(found) => {
+            Ok(batch) => {
                 let db = db.as_mut().unwrap();
                 let type_id = match known_id {
                     Some(id) => *id,
@@ -388,10 +549,15 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                         db.ensure_sports_events_type(feed_url, &name)?
                     }
                 };
-                let n = db.save_events(type_id, &found)?;
+                let n = db.save_events(type_id, &batch.events)?;
                 eprintln!("{feed_url}: saved {n} events to type {type_id}");
+                db.event_result(type_id,true,n as i32,0,None)?;
+                if batch.school_id.is_some() {
+                    let corrected = db.refresh_school_team_logo(type_id, batch.team_logo_url.as_deref())?;
+                    eprintln!("{feed_url}: corrected team logos on {corrected} retained events");
+                }
             }
-            Err(e) => eprintln!("events feed {feed_url} failed: {e}"),
+            Err(e) => {eprintln!("events feed {feed_url} failed: {e}");if !cli.dry_run {if let Some(id)=known_id {db.as_mut().unwrap().event_result(*id,false,0,1,Some(&e.to_string()))?;}}},
         }
     }
 
@@ -440,6 +606,32 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => eprintln!("youtube feed {feed_url} failed: {e}"),
         }
+    }
+
+    if cli.movies {
+        let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+            use chrono::Datelike;
+            let day = Utc::now().with_timezone(&chrono_tz::America::Chicago).date_naive();
+            let start = day - chrono::Duration::days(day.weekday().num_days_from_monday().into());
+            let tracked = db.as_mut().unwrap().tracked_movie_urls()?;
+            let report = movies::ingest(start, &tracked)?;
+            let rows = movies::release_rows(&report)?;
+            let issues = report["issues"].as_array().map_or(0, Vec::len);
+            if cli.dry_run {
+                eprintln!("movies: {} releases would be saved; {issues} issues (dry run)", rows.len());
+            } else {
+                let n = db.as_mut().unwrap().save_movie_releases(&rows, &report)?;
+                eprintln!("movies: saved {n} releases (week {start} plus tracked movies); {issues} issues");
+                let inputs=report["releases"].as_array().into_iter().flatten().filter_map(|r|Some((r["source_url"].as_str()?.to_owned(),posters::decode(&r["poster_metadata"])?))).collect();
+                match posters::enrich(db.as_mut().unwrap(),&inputs) {
+                    Ok(posters)=>eprintln!("movie posters: {} enriched, {} preserved, {} unmatched",posters["enriched_count"],posters["preserved_count"],posters["unmatched"].as_array().map_or(0,Vec::len)),
+                    Err(e)=>eprintln!("movie poster enrichment failed (release ingestion completed): {e}"),
+                }
+            }
+            if issues > 0 { eprintln!("movie source issues: {}", report["issues"]); }
+            Ok(())
+        })();
+        if let Err(e) = result { eprintln!("movie ingestion failed: {e}"); }
     }
 
     let items: Vec<_> = pages
@@ -504,7 +696,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if 24 % hours != 0 {
         Cli::command().error(ErrorKind::InvalidValue, "--every-hours must divide 24 (1, 2, 3, 4, 6, 8, 12, 24)").exit();
     }
-    if cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
+    if !cli.movies && cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
         Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, or --from-db").exit();
     }
 
