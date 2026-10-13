@@ -1,0 +1,230 @@
+{
+  "audit_date_central": "2026-10-10",
+  "scope": "Rust scraper code, dependencies, SQL contracts, live collector and read-only DB; My-Newsfeed HTTP spot check only",
+  "production_writes": false,
+  "production_deployment_changes": false,
+  "tests": {
+    "regular_passed": 91,
+    "opt_in_db_tests": 8,
+    "additional_isolated_sql_passed": 3,
+    "clippy_clean": false,
+    "format_clean": false
+  },
+  "runtime": {
+    "image": "sha256:257a666459d34838a8431d61f9db2efbf5c5857854afabe58f7b67ca1111bcbd",
+    "running": true,
+    "restart_count": 0,
+    "user": "scraper",
+    "privileged": false,
+    "healthcheck": false,
+    "memory_limit": 0,
+    "log_max_size": "10m",
+    "log_max_file": 3,
+    "sql_trust_server_certificate": true
+  },
+  "permissions": [
+    {
+      "IsDbOwner": 1,
+      "IsSysadmin": 1
+    }
+  ],
+  "table_counts": [
+    {
+      "RowCount": 0,
+      "name": "MovieCatalogs"
+    },
+    {
+      "RowCount": 33,
+      "name": "MoviePosterCache"
+    },
+    {
+      "RowCount": 76,
+      "name": "MovieReleases"
+    },
+    {
+      "RowCount": 2,
+      "name": "MovieReleaseSources"
+    },
+    {
+      "RowCount": 33,
+      "name": "Movies"
+    },
+    {
+      "RowCount": 33,
+      "name": "MovieSourceLinks"
+    },
+    {
+      "RowCount": 280,
+      "name": "Pages"
+    },
+    {
+      "RowCount": 13,
+      "name": "ResultFollows"
+    },
+    {
+      "RowCount": 80,
+      "name": "ResultFollowTeams"
+    },
+    {
+      "RowCount": 1399,
+      "name": "ResultGames"
+    },
+    {
+      "RowCount": 7,
+      "name": "SourceCategories"
+    },
+    {
+      "RowCount": 28,
+      "name": "Sources"
+    },
+    {
+      "RowCount": 981,
+      "name": "SportsEvents"
+    },
+    {
+      "RowCount": 1444,
+      "name": "SportsEventSources"
+    },
+    {
+      "RowCount": 19,
+      "name": "SportsEventsType"
+    },
+    {
+      "RowCount": 90,
+      "name": "TvEpisodes"
+    },
+    {
+      "RowCount": 5,
+      "name": "TvSeries"
+    },
+    {
+      "RowCount": 5,
+      "name": "TvTrackedSeries"
+    },
+    {
+      "RowCount": 11,
+      "name": "YoutubeVideoFeed"
+    },
+    {
+      "RowCount": 55,
+      "name": "YouTubeVideos"
+    }
+  ],
+  "canonical_duplicate_count": 0,
+  "untrusted_constraint_count": 0,
+  "quarantined_provider_records": [
+    {
+      "Issue": "member opponent has no verified game alias",
+      "RowCount": 1
+    },
+    {
+      "Issue": "self-opponent provider record",
+      "RowCount": 2
+    }
+  ],
+  "tv_utc_invariant": [
+    {
+      "TimedWithoutUtc": 0
+    }
+  ],
+  "mlb_live_season": "2026",
+  "mlb_2027_row_count": 0,
+  "live_completed_status_mismatch": [
+    {
+      "provider": "espn-mlb",
+      "game_id": 401907994,
+      "event_date": "2026-10-10",
+      "stored_status": "STATUS_IN_PROGRESS",
+      "source_status": "STATUS_FINAL",
+      "still_in_schedule_html": true
+    },
+    {
+      "provider": "espn-wnba",
+      "game_id": 401918299,
+      "event_date": "2026-10-09",
+      "stored_status": "STATUS_IN_PROGRESS",
+      "source_status": "STATUS_FINAL"
+    },
+    {
+      "provider": "espn-wnba",
+      "game_id": 401918300,
+      "event_date": "2026-10-09",
+      "stored_status": "STATUS_IN_PROGRESS",
+      "source_status": "STATUS_FINAL"
+    }
+  ],
+  "safe_reproductions": {
+    "unsafe_feed_links_accepted": [
+      "javascript:alert(1)",
+      "http://127.0.0.1:8080/admin"
+    ],
+    "all_news_failed_exit_code": 0,
+    "retention_overflow": {
+      "input": 2147483648,
+      "as_i32": -2147483648,
+      "destructive_query_executed": false
+    },
+    "dst_fallback": {
+      "now_utc": "2026-11-01T06:30:00Z",
+      "hours": 1,
+      "actual_next_utc": "2026-11-01T08:00:00Z",
+      "expected_next_utc": "2026-11-01T07:00:00Z"
+    }
+  },
+  "dependency_alerts": [
+    {
+      "id": "RUSTSEC-2026-0098",
+      "package": "rustls-webpki",
+      "version": "0.101.7",
+      "patched": [
+        ">=0.103.12, <0.104.0-alpha.1",
+        ">=0.104.0-alpha.6"
+      ]
+    },
+    {
+      "id": "RUSTSEC-2026-0099",
+      "package": "rustls-webpki",
+      "version": "0.101.7",
+      "patched": [
+        ">=0.103.12, <0.104.0-alpha.1",
+        ">=0.104.0-alpha.6"
+      ]
+    },
+    {
+      "id": "RUSTSEC-2026-0104",
+      "package": "rustls-webpki",
+      "version": "0.101.7",
+      "patched": [
+        ">=0.103.13, <0.104.0-alpha.1",
+        ">=0.104.0-alpha.7"
+      ]
+    }
+  ],
+  "dependency_warnings": {
+    "unmaintained": [
+      {
+        "package": "rustls-pemfile",
+        "version": "1.0.4",
+        "advisory_id": "RUSTSEC-2025-0134"
+      }
+    ],
+    "yanked": [
+      {
+        "package": "yoke-derive",
+        "version": "0.8.3",
+        "advisory_id": null
+      }
+    ]
+  },
+  "findings": {
+    "P1": 2,
+    "P2": 10,
+    "P3": 1
+  },
+  "limitations": [
+    "No full My-Newsfeed source/security audit",
+    "No OS-package vulnerability scan",
+    "No production exploit/load tests",
+    "No backup restore exercise"
+  ]
+}

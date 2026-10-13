@@ -136,3 +136,12 @@ ESPN uses midnight Eastern (04:00Z in summer / 05:00Z in winter) as a
 date placeholder for some timeValid=false fixtures. Those retain the advertised
 Eastern calendar date instead of shifting to the previous Central day. Confirmed
 starts always use normal UTC-to-Central date conversion.
+
+## Scraper deployment completed (2026-10-09)
+
+The production scraper is deployed and both professional feeds are enabled.
+Initial and repeat imports saved 3 Kansas City and 13 WNBA games with stable IDs;
+the existing hourly service includes both. See
+[deployment verification](../reports/scraper-professional-schedules-deployment-2026-10-09.md).
+Earlier statements about unperformed deployment describe the implementation phase.
+The live web app still needs its separate Schedule-selector deployment.

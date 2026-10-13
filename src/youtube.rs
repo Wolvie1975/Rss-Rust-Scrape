@@ -24,7 +24,11 @@ pub struct Video {
 
 /// The channel's newest `limit` videos, and where they came from. Reads the RSS feed (exact dates
 /// and counts); if that fails, falls back to the channel's public Videos page.
-pub fn fetch_latest(client: &Client, feed_url: &str, limit: usize) -> Result<(Vec<Video>, &'static str)> {
+pub fn fetch_latest(
+    client: &Client,
+    feed_url: &str,
+    limit: usize,
+) -> Result<(Vec<Video>, &'static str)> {
     let rss_error = match fetch_feed(client, feed_url, limit) {
         Ok(videos) if !videos.is_empty() => return Ok((videos, "rss feed")),
         Ok(_) => "the feed has no videos".to_string(),
@@ -41,7 +45,7 @@ pub fn fetch_latest(client: &Client, feed_url: &str, limit: usize) -> Result<(Ve
 }
 
 fn fetch_feed(client: &Client, feed_url: &str, limit: usize) -> Result<Vec<Video>> {
-    let body = client.get(feed_url).send()?.error_for_status()?.text()?;
+    let body = crate::http::get_text(client, feed_url)?;
     parse_videos(&body, limit)
 }
 
@@ -61,8 +65,8 @@ fn fetch_from_page(client: &Client, channel_id: &str, limit: usize) -> Result<Ve
         .header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
         .header("Accept-Language", "en-US,en;q=0.9")
         .send()?
-        .error_for_status()?
-        .text()?;
+        .error_for_status()?;
+    let html = crate::http::response_text(html)?;
     parse_page(&html, channel_id, limit, Utc::now())
 }
 
@@ -98,7 +102,8 @@ fn collect_video_lockups<'a>(v: &'a serde_json::Value, out: &mut Vec<&'a serde_j
     match v {
         Value::Object(map) => {
             if let Some(lockup) = map.get("lockupViewModel")
-                && lockup.get("contentType").and_then(Value::as_str) == Some("LOCKUP_CONTENT_TYPE_VIDEO")
+                && lockup.get("contentType").and_then(Value::as_str)
+                    == Some("LOCKUP_CONTENT_TYPE_VIDEO")
             {
                 out.push(lockup);
             }
@@ -126,22 +131,34 @@ fn collect_text(v: &serde_json::Value, out: &mut Vec<String>) {
 /// The first `limit` videos on a channel's Videos page (newest first, as YouTube lists them).
 /// Publish dates are estimated from the "N days ago" text; views, ratings and descriptions are
 /// left empty. Entries with no age text (live or upcoming) are skipped.
-fn parse_page(html: &str, channel_id: &str, limit: usize, now: DateTime<Utc>) -> Result<Vec<Video>> {
+fn parse_page(
+    html: &str,
+    channel_id: &str,
+    limit: usize,
+    now: DateTime<Utc>,
+) -> Result<Vec<Video>> {
     const MARKER: &str = "var ytInitialData = ";
-    let start = html.find(MARKER).ok_or("the page has no video data (YouTube may have asked for consent or changed its layout)")? + MARKER.len();
+    let start = html.find(MARKER).ok_or(
+        "the page has no video data (YouTube may have asked for consent or changed its layout)",
+    )? + MARKER.len();
     let data: serde_json::Value = serde_json::Deserializer::from_str(&html[start..])
         .into_iter::<serde_json::Value>()
         .next()
         .ok_or("the page's video data is empty")??;
 
-    let channel_name = data["metadata"]["channelMetadataRenderer"]["title"].as_str().map(str::to_string);
+    let channel_name = data["metadata"]["channelMetadataRenderer"]["title"]
+        .as_str()
+        .map(str::to_string);
     let mut lockups = Vec::new();
     collect_video_lockups(&data, &mut lockups);
 
     let mut seen = std::collections::HashSet::new();
     let mut videos = Vec::new();
     for lockup in lockups {
-        let Some(video_id) = lockup["contentId"].as_str().filter(|id| seen.insert(id.to_string())) else {
+        let Some(video_id) = lockup["contentId"]
+            .as_str()
+            .filter(|id| seen.insert(id.to_string()))
+        else {
             continue;
         };
         let meta = &lockup["metadata"]["lockupMetadataViewModel"];
@@ -200,7 +217,9 @@ fn attr(node: roxmltree::Node, name: &str, attr: &str) -> Option<String> {
 }
 
 fn time(s: Option<String>) -> Option<DateTime<Utc>> {
-    DateTime::parse_from_rfc3339(&s?).ok().map(|d| d.with_timezone(&Utc))
+    DateTime::parse_from_rfc3339(&s?)
+        .ok()
+        .map(|d| d.with_timezone(&Utc))
 }
 
 fn parse_videos(xml: &str, limit: usize) -> Result<Vec<Video>> {
@@ -234,7 +253,7 @@ fn parse_videos(xml: &str, limit: usize) -> Result<Vec<Video>> {
             })
         })
         .collect();
-    videos.sort_by(|a, b| b.published_at.cmp(&a.published_at));
+    videos.sort_by_key(|v| std::cmp::Reverse(v.published_at));
     videos.truncate(limit);
     Ok(videos)
 }
@@ -272,7 +291,11 @@ second line</media:description>{extra}</media:group></entry>"#
             entry("newest", "2026-09-20T17:00:00+00:00", ""),
             entry("middle", "2026-05-05T00:00:00+00:00", ""),
         ]);
-        let ids: Vec<_> = parse_videos(&xml, 2).unwrap().into_iter().map(|v| v.video_id).collect();
+        let ids: Vec<_> = parse_videos(&xml, 2)
+            .unwrap()
+            .into_iter()
+            .map(|v| v.video_id)
+            .collect();
         assert_eq!(ids, ["newest", "middle"]);
     }
 
@@ -287,16 +310,25 @@ second line</media:description>{extra}</media:group></entry>"#
         assert_eq!(v.title, "Video abc");
         assert_eq!(v.url, "https://www.youtube.com/watch?v=abc");
         assert_eq!(v.published_at.to_rfc3339(), "2026-09-20T17:00:14+00:00");
-        assert_eq!(v.thumbnail_url.as_deref(), Some("https://i3.ytimg.com/vi/abc/hqdefault.jpg"));
+        assert_eq!(
+            v.thumbnail_url.as_deref(),
+            Some("https://i3.ytimg.com/vi/abc/hqdefault.jpg")
+        );
         assert_eq!(v.description.as_deref(), Some("About abc\nsecond line"));
-        assert_eq!((v.views, v.rating_count, v.rating_average), (Some(7723), Some(306), Some(4.5)));
+        assert_eq!(
+            (v.views, v.rating_count, v.rating_average),
+            (Some(7723), Some(306), Some(4.5))
+        );
     }
 
     #[test]
     fn missing_stats_are_left_empty() {
         let xml = feed(&[entry("abc", "2026-09-20T17:00:14+00:00", "")]);
         let v = &parse_videos(&xml, 5).unwrap()[0];
-        assert_eq!((v.views, v.rating_count, v.rating_average), (None, None, None));
+        assert_eq!(
+            (v.views, v.rating_count, v.rating_average),
+            (None, None, None)
+        );
     }
 
     fn at(s: &str) -> DateTime<Utc> {
@@ -306,19 +338,55 @@ second line</media:description>{extra}</media:group></entry>"#
     #[test]
     fn relative_ages_become_dates() {
         let now = at("2026-09-21T12:00:00+00:00");
-        assert_eq!(parse_age("9 hours ago", now), Some(at("2026-09-21T03:00:00+00:00")));
-        assert_eq!(parse_age("1 day ago", now), Some(at("2026-09-20T12:00:00+00:00")));
-        assert_eq!(parse_age("Streamed 2 weeks ago", now), Some(at("2026-09-07T12:00:00+00:00")));
-        assert_eq!(parse_age("Premiered 5 minutes ago", now), Some(at("2026-09-21T11:55:00+00:00")));
-        assert_eq!(parse_age("3 months ago", now), Some(at("2026-06-23T12:00:00+00:00")));
-        assert_eq!(parse_age("1 year ago", now), Some(at("2025-09-21T12:00:00+00:00")));
+        assert_eq!(
+            parse_age("9 hours ago", now),
+            Some(at("2026-09-21T03:00:00+00:00"))
+        );
+        assert_eq!(
+            parse_age("1 day ago", now),
+            Some(at("2026-09-20T12:00:00+00:00"))
+        );
+        assert_eq!(
+            parse_age("Streamed 2 weeks ago", now),
+            Some(at("2026-09-07T12:00:00+00:00"))
+        );
+        assert_eq!(
+            parse_age("Premiered 5 minutes ago", now),
+            Some(at("2026-09-21T11:55:00+00:00"))
+        );
+        assert_eq!(
+            parse_age("3 months ago", now),
+            Some(at("2026-06-23T12:00:00+00:00"))
+        );
+        assert_eq!(
+            parse_age("1 year ago", now),
+            Some(at("2025-09-21T12:00:00+00:00"))
+        );
         // The short form YouTube sometimes serves instead.
-        assert_eq!(parse_age("9h ago", now), Some(at("2026-09-21T03:00:00+00:00")));
-        assert_eq!(parse_age("2d ago", now), Some(at("2026-09-19T12:00:00+00:00")));
-        assert_eq!(parse_age("5m ago", now), Some(at("2026-09-21T11:55:00+00:00")));
-        assert_eq!(parse_age("3mo ago", now), Some(at("2026-06-23T12:00:00+00:00")));
-        assert_eq!(parse_age("1w ago", now), Some(at("2026-09-14T12:00:00+00:00")));
-        assert_eq!(parse_age("Streamed 4h ago", now), Some(at("2026-09-21T08:00:00+00:00")));
+        assert_eq!(
+            parse_age("9h ago", now),
+            Some(at("2026-09-21T03:00:00+00:00"))
+        );
+        assert_eq!(
+            parse_age("2d ago", now),
+            Some(at("2026-09-19T12:00:00+00:00"))
+        );
+        assert_eq!(
+            parse_age("5m ago", now),
+            Some(at("2026-09-21T11:55:00+00:00"))
+        );
+        assert_eq!(
+            parse_age("3mo ago", now),
+            Some(at("2026-06-23T12:00:00+00:00"))
+        );
+        assert_eq!(
+            parse_age("1w ago", now),
+            Some(at("2026-09-14T12:00:00+00:00"))
+        );
+        assert_eq!(
+            parse_age("Streamed 4h ago", now),
+            Some(at("2026-09-21T08:00:00+00:00"))
+        );
         assert_eq!(parse_age("37K", now), None);
         assert_eq!(parse_age("37K views", now), None);
         assert_eq!(parse_age("Scheduled for 9/25/26", now), None);
@@ -350,12 +418,21 @@ second line</media:description>{extra}</media:group></entry>"#
             lockup("oldest", "Third video", "1 week ago"),
         ]);
         let videos = parse_page(&html, "UC1", 2, now).unwrap();
-        assert_eq!(videos.iter().map(|v| v.video_id.as_str()).collect::<Vec<_>>(), ["newest", "older"]);
+        assert_eq!(
+            videos
+                .iter()
+                .map(|v| v.video_id.as_str())
+                .collect::<Vec<_>>(),
+            ["newest", "older"]
+        );
         let v = &videos[0];
         assert_eq!(v.title, "First video");
         assert_eq!(v.channel_name.as_deref(), Some("Destin"));
         assert_eq!(v.url, "https://www.youtube.com/watch?v=newest");
-        assert_eq!(v.thumbnail_url.as_deref(), Some("https://i.ytimg.com/vi/newest/hq720.jpg"));
+        assert_eq!(
+            v.thumbnail_url.as_deref(),
+            Some("https://i.ytimg.com/vi/newest/hq720.jpg")
+        );
         assert_eq!(v.published_at, at("2026-09-21T03:00:00+00:00"));
         assert!(v.published_is_estimate);
         assert_eq!((v.views, v.description.as_deref()), (None, None));
@@ -364,7 +441,10 @@ second line</media:description>{extra}</media:group></entry>"#
     #[test]
     fn page_entries_without_an_age_are_skipped() {
         let now = at("2026-09-21T12:00:00+00:00");
-        let html = page(&[lockup("live", "Live now", "1.2K watching"), lockup("ok", "Normal", "3 days ago")]);
+        let html = page(&[
+            lockup("live", "Live now", "1.2K watching"),
+            lockup("ok", "Normal", "3 days ago"),
+        ]);
         let videos = parse_page(&html, "UC1", 5, now).unwrap();
         assert_eq!(videos.len(), 1);
         assert_eq!(videos[0].video_id, "ok");
@@ -377,7 +457,10 @@ second line</media:description>{extra}</media:group></entry>"#
 
     #[test]
     fn channel_id_comes_from_the_feed_url() {
-        assert_eq!(channel_id_from("https://www.youtube.com/feeds/videos.xml?channel_id=UCabc").as_deref(), Some("UCabc"));
+        assert_eq!(
+            channel_id_from("https://www.youtube.com/feeds/videos.xml?channel_id=UCabc").as_deref(),
+            Some("UCabc")
+        );
         assert_eq!(channel_id_from("https://example.com/feed"), None);
     }
 }

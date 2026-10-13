@@ -1,0 +1,3 @@
+DECLARE @Path nvarchar(4000)=N'/var/opt/mssql/backup/webscraper-managed/full/WebScraper_full_'+CONVERT(char(8),SYSUTCDATETIME(),112)+N'_'+REPLACE(CONVERT(char(8),SYSUTCDATETIME(),108),':','')+N'.bak';
+BACKUP DATABASE WebScraper TO DISK=@Path WITH COPY_ONLY,CHECKSUM,COMPRESSION;
+RESTORE VERIFYONLY FROM DISK=@Path WITH CHECKSUM;

@@ -43,7 +43,7 @@ pub fn fetch_events(
     feed_url: &str,
     school: Option<&str>,
 ) -> Result<FetchedEvents> {
-    let body = client.get(feed_url).send()?.error_for_status()?.text()?;
+    let body = crate::http::get_text(client, feed_url)?;
     let base = Url::parse(feed_url)?;
     let school_id = calendar_school_id(&base);
     let calendar = if school_id.is_some() {
@@ -52,7 +52,8 @@ pub fn fetch_events(
             .get(url)
             .send()
             .and_then(|r| r.error_for_status())
-            .and_then(|r| r.text())
+            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })
+            .and_then(crate::http::response_text)
         {
             Ok(html) => Some(html),
             Err(e) => {
@@ -164,7 +165,9 @@ fn split_matchup(line: &str) -> Option<(String, bool, String)> {
 
 fn http_url(raw: &str, base: &Url) -> Option<String> {
     let u = base.join(raw.trim()).ok()?;
-    matches!(u.scheme(), "http" | "https").then(|| u.to_string())
+    crate::http::public_url(u.as_str())
+        .is_ok()
+        .then(|| u.to_string())
 }
 
 /// Number of trailing words of `words` that are the given school name (case-insensitive), if the
@@ -218,7 +221,9 @@ fn parse_events(xml: &str, feed_url: &str, school: Option<&str>) -> Result<Vec<E
     // Each event is kept with the "Sport School" text left of vs/at, to split afterwards.
     let mut rows: Vec<(Event, Option<String>)> = Vec::new();
     for item in doc.descendants().filter(|n| n.has_tag_name("item")) {
-        let Some(url) = child_text(item, "link").filter(|u| u.len() <= 2048) else {
+        let Some(url) = child_text(item, "link")
+            .filter(|u| u.len() <= 2048 && crate::http::public_url(u).is_ok())
+        else {
             continue;
         };
         let start_raw = child_text(item, "startdate");

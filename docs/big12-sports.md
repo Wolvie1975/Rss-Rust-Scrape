@@ -77,7 +77,11 @@ calendar, while retaining it in SportsEventSources with SportsEventId=NULL and I
 Known self-opponent records and member games without explicit partner links are
 quarantined. Missing records never remove historical games or imply cancellation.
 
-RSS/JSON UTC disagreement and paired-RSS timing disagreements are recorded as warnings;
+JSON `date_utc` sometimes contains midnight Central rather than the announced kickoff.
+When JSON’s local `date` exactly matches the RSS instant in America/Chicago and
+`date_utc` is midnight on that same Central date, this date-only placeholder does
+not raise a warning. RSS timing remains authoritative. Other RSS/JSON UTC
+disagreements and paired-RSS timing disagreements are recorded as warnings;
 source values are retained for review. A failed refresh preserves a source's last good
 payload and event link. One failed school does not stop other school feeds.
 SportsEventsType records Enabled, LastAttemptAt, LastSuccessAt, LastError,

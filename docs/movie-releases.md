@@ -1,5 +1,10 @@
 # U.S. movie releases
 
+2026-10-11 update: Movie Insider digital provider and separate When To Stream VOD
+parsing are implemented. See [the digital release correction/frontend handoff](my-newsfeed-digital-releases.md)
+for deployment and the recommended current-week source selection. Older source
+investigation notes below describe the original implementation.
+
 Scope agreed 2026-10-08: U.S. theatrical releases, digital purchase/rental,
 subscription streaming, and physical discs. The database schema, read-only preview, and main-CLI database ingestion are implemented.
 `--movies` imports the current Central-time week and refreshes tracked movie detail pages on each run.

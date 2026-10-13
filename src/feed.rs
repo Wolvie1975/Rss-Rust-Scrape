@@ -8,12 +8,19 @@ use crate::PageMeta;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /// Locations tried, relative to the site root, when a page doesn't advertise its feed.
-const COMMON_FEED_PATHS: &[&str] = &["/feed", "/rss", "/feed.xml", "/rss.xml", "/atom.xml", "/index.xml"];
+const COMMON_FEED_PATHS: &[&str] = &[
+    "/feed",
+    "/rss",
+    "/feed.xml",
+    "/rss.xml",
+    "/atom.xml",
+    "/index.xml",
+];
 
 const MAX_DESCRIPTION_CHARS: usize = 500;
 
 fn get_text(client: &Client, url: &str) -> Result<String> {
-    Ok(client.get(url).send()?.error_for_status()?.text()?)
+    crate::http::get_text(client, url)
 }
 
 /// Feed URLs advertised by the page via `<link rel="alternate" type="application/rss+xml|atom+xml">`.
@@ -29,18 +36,25 @@ fn discover_links(html: &str, base: &Url) -> Vec<String> {
                 .is_some_and(|t| t.contains("rss") || t.contains("atom"))
         })
         .filter_map(|el| base.join(el.value().attr("href")?).ok())
+        .filter(|u| crate::http::public_url(u.as_str()).is_ok())
         .map(String::from)
         .collect()
 }
 
 fn http_url(raw: &str, base: &str) -> Option<String> {
     let u = Url::parse(base).ok()?.join(raw.trim()).ok()?;
-    matches!(u.scheme(), "http" | "https").then(|| u.to_string())
+    crate::http::public_url(u.as_str())
+        .is_ok()
+        .then(|| u.to_string())
 }
 
 /// True when the URL's path ends in a common image extension (used when a feed omits the media type).
 fn looks_like_image(url: &str) -> bool {
-    let path = url.split(['?', '#']).next().unwrap_or(url).to_ascii_lowercase();
+    let path = url
+        .split(['?', '#'])
+        .next()
+        .unwrap_or(url)
+        .to_ascii_lowercase();
     [".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"]
         .iter()
         .any(|ext| path.ends_with(ext))
@@ -83,7 +97,7 @@ fn parse_entries(body: &str, feed_url: &str, source: &str) -> Result<Vec<PageMet
                 .or(e.links.first())?
                 .href
                 .clone();
-            if link.len() > 2048 {
+            if link.len() > 2048 || crate::http::public_url(&link).is_err() {
                 return None;
             }
             let title = e
@@ -105,14 +119,21 @@ fn parse_entries(body: &str, feed_url: &str, source: &str) -> Result<Vec<PageMet
                             .iter()
                             .find(|c| match &c.content_type {
                                 Some(t) => t.to_string().starts_with("image/"),
-                                None => c.url.as_ref().is_some_and(|u| looks_like_image(u.as_str())),
+                                None => {
+                                    c.url.as_ref().is_some_and(|u| looks_like_image(u.as_str()))
+                                }
                             })
                             .and_then(|c| c.url.as_ref().map(|u| u.to_string()))
                     })
             });
             let image_url = media_image
                 .and_then(|u: String| http_url(&u, &link))
-                .or_else(|| [summary, body].into_iter().flatten().find_map(|h| first_img_src(h, &link)));
+                .or_else(|| {
+                    [summary, body]
+                        .into_iter()
+                        .flatten()
+                        .find_map(|h| first_img_src(h, &link))
+                });
 
             Some(PageMeta {
                 source: source.to_string(),
@@ -120,7 +141,10 @@ fn parse_entries(body: &str, feed_url: &str, source: &str) -> Result<Vec<PageMet
                 title,
                 description: html.and_then(plain_text),
                 // Some feeds mislabel their time zone, which lands dates in the future.
-                published: e.published.or(e.updated).map(|d| d.with_timezone(&Utc).min(now)),
+                published: e
+                    .published
+                    .or(e.updated)
+                    .map(|d| d.with_timezone(&Utc).min(now)),
                 image_url,
             })
         })
@@ -130,7 +154,8 @@ fn parse_entries(body: &str, feed_url: &str, source: &str) -> Result<Vec<PageMet
 /// Finds the source's RSS/Atom feed and returns one `PageMeta` per entry.
 /// Tries, in order: the source URL itself, feeds advertised in its HTML, then common feed paths.
 pub fn fetch_entries(client: &Client, source: &str) -> Result<Vec<PageMeta>> {
-    let base = Url::parse(source)?;
+    let base = crate::http::public_url(source)?;
+    let started = std::time::Instant::now();
     let mut candidates: Vec<String> = Vec::new();
 
     if let Ok(body) = get_text(client, source) {
@@ -141,10 +166,22 @@ pub fn fetch_entries(client: &Client, source: &str) -> Result<Vec<PageMeta>> {
         }
         candidates.extend(discover_links(&body, &base));
     }
-    candidates.extend(COMMON_FEED_PATHS.iter().filter_map(|p| base.join(p).ok()).map(String::from));
+    candidates.extend(
+        COMMON_FEED_PATHS
+            .iter()
+            .filter_map(|p| base.join(p).ok())
+            .map(String::from),
+    );
 
     let mut seen = std::collections::HashSet::new();
-    for candidate in candidates.into_iter().filter(|c| seen.insert(c.clone())) {
+    for candidate in candidates
+        .into_iter()
+        .filter(|c| seen.insert(c.clone()))
+        .take(12)
+    {
+        if started.elapsed() > std::time::Duration::from_secs(45) {
+            break;
+        }
         if let Ok(body) = get_text(client, &candidate)
             && let Ok(entries) = parse_entries(&body, &candidate, source)
             && !entries.is_empty()
@@ -183,9 +220,33 @@ mod tests {
     fn feed_entries_find_images_and_cap_dates() {
         let pages = parse_entries(FEED, "https://site.test/feed", "https://site.test/").unwrap();
         assert_eq!(pages.len(), 4);
-        assert_eq!(pages[0].image_url.as_deref(), Some("https://cdn.test/a.jpg"));
-        assert_eq!(pages[1].image_url.as_deref(), Some("https://site.test/b.png"));
+        assert_eq!(
+            pages[0].image_url.as_deref(),
+            Some("https://cdn.test/a.jpg")
+        );
+        assert_eq!(
+            pages[1].image_url.as_deref(),
+            Some("https://site.test/b.png")
+        );
         assert!(pages[2].published.unwrap() <= Utc::now());
         assert_eq!(pages[3].image_url, None);
+    }
+}
+
+#[cfg(test)]
+mod safety_tests {
+    use super::*;
+    #[test]
+    fn invalid_upstream_links_are_not_imported() {
+        for link in ["javascript:alert(1)", "http://127.0.0.1:8080/admin"] {
+            let xml = format!(
+                "<rss version='2.0'><channel><title>Fixture</title><link>https://example.test/</link><description>fixture</description><item><title>Unsafe</title><link>{link}</link></item></channel></rss>"
+            );
+            assert!(
+                parse_entries(&xml, "https://example.test/rss", "https://example.test/")
+                    .unwrap()
+                    .is_empty()
+            );
+        }
     }
 }

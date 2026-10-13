@@ -99,6 +99,13 @@ fn source_page(
             u.host_str(),
             Some("whentostream.com" | "www.whentostream.com")
         ),
+        "movieinsider" => {
+            u.host_str() == Some("www.movieinsider.com")
+                && u.path_segments()
+                    .and_then(|mut p| p.next())
+                    .and_then(|p| p.strip_prefix('m'))
+                    .is_some_and(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()))
+        }
         _ => false,
     };
     if !valid {
@@ -108,12 +115,14 @@ fn source_page(
         .get(url)
         .send()
         .and_then(|r| r.error_for_status())
-        .and_then(|r| r.text())
+        .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })
+        .and_then(crate::http::response_text)
         .map_err(|e| e.to_string())?;
     meta::parse(source, &html, url)
 }
 fn check_image(client: &Client, raw: &str) -> std::result::Result<String, String> {
     let url = meta::image_url(raw, raw).ok_or("not an approved HTTPS poster URL")?;
+    crate::http::public_url(&url).map_err(|e| e.to_string())?;
     let mut r = client
         .get(&url)
         .send()
@@ -184,7 +193,7 @@ fn search(
         .and_then(|r| r.error_for_status())
         .map_err(|e| e.to_string())?;
     let final_url = response.url().to_string();
-    let html = response.text().map_err(|e| e.to_string())?;
+    let html = crate::http::response_text(response).map_err(|e| e.to_string())?;
     if direct_search_result(&final_url) {
         let mut m = meta::parse("dvdsreleasedates", &html, &final_url)?;
         if !meta::same_identity(target, &m.identity) {
@@ -217,7 +226,7 @@ fn search(
 }
 
 pub fn enrich(db: &mut Db, inputs: &BTreeMap<String, SourceMovie>) -> Result<Value> {
-    let client = Client::builder()
+    let client = crate::http::client_builder()
         .timeout(std::time::Duration::from_secs(15))
         .user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)")
         .build()?;
@@ -292,7 +301,7 @@ pub fn enrich(db: &mut Db, inputs: &BTreeMap<String, SourceMovie>) -> Result<Val
             pool.push((job.movie_id, candidate, job.url.clone()));
         }
         details.insert(job.link_id, (m, poster, error));
-        if !checked_existing.contains_key(&job.movie_id) {
+        checked_existing.entry(job.movie_id).or_insert_with(|| {
             let existing = if let Some(raw) = &job.existing {
                 if job
                     .checked
@@ -339,8 +348,8 @@ pub fn enrich(db: &mut Db, inputs: &BTreeMap<String, SourceMovie>) -> Result<Val
             if existing.is_some() {
                 preserved.insert(job.movie_id);
             }
-            checked_existing.insert(job.movie_id, existing);
-        }
+            existing
+        });
     }
     let mut processed = BTreeSet::new();
     let mut enriched = Vec::new();

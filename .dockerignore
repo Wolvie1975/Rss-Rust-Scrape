@@ -5,3 +5,6 @@ target
 reports
 feed.xml
 .deployment-backups
+
+.env.*
+certs

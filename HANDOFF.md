@@ -1,7 +1,224 @@
 # web_scraper — handoff notes
 
+## Initial optimizations (2026-10-13, deployed)
+
+- ESPN schedules now use 100-row JSON batches with whole-feed rollback.
+- Stage durations, HTTP-text counts/bytes and SQL batch counts logged.
+- Past movie releases filtered before save/poster jobs; freshness/pacing unchanged.
+- Production verification: six source successes, zero failures; 915 observations
+  in 13 SQL upsert calls; 18 past releases skipped. 785 event identities preserved.
+- Image web-scraper:optimizations-20261013 (also latest).
+- docs/scraper-performance.md and reports/optimizations-deployment-2026-10-13.md.
+- Caching, Big 12 batching and concurrency remain candidates, not deployed changes.
+
+## Premier League (2026-10-13, deployed)
+
+- EPL source ID 5357 and standings source ID 12 enabled; current 2026–27 data.
+- 320 current/future fixtures, 20 table teams; no past fixtures or historical results.
+- EPL table rollover deletes superseded rows only for espn-epl; other standings
+  retain their existing history. Runtime DELETE grant added for table cleanup.
+- Image web-scraper:epl-20261013 (also latest), targeted import succeeded.
+- Handoff: docs/my-newsfeed-epl.md. Report: reports/epl-deployment-2026-10-13.md.
+
+## EFL Championship / Wrexham (2026-10-13, scraper deployed)
+
+- Full Championship schedule/table and current-season final results. Wrexham ID 352.
+- Sports feed ID 5326 and standings source ID 11 enabled. Production: 437 upcoming
+  fixtures, 24 standings teams, 115 results; Wrexham 36 upcoming and 10 results.
+- New SportsMatchResults is independent of SportsEvents retention and ResultGames.
+  Only explicit finals with valid goals imported; repeats/corrections preserve IDs.
+- Current-season results retained until successful new-season result import.
+- ESPN scoreboard requests use the existing My-Newsfeed/1.0 collector header.
+- Image web-scraper:championship-20261013 (also latest, r2); source errors cleared.
+- Frontend needs Wrexham filter/results view. Handoff:
+  docs/my-newsfeed-championship-wrexham.md. Existing table route sourceId=11 works.
+- Report: reports/championship-deployment-2026-10-13.md.
+
+## SQL log maintenance (2026-10-13, active)
+
+- WebScraper log reduced from 2248 MB to 264 MB after verified log backups.
+- FULL recovery retained; no SQL restart. Log growth 64 MB.
+- Host cron runs log backups every 15 minutes and verified COPY_ONLY full backups
+  daily at 2:35 a.m. Central. Managed full/log retention eight/ten days.
+- docs/sql-backups.md and reports/sql-log-maintenance-2026-10-13.md.
+
+## Retention (2026-10-13, deployed)
+
+- Current/future dated sports, movie releases and TV episodes only; today is
+  America/Chicago. Canceled sports removed. Undated/TBD records and TV tracking
+  settings remain. Child/source/cache rows are deleted before parent rows.
+- Ranking imports retain only the latest poll per source after successful replacement.
+- Finished scraper runs: 7 days. YouTube: 10/channel. News: unchanged 10/source.
+- Image web-scraper:retention-20261013 (also latest); production cleanup succeeded.
+- 937 sports events, 50 movie releases, 31 episodes, 5 current polls remain;
+  all 15 YouTube channels have 10 videos. No expired rows remain under the rules.
+- Policy: docs/data-retention.md. Report: reports/retention-deployment-2026-10-13.md.
+
+## WNBA stale fixtures (2026-10-13, production corrected)
+
+- Confirmed unnecessary semifinal games 401918303/401918304 marked STATUS_CANCELED
+  locally; history and timestamps preserved. They no longer appear as upcoming.
+- Next active game is Oct 17 at 2:30 p.m. Central.
+- Quick live review across 19 schedule feeds through Nov 30 found no other missing
+  upcoming records. No binary change; omitted-fixture reconciliation remains manual.
+- Report: reports/wnba-stale-correction-2026-10-13.md.
+
+## NFL divisions (2026-10-13, configured in production)
+
+- NFL source 10 now uses ?level=3: 32 unique teams in eight four-team divisions.
+- Deployed parser already supports nested groups; refresh succeeded without rebuild.
+- Existing page renders all division tables. AFC/NFC parent-heading implementation
+  is documented in docs/my-newsfeed-nfl-standings.md for the frontend builder.
+- Report: reports/nfl-divisions-2026-10-13.md.
+
+## NFL standings (2026-10-13, deployed)
+
+- NFL source ID 10 enabled; 2026 standings contain all 32 teams (16 AFC, 16 NFC).
+- Image web-scraper:nfl-standings-20261013 (also latest); hourly collector includes
+  NFL automatically. Runtime health check and production import pass.
+- Existing /standings?sourceId=10 renders NFL and Kansas City; no frontend rebuild.
+- Report: reports/nfl-standings-deployment-2026-10-13.md.
+- Display contract: docs/my-newsfeed-nfl-standings.md.
+
+## Parser fixes (2026-10-12, deployed)
+
+- Movie Insider release-intro digital dates supported; theatrical-only candidates
+  skipped. LastError cleared after production refresh.
+- Big 12 midnight-Central JSON placeholders do not warn when local kickoff agrees
+  exactly with RSS; real conflicts still warn. Arizona State has zero issues,
+  game 179594 keeps 2:30 p.m. Central.
+- Image web-scraper:parser-fixes-20261012 (also latest), runtime health check passes;
+  targeted production ScraperRuns ID 53 succeeded. 96 tests pass, Clippy clean.
+- Report: reports/parser-fixes-deployment-2026-10-12.md.
+
 Written 2026-09-21 to continue this project in a new chat. Read this first. It records where things
 stand, what was decided, and what is still open. It contains no passwords.
+
+## Box-office news (2026-10-12, deployed)
+
+- User chose free news feeds: Deadline /v/box-office/feed/ and Variety
+  /v/film/box-office/feed/, including Sunday estimates and Mon/Tue follow-ups.
+- Box Office category ID 5615; enabled source IDs 7094 and 7095. Existing hourly
+  --from-db covers seven days; no binary/schema/restart needed.
+- Imported 20 articles, then repeated import with stable IDs/publication dates;
+  zero errors, duplicates or pruning. Health checks pass. No structured totals
+  or estimate/actual flags fabricated from news headlines or weekdays.
+- SQL config seed: sql/boxoffice_news_seed.sql; frontend guide:
+  docs/my-newsfeed-boxoffice-news.md (expanded with frontend queries/cards/states); report: reports/boxoffice-news-deployment-2026-10-12.md.
+
+## Rankings/MLS production deployment (2026-10-11, 09:36 Central)
+
+- Deployed web-scraper:rankings-mls-20261011; five poll feeds and MLS enabled.
+  Production import: 125 ranking entries (23 Big 12), 30 MLS teams; 14 successes,
+  no failures. Nine-source standings total 170 current rows.
+- Scraper and website healthy; MLS visible in existing /standings?sourceId=9.
+  /rankings still needs the separate frontend implementation. No web-app rebuild
+  or SQL restart performed by this deployment. Backup and rollback image retained.
+- Report: reports/rankings-mls-deployment-2026-10-11.md.
+
+## MLS standings (2026-10-11, deployed)
+
+- Added espn-mls to existing standings importer/configuration; ESPN soccer/usa.1
+  provides 30 teams in Eastern/Western conferences. No MLS schedule/result changes.
+- Re-run configure-standings to register disabled, then enable and deploy updated
+  importer. No additional standings schema/permissions. Both are now deployed.
+- Frontend/configuration handoff: docs/my-newsfeed-mls-standings.md.
+
+## National Top 25 rankings (2026-10-11, scraper deployed)
+
+- User chose full national polls with current Big 12 members highlighted.
+- ESPN AP football/men's/women's basketball, USC/IWSOC women's soccer and AVCA
+  women's volleyball endpoints verified. Published dates and labels preserved;
+  basketball currently returns April 2026 polls with 2025–26 season labels.
+- New rankings module and additive SportsRankingSources/Polls/Teams schema;
+  configure-rankings registers disabled, rankings-from-db imports hourly.
+- Atomic corrections preserve IDs, publication snapshots retain history, stale
+  provider responses cannot replace newer polls. Unknown fields stay nullable.
+- Current official Big 12 names map highlights to separate Big12SchoolId;
+  ESPN IDs are never used as conference IDs. Texas/Oklahoma excluded.
+- Verified 119 offline tests plus isolated SQL/live tests; staging contains 125
+  ranking entries, 23 Big 12 spots. CLI dry run: five successes, no failures.
+- Frontend/deployment handoff: docs/my-newsfeed-top25-rankings.md.
+  Report: reports/national-top25-2026-10-11.md.
+
+## Production deployment (2026-10-11, 08:52 Central)
+
+- Today's standings/digital updates deployed as web-scraper:standings-digital-20261011.
+- All eight standings feeds and Movie Insider enabled; hourly scraper healthy.
+  First production import succeeded: 140 current standings rows, 94 movie releases,
+  zero failures/issues. Prior movie IDs/FirstSeenAt and schedule configuration preserved.
+- Existing /events and /movies healthy. My-Newsfeed frontend changes still required;
+  /standings is not implemented in the deployed web app. Data/handoff files ready.
+- Verified SQL backup and rollback image retained; no SQL restart or Git push.
+- Report: reports/standings-digital-deployment-2026-10-11.md.
+
+## Digital release coverage correction (2026-10-11, deployed)
+
+- User wants current week, with digital coverage resembling Movie Insider.
+- New Movie Insider provider confirms detail-page digital dates, scans all calendar
+  pages, uses numeric IDs/digital:first through date or slug changes, and supports
+  owned posters. --configure-movieinsider registers disabled, preserving settings.
+- When To Stream now imports separate VOD dates as digital, plus existing SVOD.
+- Live Oct 5–11 preview: Movie Insider 10 digital releases; When To Stream 5 digital
+  and 9 subscription observations, zero issues. Existing observations retained.
+- No new movie schema required. Movie Insider enabled and scraper deployed; My-Newsfeed
+  should offer provider selection with Movie Insider preferred for Digital/VOD.
+- Frontend/configuration handoff: docs/my-newsfeed-digital-releases.md.
+
+## Sports standings (2026-10-11, scraper deployed)
+
+- Eight independent configurable standings feeds: MLB (2026), WNBA, full NWSL,
+  Big 12 football, men's/women's basketball, soccer and volleyball.
+- `--configure-standings` registers disabled feeds; `--standings-from-db` refreshes
+  enabled sources, integrated into hourly compose and run outcome tracking.
+- Additive `sql/standings.sql`: SportsStandingsSources/SportsStandings, complete
+  atomic snapshots, stable per-season team/group IDs, last-good retention on errors.
+  Restricted runtime grants updated; apply migration/grants before new compose.
+- Official ESPN API and Big 12 tables verified. Soccer discovers the working
+  current-season link; college basketball retains published 2025–26 labels.
+- Validated: 105 offline tests plus isolated SQL and restricted-account live tests;
+  all eight feeds imported 140 current rows and retained IDs on re-import.
+- Separate My-Newsfeed application must add the UI/read models. Scraper deployment
+  and enabling are complete. Full contract: docs/sports-standings.md.
+  Frontend implementation handoff: docs/my-newsfeed-standings-frontend.md.
+
+## Audit remediation (2026-10-10 Central)
+
+- Hardened scraper deployed; 12 findings addressed. Dedicated webscraper_ingest
+  login is non-admin and cannot read results tables; .env is runtime-only,
+  .env.migrations preserves setup credentials outside the hourly container.
+- Ordinary DB connections do no DDL; --initialize-db/configuration uses migration
+  credentials. Additive ScraperRuns health/progress table; deadlines and isolation.
+- Recent existing-ID reconciliation updates finished schedules without importing
+  historical results. MLB remains season=2026. Validated game 401907994 is FINAL.
+- HTTP public/DNS/redirect and size guards, checked retention, publication-date
+  preservation, provider disable semantics, atomic ESPN snapshots and RSS output,
+  fall-back scheduler fix, native SQL TLS backend and clean dependency scan.
+- 99 tests plus four isolated SQL tests pass; full restricted-account live run:
+  64 successes, zero failures. Runtime read-only health check passes.
+- SQL certificate activation completed after user approval: sql2025 restarted,
+  CA-verified scraper connection works and unrelated CA is rejected. My-Newsfeed
+  remains healthy; all thirteen findings now addressed. CA is read-only mounted;
+  profiles use TrustServerCertificateCA, with no runtime certificate bypass.
+- Guide: docs/scraper-security-and-sql-credentials.md;
+  report: reports/audit-remediation-2026-10-10.md.
+
+## MLB schedule (2026-10-09)
+
+- `src/mlb.rs` uses the shared ESPN schedule parser/upsert; league-wide, today-forward
+  Central dates only, excluding completed games. Announced next-season games included.
+- `--configure-mlb` registers a disabled feed: `espn-mlb`, ProviderSchoolId 0;
+  enable for existing hourly `--events-from-db`. Additive configuration `sql/mlb_seed.sql`.
+- Baseball sport, home/away names/logos/IDs, venues, broadcast/game links, UTC starts,
+  TBD dates and stable IDs through reschedules/cancellations. Doubleheaders stay separate;
+  unresolved playoff participants update in place. No results-sync changes.
+- No new schema beyond shared ScheduleStatus. Guide/My-Newsfeed integration contract:
+  `docs/mlb-schedule.md`. Deployed/enabled as feed 4193; 2,916 upcoming MLB rows
+  imported twice with stable identities. User then restricted MLB to remainder
+  of 2026: feed 4193 now uses season=2026; 2,894 backed-up 2027 rows removed,
+  leaving 22 upcoming MLB games. Existing 959 sports events preserved.
+  Report: `reports/mlb-deployment-2026-10-09.md`. Live site renders games but lacks
+  the dedicated MLB selector; web-app changes/deployment remain separate.
 
 ## WNBA schedule (2026-10-09)
 
@@ -17,7 +234,10 @@ stand, what was decided, and what is still open. It contains no passwords.
   UTC confirmed times, venues, links, logos, schedule status and cancellation handling.
 - No extra schema beyond shared ScheduleStatus; seed `sql/wnba_seed.sql`.
   My-Newsfeed query/model/UI handoff: `docs/wnba-schedule.md`; app checkout absent.
-  No production enabling, deployment or scheduler restart performed.
+  Scraper deployed, both ESPN feeds enabled, hourly container recreated; 3 Current
+  and 13 WNBA events imported twice with stable identities. See deployment report
+  `reports/scraper-professional-schedules-deployment-2026-10-09.md`.
+  Live web app still lacks WNBA selector; web-app deployment is separate.
 
 ## Kansas City Current schedule (2026-10-09)
 
@@ -28,7 +248,8 @@ stand, what was decided, and what is still open. It contains no passwords.
 - Additive `sql/nwsl_events.sql`: nullable ScheduleStatus; canonical ESPN IDs,
   locked upserts, Central dates/UTC starts, explicit cancellations retained.
 - Guide/My-Newsfeed query/model contract: `docs/kansas-city-current-schedule.md`.
-  My-Newsfeed source not present here; no production enable/deployment performed.
+  Production feed 4191 enabled and imported; scraper deployed. My-Newsfeed
+  UI deployment remains separate; source is accessible only through host mounts.
 
 ## TVmaze episode tracking (2026-10-09)
 

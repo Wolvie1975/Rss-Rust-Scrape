@@ -11,18 +11,27 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub enum League {
     Nwsl,
     Wnba,
+    Mlb,
+    Championship,
+    Epl,
 }
 impl League {
     pub fn path(self) -> &'static str {
         match self {
             Self::Nwsl => "/apis/site/v2/sports/soccer/usa.nwsl/scoreboard",
             Self::Wnba => "/apis/site/v2/sports/basketball/wnba/scoreboard",
+            Self::Mlb => "/apis/site/v2/sports/baseball/mlb/scoreboard",
+            Self::Championship => "/apis/site/v2/sports/soccer/eng.2/scoreboard",
+            Self::Epl => "/apis/site/v2/sports/soccer/eng.1/scoreboard",
         }
     }
     pub fn provider_key(self) -> &'static str {
         match self {
             Self::Nwsl => "espn-nwsl",
             Self::Wnba => "espn-wnba",
+            Self::Mlb => "espn-mlb",
+            Self::Championship => "espn-championship",
+            Self::Epl => "espn-epl",
         }
     }
     pub fn canonical_key(self, id: i32) -> String {
@@ -31,22 +40,30 @@ impl League {
             match self {
                 Self::Nwsl => "usa.nwsl",
                 Self::Wnba => "wnba",
+                Self::Mlb => "mlb",
+                Self::Championship => "eng.2",
+                Self::Epl => "eng.1",
             }
         )
     }
     fn game_url(self, id: i32) -> String {
         match self {
-            Self::Nwsl => format!("https://www.espn.com/soccer/match/_/gameId/{id}"),
+            Self::Nwsl | Self::Championship | Self::Epl => {
+                format!("https://www.espn.com/soccer/match/_/gameId/{id}")
+            }
             Self::Wnba => format!("https://www.espn.com/wnba/game/_/gameId/{id}"),
+            Self::Mlb => format!("https://www.espn.com/mlb/game/_/gameId/{id}"),
         }
     }
     fn sport(self) -> &'static str {
         match self {
-            Self::Nwsl => "Soccer",
+            Self::Nwsl | Self::Championship | Self::Epl => "Soccer",
             Self::Wnba => "Basketball",
+            Self::Mlb => "Baseball",
         }
     }
 }
+#[derive(Clone)]
 pub struct Fixture {
     pub league: League,
     pub team_name: String,
@@ -89,23 +106,25 @@ pub(crate) fn fetch_from(
     if league == League::Nwsl && filter.is_some_and(|team| team != "20907") {
         return Err("NWSL schedule provider supports Kansas City Current (team=20907)".into());
     }
-    if let Some(filter) = filter {
-        if filter
+    if let Some(filter) = filter
+        && filter
             .split(',')
             .any(|id| id.parse::<u32>().map_or(true, |n| n == 0))
-        {
-            return Err("team must contain comma-separated positive ESPN team IDs".into());
-        }
+    {
+        return Err("team must contain comma-separated positive ESPN team IDs".into());
     }
+    let reconcile_from = today - chrono::Duration::days(7);
     let current = today.year();
     let years = match params.get("season") {
         Some(s) => vec![s.parse::<i32>()?],
-        None => vec![current, current + 1],
+        None => (reconcile_from.year()..=current + 1).collect(),
     };
     let mut games = BTreeMap::new();
     for year in years {
         for month in 1..=12 {
-            if year < today.year() || (year == today.year() && month < today.month()) {
+            if year < reconcile_from.year()
+                || (year == reconcile_from.year() && month < reconcile_from.month())
+            {
                 continue;
             }
             let mut url = base.clone();
@@ -117,8 +136,8 @@ pub(crate) fn fetch_from(
                 .get(url)
                 .header(reqwest::header::USER_AGENT, "My-Newsfeed/1.0")
                 .send()?
-                .error_for_status()?
-                .text()?;
+                .error_for_status()?;
+            let body = crate::http::response_text_limit(body, crate::http::JSON_LIMIT)?;
             for f in parse(&serde_json::from_str(&body)?, league, filter)? {
                 games.insert(f.event.game_id.unwrap(), f);
             }
@@ -126,7 +145,7 @@ pub(crate) fn fetch_from(
     }
     Ok(games
         .into_values()
-        .filter(|f| is_upcoming(f, today))
+        .filter(|f| is_upcoming(f, today) || f.event.event_date >= reconcile_from)
         .collect())
 }
 // Retain explicit future cancellations/postponements for reconciliation, but never results.
@@ -170,14 +189,14 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
         } else {
             None
         };
-        if let Some(filter) = filter {
-            if !competitors.iter().any(|p| {
+        if let Some(filter) = filter
+            && !competitors.iter().any(|p| {
                 p["team"]["id"]
                     .as_str()
                     .is_some_and(|id| filter.split(',').any(|wanted| wanted == id))
-            }) {
-                continue;
-            }
+            })
+        {
+            continue;
         }
         let Some(own) = competitors.iter().find(|p| match team {
             Some(team) => p["team"]["id"].as_str() == Some(team),
@@ -186,7 +205,7 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
             if league == League::Nwsl {
                 continue;
             } else {
-                return Err("WNBA fixture missing home competitor".into());
+                return Err("league fixture missing home competitor".into());
             }
         };
         if competitors.len() != 2 {
@@ -275,7 +294,12 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
             |p: &Value| text(&p["team"], "logo").or_else(|| text(&p["team"]["logos"][0], "href"));
         // ESPN's unconfirmed dates use midnight Eastern (04:00Z in summer,
         // 05:00Z in winter). This is a date placeholder, not a Central-night kickoff.
-        let eastern = instant.with_timezone(&New_York);
+        let placeholder_zone = if matches!(league, League::Championship | League::Epl) {
+            chrono_tz::Europe::London
+        } else {
+            New_York
+        };
+        let eastern = instant.with_timezone(&placeholder_zone);
         let event_date =
             if !time_valid && eastern.hour() == 0 && eastern.minute() == 0 && eastern.second() == 0
             {
@@ -334,6 +358,7 @@ mod upcoming_tests {
         for (root, league) in [
             (crate::nwsl::tests::sample(), League::Nwsl),
             (crate::wnba::tests::sample(), League::Wnba),
+            (crate::mlb::tests::sample(), League::Mlb),
         ] {
             let mut f = parse(&root, league, None).unwrap().remove(0);
             f.completed = false;
@@ -377,7 +402,7 @@ mod request_window_tests {
             .build()
             .unwrap();
         let today = NaiveDate::from_ymd_opt(2026, 10, 9).unwrap();
-        for league in [League::Wnba, League::Nwsl] {
+        for league in [League::Wnba, League::Nwsl, League::Mlb] {
             assert!(
                 fetch_from(
                     &client,
@@ -409,6 +434,7 @@ mod tbd_date_tests {
         ] {
             for (mut root, league) in [
                 (crate::wnba::tests::sample(), League::Wnba),
+                (crate::mlb::tests::sample(), League::Mlb),
                 (crate::nwsl::tests::sample(), League::Nwsl),
             ] {
                 let c = &mut root["events"][0]["competitions"][0];

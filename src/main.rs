@@ -1,17 +1,24 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-mod db;
-mod tvmaze;
 mod big12;
-mod nwsl;
+mod championship;
+mod db;
+mod epl;
 mod espn_schedule;
-mod wnba;
-mod movies;
-mod movie_metadata;
-mod posters;
 mod events;
 mod feed;
+mod http;
+mod metrics;
+mod mlb;
+mod movie_metadata;
+mod movies;
+mod nwsl;
+mod posters;
+mod rankings;
+mod standings;
+mod tvmaze;
+mod wnba;
 mod youtube;
 
 use chrono::{DateTime, Utc};
@@ -53,11 +60,13 @@ fn image_url(doc: &Html, page_url: &str) -> Option<String> {
             (!href.is_empty()).then(|| href.to_string())
         })?;
     let resolved = url::Url::parse(page_url).ok()?.join(&raw).ok()?;
-    matches!(resolved.scheme(), "http" | "https").then(|| resolved.to_string())
+    crate::http::public_url(resolved.as_str())
+        .is_ok()
+        .then(|| resolved.to_string())
 }
 
 fn scrape(client: &Client, url: &str) -> Result<PageMeta, Box<dyn std::error::Error>> {
-    let body = client.get(url).send()?.error_for_status()?.text()?;
+    let body = http::get_text(client, url)?;
     let doc = Html::parse_document(&body);
 
     let title = meta_content(&doc, r#"meta[property="og:title"]"#)
@@ -79,6 +88,7 @@ fn scrape(client: &Client, url: &str) -> Result<PageMeta, Box<dyn std::error::Er
                 .and_then(|el| el.value().attr("href").map(str::to_string))
         })
         .and_then(|href| url::Url::parse(url).ok()?.join(&href).ok())
+        .filter(|u| http::public_url(u.as_str()).is_ok())
         .map(|u| u.to_string())
         .unwrap_or_else(|| url.to_string());
 
@@ -101,14 +111,17 @@ fn scrape(client: &Client, url: &str) -> Result<PageMeta, Box<dyn std::error::Er
 /// For feed entries that came without an image, tries each article page's own `og:image`.
 /// An image several articles share is a site-wide logo, not the article's, so it is dropped.
 fn fill_missing_images(client: &Client, pages: &mut [PageMeta]) {
+    let started = std::time::Instant::now();
     let mut found: Vec<(usize, String)> = Vec::new();
-    for (i, p) in pages.iter().enumerate().filter(|(_, p)| p.image_url.is_none()) {
-        let Ok(body) = client
-            .get(&p.url)
-            .send()
-            .and_then(|r| r.error_for_status())
-            .and_then(|r| r.text())
-        else {
+    for (i, p) in pages
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| p.image_url.is_none())
+    {
+        if started.elapsed() > Duration::from_secs(30) {
+            break;
+        }
+        let Ok(body) = http::get_text(client, &p.url) else {
             continue;
         };
         if let Some(img) = image_url(&Html::parse_document(&body), &p.url) {
@@ -142,6 +155,12 @@ fn scrape_source(
 #[derive(Parser)]
 #[command(version, about)]
 struct Cli {
+    /// Read-only collector health/progress check for the service watchdog.
+    #[arg(long, conflicts_with_all=["initialize_db","every_hours"])]
+    health_check: bool,
+    /// Explicitly initialize/migrate schema using deployment credentials.
+    #[arg(long,conflicts_with_all=["dry_run","every_hours"])]
+    initialize_db: bool,
     /// Apply the TV schema and seed the five explicit provider IDs without scraping.
     #[arg(long,conflicts_with_all=["dry_run","every_hours"])]
     configure_tv: bool,
@@ -149,14 +168,40 @@ struct Cli {
     #[arg(long)]
     tv_from_db: bool,
     /// Ignore the TV request cache for an explicit validation/manual refresh.
-    #[arg(long,requires="tv_from_db",conflicts_with="every_hours")]
+    #[arg(long, requires = "tv_from_db", conflicts_with = "every_hours")]
     tv_force_refresh: bool,
     /// Target SQL database; use a separate database for staging validation.
-    #[arg(long, default_value="WebScraper")]
+    #[arg(long, default_value = "WebScraper")]
     database: String,
+    /// Register the five national Top 25 polls disabled.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_rankings: bool,
+    /// Import full national rankings and identify current Big 12 members.
+    #[arg(long)]
+    rankings_from_db: bool,
+    /// Register the Movie Insider digital release source disabled.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_movieinsider: bool,
+    /// Register professional and Big 12 standings sources disabled.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_standings: bool,
+    /// Refresh enabled standings sources (implies --db).
+    #[arg(long)]
+    standings_from_db: bool,
+    /// Register the MLB league schedule disabled; preserve existing settings.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_mlb: bool,
     /// Register the WNBA league schedule disabled; preserve existing settings.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_wnba: bool,
+
+    /// Register EFL Championship fixtures/results and standings disabled.
+    #[arg(long)]
+    configure_championship: bool,
+
+    /// Register Premier League fixtures and standings disabled.
+    #[arg(long)]
+    configure_epl: bool,
     /// Register Kansas City Current schedule feed disabled; preserve existing settings.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_nwsl: bool,
@@ -182,7 +227,11 @@ struct Cli {
     link: String,
 
     /// Feed description
-    #[arg(short, long, default_value = "Feed generated from scraped page metadata")]
+    #[arg(
+        short,
+        long,
+        default_value = "Feed generated from scraped page metadata"
+    )]
     description: String,
 
     /// Write the feed to FILE instead of stdout
@@ -208,12 +257,12 @@ struct Cli {
 
     /// Keep at most N pages per source: each run saves only a source's N newest entries, then
     /// deletes older rows for that source from the Pages table (undated rows go first)
-    #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
+    #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..=i32::MAX as i64))]
     per_source: Option<u32>,
 
     /// Keep only the newest N pages: each run saves at most the N newest scraped pages, then
     /// deletes the oldest rows from the Pages table until N remain (undated rows go first)
-    #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
+    #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..=i32::MAX as i64))]
     keep: Option<u32>,
 
     /// Run forever, scraping every N hours aligned to midnight US Central time (N must divide 24;
@@ -239,7 +288,7 @@ struct Cli {
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     movie_posters: bool,
     /// Retry cached missing posters now; valid existing posters are preserved.
-    #[arg(long, requires="movie_posters")]
+    #[arg(long, requires = "movie_posters")]
     retry_missing_posters: bool,
 
     /// Ingest this week's U.S. movie releases from public calendars (implies --db).
@@ -247,7 +296,7 @@ struct Cli {
     movies: bool,
 
     /// How many of each YouTube channel's newest videos to keep
-    #[arg(long, value_name = "N", default_value_t = 5, value_parser = clap::value_parser!(u32).range(1..))]
+    #[arg(long, value_name = "N", default_value_t = 10, value_parser = clap::value_parser!(u32).range(1..=i32::MAX as i64))]
     youtube_latest: u32,
 
     /// Also ingest every calendar feed listed in the SportsEventsType table (implies --db)
@@ -274,15 +323,103 @@ fn read_urls_file(path: &Path) -> std::io::Result<Vec<String>> {
 
 /// One full scrape: collect sources, scrape, filter, save, prune, and write the RSS feed.
 fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    let use_db = cli.configure_wnba || cli.configure_nwsl || cli.configure_tv || cli.tv_from_db || cli.movie_posters || cli.configure_big12 || cli.enable_big12 || cli.movies || cli.db || cli.from_db || cli.save_sources || !cli.events_feed.is_empty() || cli.events_from_db || !cli.youtube_feed.is_empty() || cli.youtube_from_db;
+    let use_db = cli.health_check
+        || cli.initialize_db
+        || cli.configure_rankings
+        || cli.rankings_from_db
+        || cli.configure_movieinsider
+        || cli.configure_standings
+        || cli.standings_from_db
+        || cli.configure_mlb
+        || cli.configure_wnba
+        || cli.configure_championship
+        || cli.configure_epl
+        || cli.configure_nwsl
+        || cli.configure_tv
+        || cli.tv_from_db
+        || cli.movie_posters
+        || cli.configure_big12
+        || cli.enable_big12
+        || cli.movies
+        || cli.db
+        || cli.from_db
+        || cli.save_sources
+        || !cli.events_feed.is_empty()
+        || cli.events_from_db
+        || !cli.youtube_feed.is_empty()
+        || cli.youtube_from_db;
     let mut db = if use_db {
-        let ado = std::env::var("MSSQL_CONNECTION_STRING")
-            .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
-        Some(db::Db::open_named(&ado, &cli.database)?)
+        let setup = cli.configure_rankings
+            || cli.configure_movieinsider
+            || cli.configure_standings
+            || cli.initialize_db
+            || cli.configure_mlb
+            || cli.configure_wnba
+            || cli.configure_championship
+            || cli.configure_epl
+            || cli.configure_nwsl
+            || cli.configure_tv
+            || cli.configure_big12
+            || cli.enable_big12;
+        let ado = if setup {
+            std::env::var("MSSQL_MIGRATION_CONNECTION_STRING")
+                .or_else(|_| std::env::var("MSSQL_CONNECTION_STRING"))
+        } else {
+            std::env::var("MSSQL_CONNECTION_STRING")
+        }
+        .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
+        Some(if setup {
+            db::Db::open_named(&ado, &cli.database)?
+        } else {
+            db::Db::connect_named(&ado, &cli.database)?
+        })
     } else {
         None
     };
 
+    if cli.health_check {
+        db.as_mut().unwrap().check_health()?;
+        return Ok(());
+    }
+    if cli.initialize_db {
+        db.as_mut().unwrap().setup_tv(false)?;
+        eprintln!("database schema initialized");
+        return Ok(());
+    }
+    if cli.configure_rankings {
+        db.as_mut().unwrap().configure_rankings()?;
+        eprintln!(
+            "National Top 25 sources registered disabled; enable SportsRankingSources to import"
+        );
+        return Ok(());
+    }
+    if cli.configure_movieinsider {
+        db.as_mut().unwrap().configure_movieinsider()?;
+        eprintln!(
+            "Movie Insider digital source registered disabled; enable MovieReleaseSources to import"
+        );
+        return Ok(());
+    }
+    if cli.configure_standings {
+        db.as_mut().unwrap().configure_standings()?;
+        eprintln!("Standings sources registered disabled; enable SportsStandingsSources to import");
+        return Ok(());
+    }
+    if cli.configure_mlb {
+        db.as_mut().unwrap().configure_mlb()?;
+        eprintln!("MLB schedule registered; enable it in SportsEventsType to import");
+        return Ok(());
+    }
+    if cli.configure_epl {
+        db.as_mut().unwrap().configure_epl()?;
+        eprintln!("Premier League sources registered disabled");
+        return Ok(());
+    }
+    if cli.configure_championship {
+        db.as_mut().unwrap().configure_championship()?;
+        eprintln!("EFL Championship sources registered disabled");
+        return Ok(());
+    }
     if cli.configure_wnba {
         db.as_mut().unwrap().configure_wnba()?;
         eprintln!("WNBA schedule registered; enable it in SportsEventsType to import");
@@ -290,311 +427,508 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
     if cli.configure_nwsl {
         db.as_mut().unwrap().configure_nwsl()?;
-        eprintln!("Kansas City Current schedule registered; enable it in SportsEventsType to import");
+        eprintln!(
+            "Kansas City Current schedule registered; enable it in SportsEventsType to import"
+        );
         return Ok(());
     }
-    if cli.configure_tv || cli.tv_from_db {db.as_mut().unwrap().setup_tv(cli.configure_tv)?;}
-    if cli.configure_tv {eprintln!("TVmaze schema ready; five tracking rows seeded without changing existing Enabled settings");return Ok(());}
+    if cli.configure_tv {
+        db.as_mut().unwrap().setup_tv(true)?;
+    }
+    if cli.configure_tv {
+        eprintln!(
+            "TVmaze schema ready; five tracking rows seeded without changing existing Enabled settings"
+        );
+        return Ok(());
+    }
     if cli.configure_big12 || cli.enable_big12 {
-        let client=Client::builder().timeout(Duration::from_secs(20)).user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)").build()?;
-        let members=big12::current_members(&client)?;
-        db.as_mut().unwrap().configure_big12(&members,cli.enable_big12)?;
-        eprintln!("configured {} current Big 12 members; new feeds {}",members.len(),if cli.enable_big12 {"enabled"} else {"disabled"});
+        let client = http::client_builder()
+            .timeout(Duration::from_secs(20))
+            .user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)")
+            .build()?;
+        let members = big12::current_members(&client)?;
+        db.as_mut()
+            .unwrap()
+            .configure_big12(&members, cli.enable_big12)?;
+        eprintln!(
+            "configured {} current Big 12 members; new feeds {}",
+            members.len(),
+            if cli.enable_big12 {
+                "enabled"
+            } else {
+                "disabled"
+            }
+        );
         return Ok(());
     }
 
     if cli.movie_posters {
-        if cli.retry_missing_posters {db.as_mut().unwrap().retry_missing_posters()?;}
-        let report=posters::enrich(db.as_mut().unwrap(),&std::collections::BTreeMap::new())?;
-        println!("{}",serde_json::to_string_pretty(&report)?);
+        if cli.retry_missing_posters {
+            db.as_mut().unwrap().retry_missing_posters()?;
+        }
+        let report = posters::enrich(db.as_mut().unwrap(), &std::collections::BTreeMap::new())?;
+        println!("{}", serde_json::to_string_pretty(&report)?);
         return Ok(());
     }
 
-    let mut urls = cli.urls.clone();
-    if let Some(path) = &cli.urls_file {
-        urls.extend(read_urls_file(path)?);
-    }
-    if cli.save_sources {
-        let added = db.as_mut().unwrap().add_sources(&urls)?;
-        eprintln!("added {added} new sources ({} already present)", urls.len() - added);
-    }
-    if cli.from_db {
-        for url in db.as_mut().unwrap().enabled_sources()? {
-            if !urls.contains(&url) {
-                urls.push(url);
-            }
+    let run_id = if !cli.dry_run {
+        db.as_mut().map(|d| d.start_run()).transpose()?
+    } else {
+        None
+    };
+    let mut failures: Vec<String> = Vec::new();
+    let mut succeeded_sources = 0usize;
+    let _run_timer = metrics::Stage::new("run");
+    let mut fetched_news = Vec::new();
+    let outcome: Result<(), Box<dyn std::error::Error>> = (|| {
+        let mut urls = cli.urls.clone();
+        if let Some(path) = &cli.urls_file {
+            urls.extend(read_urls_file(path)?);
         }
-    }
-    if !cli.tv_from_db && !cli.movies && urls.is_empty() && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
-        Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, --from-db, --events-feed, --events-from-db, --youtube-feed, or --youtube-from-db").exit();
-    }
-
-    let client = Client::builder()
-        .user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)")
-        .timeout(Duration::from_secs(15))
-        .build()?;
-
-    let mut pages = Vec::new();
-    for url in &urls {
-        let result = scrape_source(&client, url);
-        if let Some(db) = db.as_mut().filter(|_| !cli.dry_run) {
-            let err = result.as_ref().err().map(|e| e.to_string());
-            db.record_result(url, err.as_deref())?;
-        }
-        match result {
-            Ok((mut found, how)) => {
-                let total = found.len();
-                if let Some(cap) = cli.per_source {
-                    found.sort_by(|a, b| b.published.cmp(&a.published));
-                    found.truncate(cap as usize);
-                }
-                if how == "feed" {
-                    let missing = found.iter().filter(|p| p.image_url.is_none()).count();
-                    fill_missing_images(&client, &mut found);
-                    let still = found.iter().filter(|p| p.image_url.is_none()).count();
-                    if missing > 0 {
-                        eprintln!("{url}: found {} of {missing} missing images on article pages", missing - still);
-                    }
-                }
-                eprintln!("{url}: {total} pages via {how}, using {}", found.len());
-                pages.append(&mut found);
-            }
-            Err(e) => eprintln!("skipping {url}: {e}"),
-        }
-    }
-
-    if let Some(days) = cli.last_days {
-        let cutoff = (Utc::now() - chrono::Duration::days(days.into()))
-            .date_naive()
-            .and_time(chrono::NaiveTime::MIN)
-            .and_utc();
-        let before = pages.len();
-        pages.retain(|p| match p.published {
-            Some(d) => d >= cutoff,
-            None => !cli.require_date,
-        });
-        eprintln!(
-            "date filter (published on/after {cutoff}): kept {}, dropped {}",
-            pages.len(),
-            before - pages.len()
-        );
-    }
-
-    // Newest first; undated pages sort last.
-    pages.sort_by(|a, b| b.published.cmp(&a.published));
-    if let Some(keep) = cli.keep {
-        pages.truncate(keep as usize);
-    }
-
-    if cli.dry_run {
-        eprintln!("dry run: nothing written to the database. {} pages would be saved:", pages.len());
-        for p in &pages {
+        if cli.save_sources {
+            let added = db.as_mut().unwrap().add_sources(&urls)?;
             eprintln!(
-                "  - {}\n    published: {}\n    image: {}\n    title: {}",
-                p.url,
-                p.published.map_or("(none)".into(), |d| d.to_rfc3339()),
-                p.image_url.as_deref().unwrap_or("(none)"),
-                p.title
+                "added {added} new sources ({} already present)",
+                urls.len() - added
             );
         }
-    } else if let Some(db) = db.as_mut().filter(|_| !urls.is_empty()) {
-        let n = db.save_pages(&pages)?;
-        eprintln!("saved {n} pages to SQL Server");
-        if let Some(cap) = cli.per_source {
-            let pruned = db.prune_per_source(cap)?;
-            eprintln!("pruned {pruned} old pages (keeping the newest {cap} per source)");
+        if cli.from_db {
+            for url in db.as_mut().unwrap().enabled_sources()? {
+                if !urls.contains(&url) {
+                    urls.push(url);
+                }
+            }
         }
-        if let Some(keep) = cli.keep {
-            let pruned = db.prune_pages(keep)?;
-            eprintln!("pruned {pruned} old pages (keeping the newest {keep})");
+        if !cli.tv_from_db
+            && !cli.movies
+            && urls.is_empty()
+            && cli.events_feed.is_empty()
+            && !cli.events_from_db
+            && !cli.standings_from_db
+            && !cli.rankings_from_db
+            && cli.youtube_feed.is_empty()
+            && !cli.youtube_from_db
+        {
+            Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, --from-db, --events-feed, --events-from-db, --standings-from-db, --rankings-from-db, --youtube-feed, or --youtube-from-db").exit();
         }
-    }
 
-    // Calendar feeds from --events-feed and from the lookup table, each with its known type row
-    // (if any) and school name. A flagged URL that is already in the table reuses that row.
-    let mut event_feeds: Vec<(Option<i32>, String, Option<String>)> = Vec::new();
-    if !cli.events_feed.is_empty() || cli.events_from_db {
-        let known = db.as_mut().unwrap().sports_event_feeds()?;
-        for url in &cli.events_feed {
-            match known.iter().find(|f| f.url == *url) {
-                Some(f) => event_feeds.push((Some(f.id), url.clone(), f.school.clone())),
-                None => event_feeds.push((None, url.clone(), None)),
-            }
-        }
-        if cli.events_from_db {
-            for f in known {
-                if !event_feeds.iter().any(|(_, u, _)| *u == f.url) {
-                    event_feeds.push((Some(f.id), f.url, f.school));
-                }
-            }
-        }
-    }
-    let big12_feeds: Vec<_> = event_feeds
-        .iter()
-        .filter(|(_, url, _)| big12::school_id(url).is_some())
-        .filter_map(|(id, url, school)| {
-            id.map(|id| db::EventFeed {
-                id,
-                url: url.clone(),
-                school: school.clone(),
-            })
-        })
-        .collect();
-    if !big12_feeds.is_empty() {
-        if !cli.dry_run {
-            for f in &big12_feeds {
-                db.as_mut().unwrap().event_attempt(f.id)?;
-            }
-        }
-        match big12::collect(&client, &big12_feeds) {
-            Ok(results) => {
-                use std::collections::BTreeMap;
-                let mut counts: BTreeMap<i32, (i32, i32, Vec<String>, bool)> = results
-                    .iter()
-                    .map(|r| (r.id, (0, 0, r.warnings.clone(), r.error.is_none())))
-                    .collect();
-                for r in &results {
-                    if let Some(e) = &r.error {
-                        counts.get_mut(&r.id).unwrap().2.push(e.clone());
-                    }
-                }
-                // New events choose a home perspective first; existing primary IDs never flip.
-                let mut observations: Vec<_> = results
-                    .iter()
-                    .flat_map(|r| r.observations.iter().map(move |o| (r.id, o)))
-                    .collect();
-                observations.sort_by_key(|(feed, o)| {
-                    (
-                        o["event"]["is_away"] == true,
-                        *feed,
-                        o["provider_game_id"].as_i64().unwrap_or(0),
-                    )
-                });
-                for (index, (feed, observation)) in observations.into_iter().enumerate() {
-                    if index % 100 == 0 {
-                        eprintln!("Big 12 source observation {}", index + 1);
-                    }
-                    let (saved, quarantined, errors, success) = counts.get_mut(&feed).unwrap();
-                    if let Some(issue) = observation["issue"].as_str() {
-                        errors.push(format!("{}: {issue}", observation["provider_game_id"]));
-                    }
-                    if cli.dry_run {
-                        if observation["issue"].is_null() {
-                            *saved += 1;
-                        } else {
-                            *quarantined += 1;
-                        }
-                    } else {
-                        match db
-                            .as_mut()
-                            .unwrap()
-                            .save_big12_observation(feed, observation)
-                        {
-                            Ok(outcome) if outcome == "saved" => *saved += 1,
-                            Ok(outcome) => {
-                                *quarantined += 1;
-                                if observation["issue"].is_null() {
-                                    errors.push(format!(
-                                        "{}: {outcome}",
-                                        observation["provider_game_id"]
-                                    ));
-                                }
-                            }
-                            Err(e) => {
-                                *quarantined += 1;
-                                *success = false;
-                                errors.push(e.to_string());
-                            }
-                        }
-                    }
-                }
-                for result in results {
-                    let (saved, quarantined, errors, success) = counts.remove(&result.id).unwrap();
-                    eprintln!(
-                        "Big 12 {}: {saved} source observations saved, {quarantined} quarantined, {} issues{}",
-                        result.school,
-                        errors.len(),
-                        if cli.dry_run { " (dry run)" } else { "" }
-                    );
+        let client = http::client_builder()
+            .user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)")
+            .timeout(Duration::from_secs(15))
+            .build()?;
+
+        if cli.rankings_from_db {
+            let _stage_timer = metrics::Stage::new("rankings");
+            let client = http::client_builder()
+                .user_agent("My-Newsfeed/1.0")
+                .timeout(Duration::from_secs(30))
+                .build()?;
+            let sources = db.as_mut().unwrap().ranking_sources()?;
+            if !sources.is_empty() {
+                let members = rankings::current_members(&client);
+                for source in sources {
                     if !cli.dry_run {
-                        let error = (!errors.is_empty()).then(|| errors.join("; "));
-                        db.as_mut().unwrap().event_result(
-                            result.id,
-                            success,
-                            result.observations.len() as i32,
-                            errors.len() as i32,
-                            error.as_deref(),
-                        )?;
+                        db.as_mut().unwrap().ranking_attempt(source.id)?;
                     }
-                }
-            }
-            Err(e) => {
-                eprintln!("Big 12 collection failed: {e}");
-                if !cli.dry_run {
-                    for f in &big12_feeds {
-                        db.as_mut().unwrap().event_result(
-                            f.id,
-                            false,
-                            0,
-                            1,
-                            Some(&e.to_string()),
-                        )?;
+                    let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                        let members = members
+                            .as_ref()
+                            .map_err(|e| format!("Big 12 membership: {e}"))?;
+                        let poll = rankings::fetch(&client, &source, members)?;
+                        if !cli.dry_run {
+                            db.as_mut().unwrap().save_ranking(&source, &poll)?;
+                        }
+                        eprintln!(
+                            "{} {}: {} ranked teams, {} Big 12, published {}{}",
+                            source.sport,
+                            poll.name,
+                            poll.teams.len(),
+                            poll.teams
+                                .iter()
+                                .filter(|t| t.big12_school_id.is_some())
+                                .count(),
+                            poll.published,
+                            if cli.dry_run { " (dry run)" } else { "" }
+                        );
+                        Ok(())
+                    })();
+                    if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
+                        d.run_heartbeat(id)?;
+                    }
+                    match result {
+                        Ok(()) => succeeded_sources += 1,
+                        Err(e) => {
+                            let message = format!("{} rankings: {e}", source.sport);
+                            eprintln!("{message}");
+                            if !cli.dry_run
+                                && let Err(e) =
+                                    db.as_mut().unwrap().ranking_error(source.id, &message)
+                            {
+                                failures.push(format!("ranking error tracking: {e}"));
+                            }
+                            failures.push(message);
+                        }
                     }
                 }
             }
         }
-    }
-    for (known_id, feed_url, school) in &event_feeds {
-        if big12::is_provider_feed(feed_url) {
-            if known_id.is_none() {eprintln!("{feed_url}: register and enable this school using --configure-big12 / --enable-big12");}
-            else if big12::school_id(feed_url).is_none() {eprintln!("{feed_url}: conference-wide RSS is not supported for ingestion; use registered school feeds");}
-            continue;
-        }
-        if !cli.dry_run {if let Some(id)=known_id {db.as_mut().unwrap().event_attempt(*id)?;}}
 
-        if nwsl::is_feed(feed_url) || wnba::is_feed(feed_url) {
-            let is_wnba = wnba::is_feed(feed_url);
-            let label = if is_wnba { "WNBA" } else { "NWSL" };
-            let fetched = if is_wnba {
-                wnba::fetch(&client, feed_url)
-            } else {
-                nwsl::fetch(&client, feed_url)
-            };
-            match fetched {
-                Ok(fixtures) => {
+        if cli.standings_from_db {
+            let _stage_timer = metrics::Stage::new("standings");
+            let client = http::client_builder()
+                .user_agent("My-Newsfeed/1.0")
+                .timeout(Duration::from_secs(30))
+                .build()?;
+            for source in db.as_mut().unwrap().standings_sources()? {
+                if !cli.dry_run {
+                    db.as_mut().unwrap().standings_attempt(source.id)?;
+                }
+                let result = standings::fetch(&client, &source).and_then(|snapshot| {
+                    if !cli.dry_run {
+                        db.as_mut().unwrap().save_standings(&source, &snapshot)?;
+                    }
                     eprintln!(
-                        "{feed_url}: {} {label} fixtures{}",
-                        fixtures.len(),
+                        "{} {} standings: {} teams, season {}{}",
+                        source.provider,
+                        source.sport,
+                        snapshot.entries.len(),
+                        snapshot.season,
                         if cli.dry_run { " (dry run)" } else { "" }
                     );
-                    if cli.dry_run {
-                        for f in &fixtures {
+                    Ok(())
+                });
+                if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
+                    d.run_heartbeat(id)?;
+                }
+                match result {
+                    Ok(()) => succeeded_sources += 1,
+                    Err(e) => {
+                        let message =
+                            format!("{} {} standings: {e}", source.provider, source.sport);
+                        eprintln!("{message}");
+                        if !cli.dry_run
+                            && let Err(e) =
+                                db.as_mut().unwrap().standings_error(source.id, &message)
+                        {
+                            failures.push(format!("standings error tracking: {e}"));
+                        }
+                        failures.push(message);
+                    }
+                }
+            }
+        }
+
+        let mut pages = Vec::new();
+        let news_timer = metrics::Stage::new("news");
+        for url in &urls {
+            let result = scrape_source(&client, url);
+            if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
+                d.run_heartbeat(id)?;
+            }
+            match result {
+                Ok((mut found, how)) => {
+                    fetched_news.push(url.clone());
+                    if cli.dry_run || db.is_none() {
+                        succeeded_sources += 1;
+                    }
+                    let total = found.len();
+                    if let Some(cap) = cli.per_source {
+                        found.sort_by_key(|p| std::cmp::Reverse(p.published));
+                        found.truncate(cap as usize);
+                    }
+                    if how == "feed" {
+                        let missing = found.iter().filter(|p| p.image_url.is_none()).count();
+                        fill_missing_images(&client, &mut found);
+                        let still = found.iter().filter(|p| p.image_url.is_none()).count();
+                        if missing > 0 {
                             eprintln!(
-                                "{} | {} | {:?} | {}",
-                                f.event.event_date, f.event.title, f.event.starts_at, f.status
+                                "{url}: found {} of {missing} missing images on article pages",
+                                missing - still
                             );
                         }
-                    } else {
-                        let db = db.as_mut().unwrap();
-                        let id = match known_id {
-                            Some(id) => *id,
-                            None => db.ensure_sports_events_type(
-                                feed_url,
-                                if is_wnba {
-                                    "WNBA"
-                                } else {
-                                    "Kansas City Current"
-                                },
-                            )?,
-                        };
-                        let n = db.save_espn_schedule(id, &fixtures)?;
-                        db.event_result(id, true, n as i32, 0, None)?;
+                    }
+                    eprintln!("{url}: {total} pages via {how}, using {}", found.len());
+                    pages.append(&mut found);
+                }
+                Err(e) => {
+                    eprintln!("skipping {url}: {e}");
+                    failures.push(format!("news {url}: {e}"));
+                    if let Some(d) = db.as_mut().filter(|_| !cli.dry_run) {
+                        d.record_result(url, Some(&e.to_string()))?;
+                    }
+                }
+            }
+        }
+
+        if let Some(days) = cli.last_days {
+            let cutoff = (Utc::now() - chrono::Duration::days(days.into()))
+                .date_naive()
+                .and_time(chrono::NaiveTime::MIN)
+                .and_utc();
+            let before = pages.len();
+            pages.retain(|p| match p.published {
+                Some(d) => d >= cutoff,
+                None => !cli.require_date,
+            });
+            eprintln!(
+                "date filter (published on/after {cutoff}): kept {}, dropped {}",
+                pages.len(),
+                before - pages.len()
+            );
+        }
+
+        // Newest first; undated pages sort last.
+        pages.sort_by_key(|p| std::cmp::Reverse(p.published));
+        if let Some(keep) = cli.keep {
+            pages.truncate(keep as usize);
+        }
+
+        if cli.dry_run {
+            eprintln!(
+                "dry run: nothing written to the database. {} pages would be saved:",
+                pages.len()
+            );
+            for p in &pages {
+                eprintln!(
+                    "  - {}\n    published: {}\n    image: {}\n    title: {}",
+                    p.url,
+                    p.published.map_or("(none)".into(), |d| d.to_rfc3339()),
+                    p.image_url.as_deref().unwrap_or("(none)"),
+                    p.title
+                );
+            }
+        } else if let Some(db) = db.as_mut().filter(|_| !urls.is_empty()) {
+            let mut n = 0;
+            for url in &urls {
+                let source_pages: Vec<_> = pages.iter().filter(|p| p.source == *url).collect();
+                if !fetched_news.contains(url) {
+                    continue;
+                }
+                match db.save_page_refs(&source_pages) {
+                    Ok(count) => {
+                        n += count;
+                        succeeded_sources += 1;
+                        db.record_result(url, None)?;
+                    }
+                    Err(e) => {
+                        failures.push(format!("save news {url}: {e}"));
+                        let _ = db.record_result(url, Some(&e.to_string()));
+                    }
+                }
+                if let Some(id) = run_id {
+                    db.run_heartbeat(id)?;
+                }
+            }
+            eprintln!("saved {n} pages to SQL Server");
+            if let Some(cap) = cli.per_source {
+                let pruned = db.prune_per_source(cap)?;
+                eprintln!("pruned {pruned} old pages (keeping the newest {cap} per source)");
+            }
+            if let Some(keep) = cli.keep {
+                let pruned = db.prune_pages(keep)?;
+                eprintln!("pruned {pruned} old pages (keeping the newest {keep})");
+            }
+        }
+
+        // Calendar feeds from --events-feed and from the lookup table, each with its known type row
+        // (if any) and school name. A flagged URL that is already in the table reuses that row.
+        drop(news_timer);
+        let mut event_feeds: Vec<(Option<i32>, String, Option<String>)> = Vec::new();
+        if !cli.events_feed.is_empty() || cli.events_from_db {
+            let known = db.as_mut().unwrap().sports_event_feeds()?;
+            for url in &cli.events_feed {
+                match known.iter().find(|f| f.url == *url) {
+                    Some(f) => event_feeds.push((Some(f.id), url.clone(), f.school.clone())),
+                    None => event_feeds.push((None, url.clone(), None)),
+                }
+            }
+            if cli.events_from_db {
+                for f in known {
+                    if !event_feeds.iter().any(|(_, u, _)| *u == f.url) {
+                        event_feeds.push((Some(f.id), f.url, f.school));
+                    }
+                }
+            }
+        }
+        if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
+            d.run_heartbeat(id)?;
+        }
+        let big12_feeds: Vec<_> = event_feeds
+            .iter()
+            .filter(|(_, url, _)| big12::school_id(url).is_some())
+            .filter_map(|(id, url, school)| {
+                id.map(|id| db::EventFeed {
+                    id,
+                    url: url.clone(),
+                    school: school.clone(),
+                })
+            })
+            .collect();
+        if !big12_feeds.is_empty() {
+            let _stage_timer = metrics::Stage::new("big12_schedules");
+            if !cli.dry_run {
+                for f in &big12_feeds {
+                    db.as_mut().unwrap().event_attempt(f.id)?;
+                }
+            }
+            let collection = {
+                let _timer = metrics::Stage::new("big12_http");
+                big12::collect(&client, &big12_feeds)
+            };
+            match collection {
+                Ok(results) => {
+                    let _sql_timer = metrics::Stage::new("big12_sql");
+                    use std::collections::BTreeMap;
+                    let mut counts: BTreeMap<i32, (i32, i32, Vec<String>, bool)> = results
+                        .iter()
+                        .map(|r| (r.id, (0, 0, r.warnings.clone(), r.error.is_none())))
+                        .collect();
+                    for r in &results {
+                        if let Some(e) = &r.error {
+                            counts.get_mut(&r.id).unwrap().2.push(e.clone());
+                        }
+                    }
+                    // New events choose a home perspective first; existing primary IDs never flip.
+                    let mut observations: Vec<_> = results
+                        .iter()
+                        .flat_map(|r| r.observations.iter().map(move |o| (r.id, o)))
+                        .collect();
+                    observations.sort_by_key(|(feed, o)| {
+                        (
+                            o["event"]["is_away"] == true,
+                            *feed,
+                            o["provider_game_id"].as_i64().unwrap_or(0),
+                        )
+                    });
+                    for (index, (feed, observation)) in observations.into_iter().enumerate() {
+                        if index % 100 == 0 {
+                            eprintln!("Big 12 source observation {}", index + 1);
+                        }
+                        let (saved, quarantined, errors, success) = counts.get_mut(&feed).unwrap();
+                        if let Some(issue) = observation["issue"].as_str() {
+                            errors.push(format!("{}: {issue}", observation["provider_game_id"]));
+                        }
+                        if cli.dry_run {
+                            if observation["issue"].is_null() {
+                                *saved += 1;
+                            } else {
+                                *quarantined += 1;
+                            }
+                        } else {
+                            match db
+                                .as_mut()
+                                .unwrap()
+                                .save_big12_observation(feed, observation)
+                            {
+                                Ok(outcome) if outcome == "saved" => *saved += 1,
+                                Ok(outcome) => {
+                                    *quarantined += 1;
+                                    if observation["issue"].is_null() {
+                                        errors.push(format!(
+                                            "{}: {outcome}",
+                                            observation["provider_game_id"]
+                                        ));
+                                    }
+                                }
+                                Err(e) => {
+                                    *quarantined += 1;
+                                    *success = false;
+                                    errors.push(e.to_string());
+                                }
+                            }
+                        }
+                    }
+                    for result in results {
+                        let (saved, quarantined, errors, success) =
+                            counts.remove(&result.id).unwrap();
+                        if !success {
+                            failures.push(format!("Big12 {} failed", result.school));
+                        } else {
+                            succeeded_sources += 1;
+                        }
+                        eprintln!(
+                            "Big 12 {}: {saved} source observations saved, {quarantined} quarantined, {} issues{}",
+                            result.school,
+                            errors.len(),
+                            if cli.dry_run { " (dry run)" } else { "" }
+                        );
+                        if !cli.dry_run {
+                            let error = (!errors.is_empty()).then(|| errors.join("; "));
+                            db.as_mut().unwrap().event_result(
+                                result.id,
+                                success,
+                                result.observations.len() as i32,
+                                errors.len() as i32,
+                                error.as_deref(),
+                            )?;
+                        }
                     }
                 }
                 Err(e) => {
-                    eprintln!("{label} schedule {feed_url} failed: {e}");
+                    failures.push(format!("Big12: {e}"));
+                    eprintln!("Big 12 collection failed: {e}");
                     if !cli.dry_run {
-                        if let Some(id) = known_id {
+                        for f in &big12_feeds {
+                            db.as_mut().unwrap().event_result(
+                                f.id,
+                                false,
+                                0,
+                                1,
+                                Some(&e.to_string()),
+                            )?;
+                        }
+                    }
+                }
+            }
+        }
+        if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
+            d.run_heartbeat(id)?;
+        }
+        for (known_id, feed_url, school) in &event_feeds {
+            if big12::is_provider_feed(feed_url) {
+                if known_id.is_none() {
+                    eprintln!(
+                        "{feed_url}: register and enable this school using --configure-big12 / --enable-big12"
+                    );
+                } else if big12::school_id(feed_url).is_none() {
+                    eprintln!(
+                        "{feed_url}: conference-wide RSS is not supported for ingestion; use registered school feeds"
+                    );
+                }
+                continue;
+            }
+            if !cli.dry_run
+                && let Some(id) = known_id
+            {
+                db.as_mut().unwrap().event_attempt(*id)?;
+            }
+
+            if epl::is_feed(feed_url) {
+                let _stage_timer = metrics::Stage::new("epl_schedule");
+                let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                    let fixtures = epl::fetch(&client, feed_url)?;
+                    eprintln!(
+                        "Premier League: {} current/future schedule observations",
+                        fixtures.len()
+                    );
+                    if !cli.dry_run {
+                        let d = db.as_mut().unwrap();
+                        let id = match known_id {
+                            Some(id) => *id,
+                            None => d.ensure_sports_events_type(feed_url, "Premier League")?,
+                        };
+                        let n = d.save_espn_schedule(id, &fixtures)?;
+                        d.event_result(id, true, n as i32, 0, None)?;
+                    }
+                    Ok(())
+                })();
+                match result {
+                    Ok(()) => succeeded_sources += 1,
+                    Err(e) => {
+                        failures.push(format!("Premier League: {e}"));
+                        if !cli.dry_run
+                            && let Some(id) = known_id
+                        {
                             db.as_mut().unwrap().event_result(
                                 *id,
                                 false,
@@ -605,157 +939,464 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
+                continue;
             }
-            continue;
+            if championship::is_feed(feed_url) {
+                let _stage_timer = metrics::Stage::new("championship_schedule");
+                let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                    let batch = championship::fetch(&client, feed_url)?;
+                    eprintln!(
+                        "Championship season {}: {} schedule observations, {} final results; Wrexham ID {}",
+                        batch.season,
+                        batch.fixtures.len(),
+                        batch.results.len(),
+                        championship::WREXHAM_ID
+                    );
+                    if !cli.dry_run {
+                        let d = db.as_mut().unwrap();
+                        let id = match known_id {
+                            Some(id) => *id,
+                            None => d.ensure_sports_events_type(feed_url, "EFL Championship")?,
+                        };
+                        d.save_espn_schedule(id, &batch.fixtures)?;
+                        d.save_championship_results(id, &batch)?;
+                        d.event_result(
+                            id,
+                            true,
+                            batch.fixtures.iter().filter(|f| !f.completed).count() as i32,
+                            0,
+                            None,
+                        )?;
+                    }
+                    Ok(())
+                })();
+                match result {
+                    Ok(()) => succeeded_sources += 1,
+                    Err(e) => {
+                        failures.push(format!("Championship: {e}"));
+                        if !cli.dry_run
+                            && let Some(id) = known_id
+                        {
+                            db.as_mut().unwrap().event_result(
+                                *id,
+                                false,
+                                0,
+                                1,
+                                Some(&e.to_string()),
+                            )?;
+                        }
+                    }
+                }
+                continue;
+            }
+            if nwsl::is_feed(feed_url) || wnba::is_feed(feed_url) || mlb::is_feed(feed_url) {
+                let is_mlb = mlb::is_feed(feed_url);
+                let is_wnba = wnba::is_feed(feed_url);
+                let _stage_timer = metrics::Stage::new(if is_mlb {
+                    "mlb_schedule"
+                } else if is_wnba {
+                    "wnba_schedule"
+                } else {
+                    "nwsl_schedule"
+                });
+                let label = if is_mlb {
+                    "MLB"
+                } else if is_wnba {
+                    "WNBA"
+                } else {
+                    "NWSL"
+                };
+                let fetched = if is_mlb {
+                    mlb::fetch(&client, feed_url)
+                } else if is_wnba {
+                    wnba::fetch(&client, feed_url)
+                } else {
+                    nwsl::fetch(&client, feed_url)
+                };
+                match fetched {
+                    Ok(fixtures) => {
+                        eprintln!(
+                            "{feed_url}: {} {label} fixtures{}",
+                            fixtures.len(),
+                            if cli.dry_run { " (dry run)" } else { "" }
+                        );
+                        if cli.dry_run {
+                            succeeded_sources += 1;
+                            for f in &fixtures {
+                                eprintln!(
+                                    "{} | {} | {:?} | {}",
+                                    f.event.event_date, f.event.title, f.event.starts_at, f.status
+                                );
+                            }
+                        } else {
+                            let db = db.as_mut().unwrap();
+                            let id = match known_id {
+                                Some(id) => *id,
+                                None => db.ensure_sports_events_type(
+                                    feed_url,
+                                    if is_mlb {
+                                        "MLB"
+                                    } else if is_wnba {
+                                        "WNBA"
+                                    } else {
+                                        "Kansas City Current"
+                                    },
+                                )?,
+                            };
+                            match db.save_espn_schedule(id, &fixtures) {
+                                Ok(n) => {
+                                    succeeded_sources += 1;
+                                    db.event_result(id, true, n as i32, 0, None)?;
+                                }
+                                Err(e) => {
+                                    eprintln!("{label} save failed: {e}");
+                                    failures.push(format!("{label} save: {e}"));
+                                    let _ = db.event_result(id, false, 0, 1, Some(&e.to_string()));
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        failures.push(format!("{label} {feed_url}: {e}"));
+                        eprintln!("{label} schedule {feed_url} failed: {e}");
+                        if !cli.dry_run
+                            && let Some(id) = known_id
+                        {
+                            db.as_mut().unwrap().event_result(
+                                *id,
+                                false,
+                                0,
+                                1,
+                                Some(&e.to_string()),
+                            )?;
+                        }
+                    }
+                }
+                continue;
+            }
+
+            // A broken calendar feed shouldn't stop the rest of the run.
+            match events::fetch_events(&client, feed_url, school.as_deref()) {
+                Ok(batch) if cli.dry_run => {
+                    eprintln!(
+                        "{feed_url}: {} events (dry run, not saved)",
+                        batch.events.len()
+                    );
+                    for e in &batch.events {
+                        eprintln!(
+                            "  - {} | {} {} {} | {} | {}",
+                            e.event_date,
+                            e.sport.as_deref().unwrap_or("?"),
+                            if e.is_away == Some(true) { "at" } else { "vs" },
+                            e.opponent.as_deref().unwrap_or("?"),
+                            e.starts_at.map_or("time TBD".into(), |t| t.to_rfc3339()),
+                            e.tv.as_deref().unwrap_or("no TV listed"),
+                        );
+                    }
+                }
+                Ok(batch) => {
+                    let db = db.as_mut().unwrap();
+                    let type_id = match known_id {
+                        Some(id) => *id,
+                        None => {
+                            let name = url::Url::parse(feed_url)
+                                .ok()
+                                .and_then(|u| u.host_str().map(str::to_string))
+                                .unwrap_or_else(|| feed_url.clone());
+                            db.ensure_sports_events_type(feed_url, &name)?
+                        }
+                    };
+                    let n = match db.save_events(type_id, &batch.events) {
+                        Ok(n) => n,
+                        Err(e) => {
+                            failures.push(format!("calendar save {feed_url}: {e}"));
+                            let _ = db.event_result(type_id, false, 0, 1, Some(&e.to_string()));
+                            continue;
+                        }
+                    };
+                    eprintln!("{feed_url}: saved {n} events to type {type_id}");
+                    succeeded_sources += 1;
+                    db.event_result(type_id, true, n as i32, 0, None)?;
+                    if batch.school_id.is_some() {
+                        let corrected =
+                            db.refresh_school_team_logo(type_id, batch.team_logo_url.as_deref())?;
+                        eprintln!(
+                            "{feed_url}: corrected team logos on {corrected} retained events"
+                        );
+                    }
+                }
+                Err(e) => {
+                    failures.push(format!("calendar {feed_url}: {e}"));
+                    eprintln!("events feed {feed_url} failed: {e}");
+                    if !cli.dry_run
+                        && let Some(id) = known_id
+                    {
+                        db.as_mut().unwrap().event_result(
+                            *id,
+                            false,
+                            0,
+                            1,
+                            Some(&e.to_string()),
+                        )?;
+                    }
+                }
+            }
         }
 
-        // A broken calendar feed shouldn't stop the rest of the run.
-        match events::fetch_events(&client, feed_url, school.as_deref()) {
-            Ok(batch) if cli.dry_run => {
-                eprintln!("{feed_url}: {} events (dry run, not saved)", batch.events.len());
-                for e in &batch.events {
+        if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
+            d.run_heartbeat(id)?;
+        }
+        // Channels from --youtube-feed (feed row found or created below) and from the lookup table.
+        let mut youtube: Vec<(Option<i32>, String)> =
+            cli.youtube_feed.iter().map(|u| (None, u.clone())).collect();
+        if cli.youtube_from_db {
+            for (id, url) in db.as_mut().unwrap().youtube_feeds()? {
+                match youtube.iter_mut().find(|(_, u)| *u == url) {
+                    Some(existing) => existing.0 = Some(id),
+                    None => youtube.push((Some(id), url)),
+                }
+            }
+        }
+        let youtube_timer = metrics::Stage::new("youtube");
+        for (known_id, feed_url) in &youtube {
+            match youtube::fetch_latest(&client, feed_url, cli.youtube_latest as usize) {
+                Ok((found, how)) if cli.dry_run => {
                     eprintln!(
-                        "  - {} | {} {} {} | {} | {}",
-                        e.event_date,
-                        e.sport.as_deref().unwrap_or("?"),
-                        if e.is_away == Some(true) { "at" } else { "vs" },
-                        e.opponent.as_deref().unwrap_or("?"),
-                        e.starts_at.map_or("time TBD".into(), |t| t.to_rfc3339()),
-                        e.tv.as_deref().unwrap_or("no TV listed"),
+                        "{feed_url}: {} videos via {how} (dry run, not saved)",
+                        found.len()
+                    );
+                    for v in &found {
+                        eprintln!(
+                            "  - {}{} | {} | {} views | {}",
+                            v.published_at.to_rfc3339(),
+                            if v.published_is_estimate {
+                                " (estimated)"
+                            } else {
+                                ""
+                            },
+                            v.channel_name.as_deref().unwrap_or("?"),
+                            v.views.map_or("?".into(), |n| n.to_string()),
+                            v.title
+                        );
+                    }
+                }
+                Ok((found, how)) => {
+                    let db = db.as_mut().unwrap();
+                    let feed_id = match (known_id, found.first()) {
+                        (Some(id), _) => *id,
+                        (None, Some(v)) => db.ensure_youtube_feed(
+                            &v.channel_id,
+                            v.channel_name.as_deref(),
+                            feed_url,
+                        )?,
+                        (None, None) => {
+                            eprintln!("{feed_url}: the feed has no videos, nothing saved");
+                            continue;
+                        }
+                    };
+                    let n = match db.save_videos(feed_id, &found) {
+                        Ok(n) => n,
+                        Err(e) => {
+                            failures.push(format!("YouTube save {feed_url}: {e}"));
+                            continue;
+                        }
+                    };
+                    succeeded_sources += 1;
+                    let pruned = db.prune_videos(cli.youtube_latest)?;
+                    eprintln!(
+                        "{feed_url}: saved {n} videos via {how} to feed {feed_id}, pruned {pruned} older (keeping the newest {} per channel)",
+                        cli.youtube_latest
                     );
                 }
-            }
-            Ok(batch) => {
-                let db = db.as_mut().unwrap();
-                let type_id = match known_id {
-                    Some(id) => *id,
-                    None => {
-                        let name = url::Url::parse(feed_url)
-                            .ok()
-                            .and_then(|u| u.host_str().map(str::to_string))
-                            .unwrap_or_else(|| feed_url.clone());
-                        db.ensure_sports_events_type(feed_url, &name)?
-                    }
-                };
-                let n = db.save_events(type_id, &batch.events)?;
-                eprintln!("{feed_url}: saved {n} events to type {type_id}");
-                db.event_result(type_id,true,n as i32,0,None)?;
-                if batch.school_id.is_some() {
-                    let corrected = db.refresh_school_team_logo(type_id, batch.team_logo_url.as_deref())?;
-                    eprintln!("{feed_url}: corrected team logos on {corrected} retained events");
+                Err(e) => {
+                    failures.push(format!("YouTube {feed_url}: {e}"));
+                    eprintln!("youtube feed {feed_url} failed: {e}");
                 }
             }
-            Err(e) => {eprintln!("events feed {feed_url} failed: {e}");if !cli.dry_run {if let Some(id)=known_id {db.as_mut().unwrap().event_result(*id,false,0,1,Some(&e.to_string()))?;}}},
         }
-    }
 
-    // Channels from --youtube-feed (feed row found or created below) and from the lookup table.
-    let mut youtube: Vec<(Option<i32>, String)> =
-        cli.youtube_feed.iter().map(|u| (None, u.clone())).collect();
-    if cli.youtube_from_db {
-        for (id, url) in db.as_mut().unwrap().youtube_feeds()? {
-            match youtube.iter_mut().find(|(_, u)| *u == url) {
-                Some(existing) => existing.0 = Some(id),
-                None => youtube.push((Some(id), url)),
-            }
+        if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
+            d.run_heartbeat(id)?;
         }
-    }
-    for (known_id, feed_url) in &youtube {
-        match youtube::fetch_latest(&client, feed_url, cli.youtube_latest as usize) {
-            Ok((found, how)) if cli.dry_run => {
-                eprintln!("{feed_url}: {} videos via {how} (dry run, not saved)", found.len());
-                for v in &found {
+        drop(youtube_timer);
+        if cli.movies {
+            let _stage_timer = metrics::Stage::new("movies");
+            let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                use chrono::Datelike;
+                let day = Utc::now()
+                    .with_timezone(&chrono_tz::America::Chicago)
+                    .date_naive();
+                let start =
+                    day - chrono::Duration::days(day.weekday().num_days_from_monday().into());
+                let tracked = db.as_mut().unwrap().tracked_movie_urls()?;
+                let enabled = db.as_mut().unwrap().enabled_movie_sources()?;
+                let mut report = movies::ingest(start, &tracked, &enabled)?;
+                let skipped = movies::retain_current_releases(&mut report, day);
+                eprintln!("metrics: movies past_releases_skipped={skipped}");
+                let rows = movies::release_rows(&report)?;
+                let issues = report["issues"].as_array().map_or(0, Vec::len);
+                if cli.dry_run {
                     eprintln!(
-                        "  - {}{} | {} | {} views | {}",
-                        v.published_at.to_rfc3339(),
-                        if v.published_is_estimate { " (estimated)" } else { "" },
-                        v.channel_name.as_deref().unwrap_or("?"),
-                        v.views.map_or("?".into(), |n| n.to_string()),
-                        v.title
+                        "movies: {} releases would be saved; {issues} issues (dry run)",
+                        rows.len()
                     );
-                }
-            }
-            Ok((found, how)) => {
-                let db = db.as_mut().unwrap();
-                let feed_id = match (known_id, found.first()) {
-                    (Some(id), _) => *id,
-                    (None, Some(v)) => db.ensure_youtube_feed(&v.channel_id, v.channel_name.as_deref(), feed_url)?,
-                    (None, None) => {
-                        eprintln!("{feed_url}: the feed has no videos, nothing saved");
-                        continue;
+                } else {
+                    let n = db.as_mut().unwrap().save_movie_releases(&rows, &report)?;
+                    eprintln!(
+                        "movies: saved {n} releases (week {start} plus tracked movies); {issues} issues"
+                    );
+                    let inputs = report["releases"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|r| {
+                            Some((
+                                r["source_url"].as_str()?.to_owned(),
+                                posters::decode(&r["poster_metadata"])?,
+                            ))
+                        })
+                        .collect();
+                    match posters::enrich(db.as_mut().unwrap(), &inputs) {
+                        Ok(posters) => eprintln!(
+                            "movie posters: {} enriched, {} preserved, {} unmatched",
+                            posters["enriched_count"],
+                            posters["preserved_count"],
+                            posters["unmatched"].as_array().map_or(0, Vec::len)
+                        ),
+                        Err(e) => eprintln!(
+                            "movie poster enrichment failed (release ingestion completed): {e}"
+                        ),
                     }
-                };
-                let n = db.save_videos(feed_id, &found)?;
-                let pruned = db.prune_videos(cli.youtube_latest)?;
-                eprintln!(
-                    "{feed_url}: saved {n} videos via {how} to feed {feed_id}, pruned {pruned} older (keeping the newest {} per channel)",
-                    cli.youtube_latest
-                );
+                }
+                if issues == 0 {
+                    succeeded_sources += 1;
+                }
+                if issues > 0 {
+                    failures.push(format!("movies: {issues} source issues"));
+                    eprintln!("movie source issues: {}", report["issues"]);
+                }
+                Ok(())
+            })();
+            if let Err(e) = result {
+                failures.push(format!("movies: {e}"));
+                eprintln!("movie ingestion failed: {e}");
             }
-            Err(e) => eprintln!("youtube feed {feed_url} failed: {e}"),
         }
-    }
 
-    if cli.movies {
-        let result = (|| -> Result<(), Box<dyn std::error::Error>> {
-            use chrono::Datelike;
-            let day = Utc::now().with_timezone(&chrono_tz::America::Chicago).date_naive();
-            let start = day - chrono::Duration::days(day.weekday().num_days_from_monday().into());
-            let tracked = db.as_mut().unwrap().tracked_movie_urls()?;
-            let report = movies::ingest(start, &tracked)?;
-            let rows = movies::release_rows(&report)?;
-            let issues = report["issues"].as_array().map_or(0, Vec::len);
-            if cli.dry_run {
-                eprintln!("movies: {} releases would be saved; {issues} issues (dry run)", rows.len());
-            } else {
-                let n = db.as_mut().unwrap().save_movie_releases(&rows, &report)?;
-                eprintln!("movies: saved {n} releases (week {start} plus tracked movies); {issues} issues");
-                let inputs=report["releases"].as_array().into_iter().flatten().filter_map(|r|Some((r["source_url"].as_str()?.to_owned(),posters::decode(&r["poster_metadata"])?))).collect();
-                match posters::enrich(db.as_mut().unwrap(),&inputs) {
-                    Ok(posters)=>eprintln!("movie posters: {} enriched, {} preserved, {} unmatched",posters["enriched_count"],posters["preserved_count"],posters["unmatched"].as_array().map_or(0,Vec::len)),
-                    Err(e)=>eprintln!("movie poster enrichment failed (release ingestion completed): {e}"),
+        if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
+            d.run_heartbeat(id)?;
+        }
+        if cli.tv_from_db {
+            let _stage_timer = metrics::Stage::new("tv");
+            match tvmaze::collect(db.as_mut().unwrap(), cli.dry_run, cli.tv_force_refresh) {
+                Ok(report) => {
+                    succeeded_sources += report["series"]
+                        .as_array()
+                        .map_or(0, |s| s.iter().filter(|s| s["status"] != "failed").count());
+                    if report["series"]
+                        .as_array()
+                        .is_some_and(|s| s.iter().any(|s| s["status"] == "failed"))
+                    {
+                        failures.push("TVmaze series collection failed".into());
+                    }
+                    eprintln!("TVmaze collection report: {}", report)
+                }
+                Err(e) => {
+                    failures.push(format!("TVmaze: {e}"));
+                    eprintln!("TVmaze collector failed: {e}");
                 }
             }
-            if issues > 0 { eprintln!("movie source issues: {}", report["issues"]); }
-            Ok(())
-        })();
-        if let Err(e) = result { eprintln!("movie ingestion failed: {e}"); }
-    }
+        }
 
-    if cli.tv_from_db {
-        match tvmaze::collect(db.as_mut().unwrap(),cli.dry_run,cli.tv_force_refresh) {
-            Ok(report)=>eprintln!("TVmaze collection report: {}",report),
-            Err(e)=>eprintln!("TVmaze collector failed: {e}"),
+        let items: Vec<_> = pages
+            .into_iter()
+            .map(|meta| {
+                ItemBuilder::default()
+                    .title(meta.title)
+                    .link(meta.url.clone())
+                    .description(meta.description)
+                    .pub_date(meta.published.map(|d| d.to_rfc2822()))
+                    .guid(
+                        rss::GuidBuilder::default()
+                            .value(meta.url)
+                            .permalink(true)
+                            .build(),
+                    )
+                    .build()
+            })
+            .collect();
+
+        let channel = ChannelBuilder::default()
+            .title(cli.title.clone())
+            .link(cli.link.clone())
+            .description(cli.description.clone())
+            .last_build_date(Some(Utc::now().to_rfc2822()))
+            .items(items)
+            .build();
+
+        match &cli.output {
+            Some(path) => write_atomic(path, &channel.to_string())?,
+            // In loop mode, stdout would fill the log with a feed every run.
+            None if cli.every_hours.is_some() => {}
+            None => println!("{channel}"),
+        }
+        Ok(())
+    })();
+    if !cli.dry_run
+        && let Some(d) = db.as_mut()
+    {
+        let _stage_timer = metrics::Stage::new("retention");
+        match d.apply_retention() {
+            Ok(()) => eprintln!(
+                "retention: past/canceled schedules, past releases/episodes and old polls removed"
+            ),
+            Err(e) => failures.push(format!("retention cleanup failed: {e}")),
         }
     }
-
-    let items: Vec<_> = pages
-        .into_iter()
-        .map(|meta| {
-            ItemBuilder::default()
-                .title(meta.title)
-                .link(meta.url.clone())
-                .description(meta.description)
-                .pub_date(meta.published.map(|d| d.to_rfc2822()))
-                .guid(rss::GuidBuilder::default().value(meta.url).permalink(true).build())
-                .build()
-        })
-        .collect();
-
-    let channel = ChannelBuilder::default()
-        .title(cli.title.clone())
-        .link(cli.link.clone())
-        .description(cli.description.clone())
-        .last_build_date(Some(Utc::now().to_rfc2822()))
-        .items(items)
-        .build();
-
-    match &cli.output {
-        Some(path) => std::fs::write(path, channel.to_string())?,
-        // In loop mode, stdout would fill the log with a feed every run.
-        None if cli.every_hours.is_some() => {}
-        None => println!("{channel}"),
+    if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
+        let message = outcome
+            .as_ref()
+            .err()
+            .map(|e| e.to_string())
+            .or_else(|| (!failures.is_empty()).then(|| failures.join("; ")));
+        let status = if outcome.is_err() || (!failures.is_empty() && succeeded_sources == 0) {
+            "failed"
+        } else if failures.is_empty() {
+            "succeeded"
+        } else {
+            "partial"
+        };
+        if let Err(e) = d.finish_run(id, status, message.as_deref()) {
+            eprintln!("cannot persist run outcome: {e}");
+        }
     }
+    eprintln!(
+        "collection summary: {succeeded_sources} source successes, {} failures",
+        failures.len()
+    );
+    outcome?;
+    if !failures.is_empty() {
+        return Err(format!(
+            "collection incomplete ({} failures): {}",
+            failures.len(),
+            failures.join("; ")
+        )
+        .into());
+    }
+
+    Ok(())
+}
+
+fn write_atomic(path: &Path, contents: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let mut file = tempfile::NamedTempFile::new_in(parent)?;
+    file.write_all(contents.as_bytes())?;
+    file.as_file().sync_all()?;
+    file.persist(path).map_err(|e| e.error)?;
     Ok(())
 }
 
@@ -767,11 +1408,18 @@ fn next_slot(now: DateTime<Utc>, hours: u32) -> DateTime<Utc> {
     (0..3)
         .flat_map(|day| {
             let date = local_date + chrono::Days::new(day);
-            (0..24).step_by(hours as usize).map(move |h| date.and_hms_opt(h, 0, 0).unwrap())
+            (0..24)
+                .step_by(hours as usize)
+                .map(move |h| date.and_hms_opt(h, 0, 0).unwrap())
         })
-        .filter_map(|naive| tz.from_local_datetime(&naive).earliest())
+        .flat_map(|naive| match tz.from_local_datetime(&naive) {
+            chrono::LocalResult::Single(a) => vec![a],
+            chrono::LocalResult::Ambiguous(a, b) => vec![a, b],
+            chrono::LocalResult::None => vec![],
+        })
         .map(|t| t.with_timezone(&Utc))
-        .find(|t| *t > now)
+        .filter(|t| *t > now)
+        .min()
         .expect("a slot exists within three days")
 }
 
@@ -789,10 +1437,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return run_once(&cli);
     };
     if 24 % hours != 0 {
-        Cli::command().error(ErrorKind::InvalidValue, "--every-hours must divide 24 (1, 2, 3, 4, 6, 8, 12, 24)").exit();
+        Cli::command()
+            .error(
+                ErrorKind::InvalidValue,
+                "--every-hours must divide 24 (1, 2, 3, 4, 6, 8, 12, 24)",
+            )
+            .exit();
     }
-    if !cli.tv_from_db && !cli.movies && cli.urls.is_empty() && cli.urls_file.is_none() && !cli.from_db && cli.events_feed.is_empty() && !cli.events_from_db && cli.youtube_feed.is_empty() && !cli.youtube_from_db {
-        Cli::command().error(ErrorKind::MissingRequiredArgument, "provide at least one URL, --urls-file, or --from-db").exit();
+    if !cli.tv_from_db
+        && !cli.movies
+        && cli.urls.is_empty()
+        && cli.urls_file.is_none()
+        && !cli.from_db
+        && cli.events_feed.is_empty()
+        && !cli.events_from_db
+        && !cli.standings_from_db
+        && !cli.rankings_from_db
+        && cli.youtube_feed.is_empty()
+        && !cli.youtube_from_db
+    {
+        Cli::command()
+            .error(
+                ErrorKind::MissingRequiredArgument,
+                "provide at least one URL, --urls-file, --from-db, or a collector such as --standings-from-db",
+            )
+            .exit();
     }
 
     loop {
@@ -820,18 +1489,57 @@ mod tests {
     #[test]
     fn slots_are_midnight_central_and_every_three_hours() {
         // Sat 21:00 CDT -> Sun 00:00 CDT (05:00 UTC)
-        assert_eq!(next_slot(utc("2026-09-20T02:00:00Z"), 3), utc("2026-09-20T05:00:00Z"));
+        assert_eq!(
+            next_slot(utc("2026-09-20T02:00:00Z"), 3),
+            utc("2026-09-20T05:00:00Z")
+        );
         // exactly on a slot -> the following slot
-        assert_eq!(next_slot(utc("2026-09-20T05:00:00Z"), 3), utc("2026-09-20T08:00:00Z"));
+        assert_eq!(
+            next_slot(utc("2026-09-20T05:00:00Z"), 3),
+            utc("2026-09-20T08:00:00Z")
+        );
         // just before midnight Central rolls to the next day's 00:00
-        assert_eq!(next_slot(utc("2026-09-21T04:59:00Z"), 3), utc("2026-09-21T05:00:00Z"));
+        assert_eq!(
+            next_slot(utc("2026-09-21T04:59:00Z"), 3),
+            utc("2026-09-21T05:00:00Z")
+        );
     }
 
     #[test]
     fn slots_follow_daylight_saving() {
         // Fall back (Nov 1 2026): 00:30 CDT -> next slot is 03:00 CST = 09:00 UTC
-        assert_eq!(next_slot(utc("2026-11-01T05:30:00Z"), 3), utc("2026-11-01T09:00:00Z"));
+        assert_eq!(
+            next_slot(utc("2026-11-01T05:30:00Z"), 3),
+            utc("2026-11-01T09:00:00Z")
+        );
         // Spring forward (Mar 8 2026): 00:30 CST -> 03:00 CDT = 08:00 UTC
-        assert_eq!(next_slot(utc("2026-03-08T06:30:00Z"), 3), utc("2026-03-08T08:00:00Z"));
+        assert_eq!(
+            next_slot(utc("2026-03-08T06:30:00Z"), 3),
+            utc("2026-03-08T08:00:00Z")
+        );
+    }
+}
+
+#[cfg(test)]
+mod hardening_tests {
+    use super::*;
+    #[test]
+    fn one_hour_fallback_includes_repeated_clock_hour() {
+        let now = DateTime::parse_from_rfc3339("2026-11-01T06:30:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        assert_eq!(next_slot(now, 1).to_rfc3339(), "2026-11-01T07:00:00+00:00");
+    }
+    #[test]
+    fn retention_limits_reject_signed_overflow() {
+        for flag in ["--keep", "--per-source", "--youtube-latest"] {
+            assert!(
+                Cli::try_parse_from(["scraper", flag, "2147483648", "https://example.com"])
+                    .is_err()
+            );
+            assert!(
+                Cli::try_parse_from(["scraper", flag, "2147483647", "https://example.com"]).is_ok()
+            );
+        }
     }
 }

@@ -1,6 +1,5 @@
 //! Movie calendar discovery, parsing, and stable release identities.
 use chrono::{Datelike, Duration, NaiveDate};
-use reqwest::blocking::Client;
 use scraper::{ElementRef, Html, Selector};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -97,13 +96,234 @@ pub fn streaming_links(html: &str, base: &str, start: NaiveDate) -> Vec<String> 
             current = date(&text(e));
             continue;
         }
-        if current.is_some_and(|d| in_week(d, start)) {
-            if let Some(u) = e.value().attr("href").and_then(|h| absolute(base, h)) {
-                links.insert(u);
-            }
+        if current.is_some_and(|d| in_week(d, start))
+            && let Some(u) = e.value().attr("href").and_then(|h| absolute(base, h))
+        {
+            links.insert(u);
         }
     }
     links.into_iter().collect()
+}
+
+/// Apply the same Central-day boundary as retention before persistence/poster jobs.
+pub fn retain_current_releases(report: &mut Value, today: NaiveDate) -> usize {
+    let Some(rows) = report["releases"].as_array_mut() else {
+        return 0;
+    };
+    let before = rows.len();
+    rows.retain(|r| {
+        r["release_date"]
+            .as_str()
+            .and_then(date)
+            .is_none_or(|d| d >= today)
+    });
+    let skipped = before - rows.len();
+    let mut counts = std::collections::BTreeMap::new();
+    for r in rows.iter() {
+        if let Some(kind) = r["release_type"].as_str() {
+            *counts.entry(kind.to_owned()).or_insert(0usize) += 1;
+        }
+    }
+    report["counts"] = json!(counts);
+    report["past_releases_skipped"] = json!(skipped);
+    skipped
+}
+
+/// Movie Insider calendars are discovery only: card dates may describe several
+/// channels. Import dates exclusively from the detail page's digital section.
+pub fn movieinsider_calendar(
+    html: &str,
+    base: &str,
+    start: NaiveDate,
+) -> Result<(Vec<String>, Option<String>), String> {
+    let doc = Html::parse_document(html);
+    let cards = doc.select(&sel(".browse-movie")).collect::<Vec<_>>();
+    if cards.is_empty() {
+        return Err("Movie Insider calendar cards missing".into());
+    }
+    let mut links = BTreeSet::new();
+    for card in cards {
+        let anchor = card
+            .select(&sel(".calendar-scope a.date"))
+            .find(|a| {
+                a.value()
+                    .attr("href")
+                    .is_some_and(|h| h.starts_with("/movies/"))
+            })
+            .ok_or("Movie Insider card release date missing")?;
+        let path = anchor
+            .value()
+            .attr("href")
+            .unwrap()
+            .trim_matches('/')
+            .split('/')
+            .collect::<Vec<_>>();
+        if path.len() != 4 {
+            return Err("Movie Insider card date is not an exact day".into());
+        }
+        let d = date(&format!("{} {}, {}", path[1], path[3], path[2]))
+            .ok_or("unrecognized Movie Insider calendar date")?;
+        if in_week(d, start) {
+            let a = card
+                .select(&sel("h2 a"))
+                .next()
+                .ok_or("Movie Insider movie link missing")?;
+            let u = a
+                .value()
+                .attr("href")
+                .and_then(|h| absolute(base, h))
+                .ok_or("invalid Movie Insider movie URL")?;
+            movieinsider_id(&u)?;
+            links.insert(u);
+        }
+    }
+    let next = doc
+        .select(&sel("a.pager-ux__btn--next"))
+        .next()
+        .map(|a| {
+            a.value()
+                .attr("href")
+                .and_then(|h| absolute(base, h))
+                .ok_or("invalid Movie Insider pagination URL")
+        })
+        .transpose()?;
+    if let Some(next) = &next {
+        let b = url::Url::parse(base).map_err(|e| e.to_string())?;
+        let u = url::Url::parse(next).map_err(|e| e.to_string())?;
+        if u.path() != b.path()
+            || !u
+                .query_pairs()
+                .any(|(k, v)| k == "page_offset" && v.parse::<u32>().is_ok())
+        {
+            return Err("unexpected Movie Insider pagination target".into());
+        }
+    }
+    Ok((links.into_iter().collect(), next))
+}
+fn movieinsider_id(raw: &str) -> Result<String, String> {
+    let u = url::Url::parse(raw).map_err(|e| e.to_string())?;
+    if u.scheme() != "https" || u.host_str() != Some("www.movieinsider.com") {
+        return Err("invalid Movie Insider host".into());
+    }
+    let id = u
+        .path_segments()
+        .and_then(|mut p| p.next())
+        .and_then(|s| s.strip_prefix('m'))
+        .filter(|s| !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()))
+        .ok_or("invalid Movie Insider movie ID")?;
+    Ok(id.to_owned())
+}
+pub fn movieinsider_details(html: &str, url: &str) -> Result<Vec<Value>, String> {
+    movieinsider_id(url)?;
+    let doc = Html::parse_document(html);
+    let title = doc
+        .select(&sel(
+            "main[itemtype='http://schema.org/Movie'] meta[itemprop='name']",
+        ))
+        .next()
+        .and_then(|m| m.value().attr("content"))
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .ok_or("Movie Insider movie title missing")?;
+    if tv_title(title) {
+        return Err(format!("excluded apparent TV title: {title}"));
+    }
+    let paragraph = if let Some(heading) = doc.select(&sel("#digital-release-date")).next() {
+        heading
+            .next_siblings()
+            .filter_map(ElementRef::wrap)
+            .next()
+            .filter(|e| e.value().name() == "p")
+            .ok_or("Movie Insider digital release paragraph missing")?
+    } else {
+        // Digital-only and simultaneous releases use the general release intro.
+        // Require the digital channel in the dated sentence, not a later link.
+        if doc.select(&sel("p.release-intro")).any(|p| {
+            let description = text(p).to_lowercase();
+            description.contains("will open in select theaters")
+                && !description.contains("digital")
+                && !description.contains("vod")
+                && p.select(&sel("time[datetime]")).count() == 1
+        }) {
+            return Ok(vec![]);
+        }
+        doc.select(&sel("p.release-intro"))
+            .find(|p| {
+                let description = text(*p).to_lowercase();
+                let sentence = description.split('.').next().unwrap_or("");
+                sentence.contains("vod / digital on")
+            })
+            .ok_or("Movie Insider explicit digital release section missing")?
+    };
+    let description = text(paragraph).to_lowercase();
+    let title_lower = title.to_lowercase();
+    let description = description
+        .strip_prefix(&title_lower)
+        .unwrap_or(&description)
+        .trim_start();
+    if !(description.contains("digital and vod on")
+        || description
+            .split('.')
+            .next()
+            .is_some_and(|s| s.contains("vod / digital on")))
+        || description.contains("expected")
+        || description.contains("estimated")
+        || description.contains("rumored")
+    {
+        return Err("Movie Insider digital date is not explicitly announced".into());
+    }
+    let times = paragraph.select(&sel("time[datetime]")).collect::<Vec<_>>();
+    if times.len() != 1 {
+        return Err("Movie Insider digital date missing or ambiguous".into());
+    }
+    let d = times[0]
+        .value()
+        .attr("datetime")
+        .and_then(date)
+        .ok_or("Movie Insider digital day unrecognized")?;
+    let mut release = row(
+        title,
+        "movieinsider",
+        "digital",
+        d,
+        url,
+        Some("VOD / Digital"),
+        None,
+    );
+    if let Ok(metadata) = crate::movie_metadata::parse("movieinsider", html, url) {
+        release["poster_metadata"] = json!({"title":metadata.identity.title,"year":metadata.identity.year,"imdb_id":metadata.identity.imdb_id,"tmdb_id":metadata.identity.tmdb_id,"posters":metadata.posters});
+    }
+    Ok(vec![release])
+}
+fn discover_movieinsider(
+    client: &reqwest::blocking::Client,
+    start: NaiveDate,
+) -> Result<(Vec<String>, Vec<Value>), Box<dyn std::error::Error>> {
+    let years = (0..7)
+        .map(|n| (start + Duration::days(n)).year())
+        .collect::<BTreeSet<_>>();
+    let mut found = BTreeSet::new();
+    let mut coverage = vec![];
+    for year in years {
+        let mut next = Some(format!(
+            "https://www.movieinsider.com/releases/vod-digital/{year}"
+        ));
+        let mut visited = BTreeSet::new();
+        while let Some(url) = next {
+            if visited.len() >= 20 || !visited.insert(url.clone()) {
+                return Err("Movie Insider pagination exceeded limit or repeated a page".into());
+            }
+            eprintln!("calendar: digital: {url}");
+            let html = crate::http::get_text(client, &url)?;
+            let (links, following) = movieinsider_calendar(&html, &url, start)?;
+            coverage.push(json!({"url":url,"category":"digital","candidate_count":links.len()}));
+            found.extend(links);
+            // The provider sometimes has out-of-order cards. Scan every page.
+            next = following;
+            std::thread::sleep(std::time::Duration::from_millis(300));
+        }
+    }
+    Ok((found.into_iter().collect(), coverage))
 }
 
 fn row(
@@ -212,8 +432,8 @@ pub fn dvd_details(html: &str, url: &str) -> Result<Vec<Value>, String> {
         .find_map(|u| u.split("/title/").nth(1).and_then(|s| s.split('/').next()));
     for r in &mut rows {
         r["imdb_id"] = json!(imdb);
-        if let Ok(metadata)=crate::movie_metadata::parse("dvdsreleasedates",html,url) {
-            r["poster_metadata"]=json!({"title":metadata.identity.title,"year":metadata.identity.year,"imdb_id":metadata.identity.imdb_id,"tmdb_id":metadata.identity.tmdb_id,"posters":metadata.posters});
+        if let Ok(metadata) = crate::movie_metadata::parse("dvdsreleasedates", html, url) {
+            r["poster_metadata"] = json!({"title":metadata.identity.title,"year":metadata.identity.year,"imdb_id":metadata.identity.imdb_id,"tmdb_id":metadata.identity.tmdb_id,"posters":metadata.posters});
         }
     }
     Ok(rows)
@@ -233,6 +453,25 @@ pub fn streaming_details(html: &str, url: &str) -> Result<Vec<Value>, String> {
     let mut rows = Vec::new();
     for p in doc.select(&sel(".entry-content p")) {
         let s = text(p);
+        if let Some(rest) = s.strip_prefix("VOD Release Date") {
+            let rest = rest.trim_start_matches([' ', ':']);
+            if ["tba", "tbd", "n/a", "not announced"].contains(&rest.to_lowercase().as_str()) {
+                continue;
+            }
+            let raw = rest.split('(').next().unwrap_or(rest).trim();
+            let d = date(raw)
+                .ok_or_else(|| format!("VOD date is unconfirmed or unrecognized: {rest}"))?;
+            rows.push(row(
+                &title,
+                "whentostream",
+                "digital",
+                d,
+                url,
+                Some("VOD / Digital"),
+                None,
+            ));
+            continue;
+        }
         let Some(rest) = s.strip_prefix("SVOD Release Date") else {
             continue;
         };
@@ -268,24 +507,42 @@ pub fn streaming_details(html: &str, url: &str) -> Result<Vec<Value>, String> {
             ));
         }
     }
-    if let Ok(metadata)=crate::movie_metadata::parse("whentostream",html,url) {
-        for r in &mut rows {r["poster_metadata"]=json!({"title":metadata.identity.title,"year":metadata.identity.year,"imdb_id":metadata.identity.imdb_id,"tmdb_id":metadata.identity.tmdb_id,"posters":metadata.posters});}
+    if let Ok(metadata) = crate::movie_metadata::parse("whentostream", html, url) {
+        for r in &mut rows {
+            r["poster_metadata"] = json!({"title":metadata.identity.title,"year":metadata.identity.year,"imdb_id":metadata.identity.imdb_id,"tmdb_id":metadata.identity.tmdb_id,"posters":metadata.posters});
+        }
     }
     Ok(rows)
 }
 
 #[allow(dead_code)] // Used by the standalone read-only example.
 pub fn preview(start: NaiveDate) -> Result<Value, Box<dyn std::error::Error>> {
-    collect(start, &[])
+    collect(
+        start,
+        &[],
+        &[
+            "dvdsreleasedates".into(),
+            "whentostream".into(),
+            "movieinsider".into(),
+        ],
+    )
 }
 
 /// Refresh tracked movies as well as discovering this week's new releases.
-pub fn ingest(start: NaiveDate, tracked: &[String]) -> Result<Value, Box<dyn std::error::Error>> {
-    collect(start, tracked)
+pub fn ingest(
+    start: NaiveDate,
+    tracked: &[String],
+    enabled: &[String],
+) -> Result<Value, Box<dyn std::error::Error>> {
+    collect(start, tracked, enabled)
 }
 
-fn collect(start: NaiveDate, tracked: &[String]) -> Result<Value, Box<dyn std::error::Error>> {
-    let client = Client::builder()
+fn collect(
+    start: NaiveDate,
+    tracked: &[String],
+    enabled: &[String],
+) -> Result<Value, Box<dyn std::error::Error>> {
+    let client = crate::http::client_builder()
         .user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)")
         .timeout(std::time::Duration::from_secs(20))
         .build()?;
@@ -314,13 +571,33 @@ fn collect(start: NaiveDate, tracked: &[String]) -> Result<Value, Box<dyn std::e
     let mut candidates: BTreeMap<String, BTreeSet<&str>> = BTreeMap::new();
     let mut issues = Vec::new();
     let mut coverage = Vec::new();
+    if enabled.iter().any(|s| s == "movieinsider") {
+        match discover_movieinsider(&client, start) {
+            Ok((links, pages)) => {
+                coverage.extend(pages);
+                for link in links {
+                    candidates.entry(link).or_default().insert("digital");
+                }
+            }
+            Err(e) => issues.push(json!({"source":"movieinsider","reason":e.to_string()})),
+        }
+    }
     for (url, category) in calendars {
+        let source = if category == "subscription" {
+            "whentostream"
+        } else {
+            "dvdsreleasedates"
+        };
+        if !enabled.iter().any(|s| s == source) {
+            continue;
+        }
         eprintln!("calendar: {category}: {url}");
         let result = client
             .get(&url)
             .send()
             .and_then(|r| r.error_for_status())
-            .and_then(|r| r.text());
+            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })
+            .and_then(crate::http::response_text);
         match result {
             Ok(html) => {
                 let links = if category == "subscription" {
@@ -333,7 +610,11 @@ fn collect(start: NaiveDate, tracked: &[String]) -> Result<Value, Box<dyn std::e
                     issues.push(json!({"url":url,"reason":"no candidates found; empty week or changed page markup requires review"}));
                 }
                 for link in links {
-                    candidates.entry(link).or_default().insert(category);
+                    let kinds = candidates.entry(link).or_default();
+                    kinds.insert(category);
+                    if source == "whentostream" {
+                        kinds.insert("digital");
+                    }
                 }
             }
             Err(e) => issues.push(json!({"url":url,"reason":e.to_string()})),
@@ -358,15 +639,25 @@ fn collect(start: NaiveDate, tracked: &[String]) -> Result<Value, Box<dyn std::e
     let mut excluded_tv = Vec::new();
     let mut no_matching_release = Vec::new();
     for (index, (url, categories)) in candidates.into_iter().enumerate() {
+        if let Err(e) = crate::http::public_url(&url) {
+            issues.push(json!({"url":url,"reason":e.to_string()}));
+            continue;
+        }
         eprintln!("detail {}/{}: {}", index + 1, candidate_count, url);
         let result = client
             .get(&url)
             .send()
             .and_then(|r| r.error_for_status())
-            .and_then(|r| r.text());
+            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })
+            .and_then(crate::http::response_text);
         match result {
             Ok(html) => {
-                let parsed = if categories.contains("subscription") {
+                let parsed = if url::Url::parse(&url)
+                    .ok()
+                    .is_some_and(|u| u.host_str() == Some("www.movieinsider.com"))
+                {
+                    movieinsider_details(&html, &url)
+                } else if categories.contains("subscription") {
                     streaming_details(&html, &url)
                 } else {
                     dvd_details(&html, &url)
@@ -459,6 +750,8 @@ pub fn release_rows(report: &Value) -> Result<Vec<MovieRelease>, String> {
                         .flatten()
                 })
                 .ok_or("missing DVD movie ID")?
+        } else if source == "movieinsider" {
+            movieinsider_id(&url)?
         } else if source == "whentostream" {
             parsed.path().trim_matches('/').to_owned()
         } else {
@@ -567,9 +860,11 @@ mod tests {
     fn subscription_uses_its_own_date_and_service() {
         let h = "<h1>Example (2026)</h1><div class='entry-content'><p><strong>VOD Release Date</strong>: January 30, 2026</p><p><strong>SVOD Release Date</strong>: October 9, 2026 (Paramount+)</p></div>";
         let rows = streaming_details(h, "https://example.test").unwrap();
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0]["release_date"], "2026-10-09");
-        assert_eq!(rows[0]["platform"], "Paramount+");
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0]["release_type"], "digital");
+        assert_eq!(rows[0]["release_date"], "2026-01-30");
+        assert_eq!(rows[1]["release_date"], "2026-10-09");
+        assert_eq!(rows[1]["platform"], "Paramount+");
         assert!(
             streaming_details(&h.replace(" (Paramount+)", ""), "https://example.test").is_err()
         );
@@ -623,5 +918,156 @@ mod tests {
             ),
             vec!["https://whentostream.com/movie-2026/"]
         );
+    }
+}
+
+#[cfg(test)]
+mod digital_coverage_tests {
+    use super::*;
+    #[test]
+    fn movieinsider_digital_section_never_uses_theatrical_or_estimated_dates() {
+        let html = "<main itemtype='http://schema.org/Movie'><meta itemprop='name' content='Example'><time datetime='2026-07-17'>Theatrical</time><h3 id='digital-release-date'>Digital</h3><p>Example was released on Digital and VOD on <time datetime='2026-10-09'>October 9, 2026</time>.</p></main>";
+        let rows = movieinsider_details(html, "https://www.movieinsider.com/m123/example").unwrap();
+        assert_eq!(rows[0]["release_date"], "2026-10-09");
+        assert_eq!(rows[0]["release_type"], "digital");
+        assert!(
+            movieinsider_details(
+                &html.replace("Example", "Unexpected"),
+                "https://www.movieinsider.com/m123/unexpected"
+            )
+            .is_ok()
+        );
+        assert!(
+            movieinsider_details(
+                &html.replace("was released", "is expected to be released"),
+                "https://www.movieinsider.com/m123/example"
+            )
+            .is_err()
+        );
+        assert!(
+            movieinsider_details(
+                &html.replace("id='digital-release-date'", "id='theatrical'"),
+                "https://www.movieinsider.com/m123/example"
+            )
+            .is_err()
+        );
+        let report = json!({"releases":rows});
+        let a = release_rows(&report).unwrap();
+        let changed = report
+            .to_string()
+            .replace("/m123/example", "/m123/renamed")
+            .replace("2026-10-09", "2026-10-16");
+        let b = release_rows(&serde_json::from_str(&changed).unwrap()).unwrap();
+        assert_eq!(
+            (a[0].external_id.as_str(), a[0].key.as_str()),
+            (b[0].external_id.as_str(), b[0].key.as_str())
+        );
+        assert_ne!(a[0].date, b[0].date);
+    }
+    #[test]
+    fn movieinsider_release_intro_requires_explicit_digital_date() {
+        let html = "<main itemtype='http://schema.org/Movie'><meta itemprop='name' content='Devour'><p class='release-intro'>Devour will be released exclusively on VOD / Digital on <time datetime='2026-10-13'>Tuesday, October 13, 2026</time>. Devour will be available to stream on VOD / Digital.</p></main>";
+        let url = "https://www.movieinsider.com/m25724/devour";
+        assert_eq!(
+            movieinsider_details(html, url).unwrap()[0]["release_date"],
+            "2026-10-13"
+        );
+        let simultaneous = html.replace("exclusively on", "in theaters and on");
+        assert!(movieinsider_details(&simultaneous, url).is_ok());
+        let theatrical = html.replace("exclusively on VOD / Digital on", "in theaters on");
+        assert!(movieinsider_details(&theatrical, url).is_err());
+        let theatrical_only = "<main itemtype='http://schema.org/Movie'><meta itemprop='name' content='Clean Hands'><p class='release-intro'>The official Clean Hands release date is <time datetime='2026-10-16'>October 16, 2026</time>. Clean Hands will open in select theaters.</p></main>";
+        assert!(
+            movieinsider_details(theatrical_only, url)
+                .unwrap()
+                .is_empty()
+        );
+        let estimated = html.replace("will be released", "is expected to be released");
+        assert!(movieinsider_details(&estimated, url).is_err());
+        let ambiguous = html.replace("</p>", "<time datetime='2026-10-16'>Other date</time></p>");
+        assert!(movieinsider_details(&ambiguous, url).is_err());
+    }
+    #[test]
+    fn movieinsider_calendar_paginates_and_limits_discovery_to_the_week() {
+        let html = "<div class='browse-movie'><h2><a href='/m123/film'>Film</a></h2><div class='calendar-scope'><a class='date' href='/movies/october/2026/09'>October 9</a></div></div><div class='browse-movie'><h2><a href='/m124/old'>Old</a></h2><div class='calendar-scope'><a class='date' href='/movies/october/2026/02'>October 2</a></div></div><a class='pager-ux__btn--next' href='/releases/vod-digital/2026?page_offset=20'>Next</a>";
+        let (links, next) = movieinsider_calendar(
+            html,
+            "https://www.movieinsider.com/releases/vod-digital/2026",
+            NaiveDate::from_ymd_opt(2026, 10, 5).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(links, vec!["https://www.movieinsider.com/m123/film"]);
+        assert!(next.unwrap().ends_with("page_offset=20"));
+        assert!(
+            movieinsider_calendar(
+                "<html>Access denied</html>",
+                "https://www.movieinsider.com/releases/vod-digital/2026",
+                NaiveDate::from_ymd_opt(2026, 10, 5).unwrap()
+            )
+            .is_err()
+        );
+        assert!(
+            movieinsider_calendar(
+                &html.replace(
+                    "/releases/vod-digital/2026?page_offset=20",
+                    "https://evil.example/page_offset=20"
+                ),
+                "https://www.movieinsider.com/releases/vod-digital/2026",
+                NaiveDate::from_ymd_opt(2026, 10, 5).unwrap()
+            )
+            .is_err()
+        );
+    }
+    #[test]
+    fn vod_and_subscription_dates_stay_separate_and_unknown_vod_is_not_invented() {
+        let html = "<h1>Example (2026)</h1><div class='entry-content'><p>VOD Release Date: October 6, 2026</p><p>SVOD Release Date: October 9, 2026 (Hulu)</p></div>";
+        let rows = streaming_details(html, "https://whentostream.com/example-2026/").unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0]["release_type"], "digital");
+        assert_eq!(rows[0]["release_date"], "2026-10-06");
+        assert!(rows[0]["platform"].is_null());
+        assert_eq!(rows[1]["release_type"], "subscription");
+        assert_eq!(rows[1]["release_date"], "2026-10-09");
+        let rows = streaming_details(
+            &html.replace("VOD Release Date: October 6, 2026", "VOD Release Date: TBA"),
+            "https://whentostream.com/example-2026/",
+        )
+        .unwrap();
+        assert_eq!(rows.len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod movieinsider_poster_tests {
+    #[test]
+    fn owned_poster_is_bound_to_the_movie_and_unrelated_images_are_excluded() {
+        let html = "<h1>Example Movie</h1><main itemtype='http://schema.org/Movie'><meta itemprop='name' content='Example'><img class='poster' itemprop='image' src='https://s.movieinsider.com/images/example/p/150/poster.jpg' alt='Example Movie Poster'><img class='poster' itemprop='image' src='https://s.movieinsider.com/images/other/p/150/poster.jpg' alt='Other Movie Poster'></main>";
+        let parsed = crate::movie_metadata::parse(
+            "movieinsider",
+            html,
+            "https://www.movieinsider.com/m123/example",
+        )
+        .unwrap();
+        assert_eq!(parsed.identity.title, "Example");
+        assert!(parsed.identity.year.is_none());
+        assert_eq!(
+            parsed.posters,
+            vec!["https://s.movieinsider.com/images/example/p/150/poster.jpg"]
+        );
+    }
+}
+
+#[cfg(test)]
+mod retention_filter_tests {
+    use super::*;
+    #[test]
+    fn movie_retention_keeps_today_future_and_undated() {
+        let mut report = json!({"releases":[{"release_date":"2026-10-12"},{"release_date":"2026-10-13"},{"release_date":"2026-10-14"},{"release_date":null}],"issues":["unchanged"]});
+        assert_eq!(
+            retain_current_releases(&mut report, NaiveDate::from_ymd_opt(2026, 10, 13).unwrap()),
+            1
+        );
+        assert_eq!(report["releases"].as_array().unwrap().len(), 3);
+        assert_eq!(report["issues"], json!(["unchanged"]));
     }
 }

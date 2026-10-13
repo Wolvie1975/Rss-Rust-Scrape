@@ -26,14 +26,12 @@ fn text(e: scraper::ElementRef<'_>) -> String {
 }
 pub fn title_year(raw: &str) -> (String, Option<i16>) {
     let s = raw.trim();
-    if let Some(s) = s.strip_suffix(')') {
-        if let Some((title, year)) = s.rsplit_once('(') {
-            if let Ok(year) = year.trim().parse::<i16>() {
-                if (1800..=9999).contains(&year) {
-                    return (title.trim().to_owned(), Some(year));
-                }
-            }
-        }
+    if let Some(s) = s.strip_suffix(')')
+        && let Some((title, year)) = s.rsplit_once('(')
+        && let Ok(year) = year.trim().parse::<i16>()
+        && (1800..=9999).contains(&year)
+    {
+        return (title.trim().to_owned(), Some(year));
     }
     (raw.trim().to_owned(), None)
 }
@@ -122,6 +120,18 @@ pub fn parse(source: &str, html: &str, url: &str) -> Result<SourceMovie, String>
             .map(text)
             .ok_or("missing DVD movie title")?;
     }
+    if source == "movieinsider" {
+        title = doc
+            .select(&selector(
+                "main[itemtype='http://schema.org/Movie'] meta[itemprop='name']",
+            ))
+            .next()
+            .and_then(|m| m.value().attr("content"))
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .ok_or("missing Movie Insider movie title")?
+            .to_owned();
+    }
     let imdb = doc
         .select(&selector(
             "a[itemprop='sameAs'], .entry-content a[href*='imdb.com/title/']",
@@ -154,10 +164,10 @@ pub fn parse(source: &str, html: &str, url: &str) -> Result<SourceMovie, String>
         });
     let mut posters = Vec::new();
     let mut push = |raw: &str| {
-        if let Some(u) = image_url(raw, url) {
-            if !posters.contains(&u) {
-                posters.push(u);
-            }
+        if let Some(u) = image_url(raw, url)
+            && !posters.contains(&u)
+        {
+            posters.push(u);
         }
     };
     if source == "dvdsreleasedates" {
@@ -167,10 +177,9 @@ pub fn parse(source: &str, html: &str, url: &str) -> Result<SourceMovie, String>
                 && a.value()
                     .attr("title")
                     .is_some_and(|t| normalized_title(t) == normalized_title(&title))
+                && let Some(h) = a.value().attr("href")
             {
-                if let Some(h) = a.value().attr("href") {
-                    push(h);
-                }
+                push(h);
             }
         }
         for img in doc.select(&selector("img[itemprop='image']")) {
@@ -207,13 +216,26 @@ pub fn parse(source: &str, html: &str, url: &str) -> Result<SourceMovie, String>
                 img.value()
                     .attr("height")
                     .and_then(|s| s.parse::<u32>().ok()),
-            ) {
-                if !portrait(w, h) {
-                    continue;
-                }
+            ) && !portrait(w, h)
+            {
+                continue;
             }
             if let Some(h) = img.value().attr("src") {
                 push(h);
+            }
+        }
+    } else if source == "movieinsider" {
+        for img in doc.select(&selector(
+            "main[itemtype='http://schema.org/Movie'] img.poster[itemprop='image']",
+        )) {
+            let alt = img
+                .value()
+                .attr("alt")
+                .and_then(|s| s.strip_suffix(" Movie Poster"));
+            if alt.is_some_and(|s| normalized_title(s) == normalized_title(&title))
+                && let Some(src) = img.value().attr("src")
+            {
+                push(src);
             }
         }
     } else {

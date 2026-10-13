@@ -1,0 +1,876 @@
+{
+  "events": [
+    {
+      "id": "401907994",
+      "uid": "s:1~l:10~e:401907994",
+      "date": "2026-10-11T00:00Z",
+      "name": "Chicago White Sox at Cleveland Guardians",
+      "shortName": "CHW @ CLE",
+      "season": {
+        "year": 2026,
+        "type": 3,
+        "slug": "post-season"
+      },
+      "competitions": [
+        {
+          "id": "401907994",
+          "uid": "s:1~l:10~e:401907994~c:401907994",
+          "date": "2026-10-11T00:00Z",
+          "attendance": 0,
+          "type": {
+            "id": "15",
+            "abbreviation": "QTR"
+          },
+          "timeValid": true,
+          "neutralSite": false,
+          "conferenceCompetition": true,
+          "playByPlayAvailable": false,
+          "recent": false,
+          "wasSuspended": false,
+          "venue": {
+            "id": "5",
+            "fullName": "Progressive Field",
+            "address": {
+              "city": "Cleveland",
+              "state": "Ohio"
+            },
+            "indoor": false
+          },
+          "competitors": [
+            {
+              "id": "5",
+              "uid": "s:1~l:10~t:5",
+              "type": "team",
+              "order": 0,
+              "homeAway": "home",
+              "team": {
+                "id": "5",
+                "uid": "s:1~l:10~t:5",
+                "location": "Cleveland",
+                "name": "Guardians",
+                "abbreviation": "CLE",
+                "displayName": "Cleveland Guardians",
+                "shortDisplayName": "Guardians",
+                "color": "002b5c",
+                "alternateColor": "e31937",
+                "isActive": true,
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/_/name/cle/cleveland-guardians",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "roster",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/roster/_/name/cle/cleveland-guardians",
+                    "text": "Roster",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "roster",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:1~l:10~t:5&section=roster",
+                    "text": "Roster",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/stats/_/name/cle/cleveland-guardians",
+                    "text": "Statistics",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:1~l:10~t:5&section=stats",
+                    "text": "Statistics",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/schedule/_/name/cle",
+                    "text": "Schedule",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:1~l:10~t:5&section=scores",
+                    "text": "Schedule",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/cle.png",
+                "logoDark": "https://a.espncdn.com/i/teamlogos/mlb/500-dark/scoreboard/cle.png"
+              },
+              "score": "0",
+              "hits": 0,
+              "errors": 0,
+              "record": "2-2"
+            },
+            {
+              "id": "4",
+              "uid": "s:1~l:10~t:4",
+              "type": "team",
+              "order": 1,
+              "homeAway": "away",
+              "team": {
+                "id": "4",
+                "uid": "s:1~l:10~t:4",
+                "location": "Chicago",
+                "name": "White Sox",
+                "abbreviation": "CHW",
+                "displayName": "Chicago White Sox",
+                "shortDisplayName": "White Sox",
+                "color": "000000",
+                "alternateColor": "c4ced4",
+                "isActive": true,
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/_/name/chw/chicago-white-sox",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "roster",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/roster/_/name/chw/chicago-white-sox",
+                    "text": "Roster",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "roster",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:1~l:10~t:4&section=roster",
+                    "text": "Roster",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/stats/_/name/chw/chicago-white-sox",
+                    "text": "Statistics",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:1~l:10~t:4&section=stats",
+                    "text": "Statistics",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/schedule/_/name/chw",
+                    "text": "Schedule",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:1~l:10~t:4&section=scores",
+                    "text": "Schedule",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/chw.png",
+                "logoDark": "https://a.espncdn.com/i/teamlogos/mlb/500-dark/scoreboard/chw.png"
+              },
+              "score": "0",
+              "hits": 0,
+              "errors": 0,
+              "record": "2-2"
+            }
+          ],
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0:00",
+            "period": 1,
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Scheduled",
+              "shortDetail": "10/10 - 8:00 PM EDT"
+            }
+          },
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "TBS",
+                "truTV"
+              ]
+            }
+          ],
+          "format": {
+            "regulation": {
+              "periods": 9
+            }
+          },
+          "tickets": [
+            {
+              "summary": "Tickets as low as $1,176",
+              "numberAvailable": 42,
+              "links": [
+                {
+                  "href": "https://www.vividseats.com/cleveland-guardians-tickets-progressive-field-10-10-2026--sports-mlb-baseball/production/7371368?wsUser=717"
+                },
+                {
+                  "href": "https://www.vividseats.com/progressive-field-tickets/venue/811?wsUser=717"
+                }
+              ]
+            },
+            {
+              "summary": "Tickets as low as $187",
+              "numberAvailable": 1186,
+              "links": [
+                {
+                  "href": "https://www.vividseats.com/cleveland-guardians-tickets-progressive-field-10-6-2026--sports-mlb-baseball/production/7371364?wsUser=717"
+                },
+                {
+                  "href": "https://www.vividseats.com/progressive-field-tickets/venue/811?wsUser=717"
+                }
+              ]
+            }
+          ],
+          "startDate": "2026-10-11T00:00Z",
+          "series": {
+            "type": "playoff",
+            "title": "Playoff Series",
+            "summary": "Series tied 2-2",
+            "completed": false,
+            "totalCompetitions": 5,
+            "competitors": [
+              {
+                "id": "5",
+                "uid": "s:1~l:10~t:5",
+                "wins": 2,
+                "ties": 0,
+                "href": "http://sports.core.api.espn.pvt/v2/sports/baseball/leagues/mlb/seasons/2026/teams/5?lang=en&region=us"
+              },
+              {
+                "id": "4",
+                "uid": "s:1~l:10~t:4",
+                "wins": 2,
+                "ties": 0,
+                "href": "http://sports.core.api.espn.pvt/v2/sports/baseball/leagues/mlb/seasons/2026/teams/4?lang=en&region=us"
+              }
+            ]
+          },
+          "broadcast": "TBS/truTV",
+          "geoBroadcasts": [
+            {
+              "type": {
+                "id": "5",
+                "shortName": "Radio"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "ERADM"
+              },
+              "lang": "en",
+              "region": "us"
+            },
+            {
+              "type": {
+                "id": "1",
+                "shortName": "TV"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "TBS"
+              },
+              "lang": "en",
+              "region": "us"
+            },
+            {
+              "type": {
+                "id": "1",
+                "shortName": "TV"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "truTV"
+              },
+              "lang": "en",
+              "region": "us"
+            }
+          ],
+          "highlights": []
+        }
+      ],
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/mlb/game/_/gameId/401907994/white-sox-guardians",
+          "text": "Gamecast",
+          "shortText": "Gamecast",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "weather": {
+        "displayValue": "Mostly clear",
+        "temperature": 70,
+        "highTemperature": 70,
+        "conditionId": "34",
+        "link": {
+          "language": "en-US",
+          "rel": [
+            "44115"
+          ],
+          "href": "http://www.accuweather.com/en/us/progressive-field-oh/44113/hourly-weather-forecast/53619_poi?day=2&hbhhour=20&lang=en-us",
+          "text": "Weather",
+          "shortText": "Weather",
+          "isExternal": true,
+          "isPremium": false
+        }
+      },
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0:00",
+        "period": 1,
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Scheduled",
+          "shortDetail": "10/10 - 8:00 PM EDT"
+        }
+      }
+    },
+    {
+      "id": "401908023",
+      "uid": "s:1~l:10~e:401908023",
+      "date": "2026-10-13T00:00Z",
+      "name": "CLE/CHW at Tampa Bay Rays",
+      "shortName": "TBD @ TB",
+      "season": {
+        "year": 2026,
+        "type": 3,
+        "slug": "post-season"
+      },
+      "competitions": [
+        {
+          "id": "401908023",
+          "uid": "s:1~l:10~e:401908023~c:401908023",
+          "date": "2026-10-13T00:00Z",
+          "attendance": 0,
+          "type": {
+            "id": "16",
+            "abbreviation": "SEMI"
+          },
+          "timeValid": true,
+          "neutralSite": false,
+          "conferenceCompetition": false,
+          "playByPlayAvailable": false,
+          "recent": false,
+          "wasSuspended": false,
+          "venue": {
+            "id": "31",
+            "fullName": "Tropicana Field",
+            "address": {
+              "city": "St. Petersburg",
+              "state": "Florida"
+            },
+            "indoor": true
+          },
+          "competitors": [
+            {
+              "id": "30",
+              "uid": "s:1~l:10~t:30",
+              "type": "team",
+              "order": 0,
+              "homeAway": "home",
+              "team": {
+                "id": "30",
+                "uid": "s:1~l:10~t:30",
+                "location": "Tampa Bay",
+                "name": "Rays",
+                "abbreviation": "TB",
+                "displayName": "Tampa Bay Rays",
+                "shortDisplayName": "Rays",
+                "color": "092c5c",
+                "alternateColor": "8fbce6",
+                "isActive": true,
+                "links": [
+                  {
+                    "rel": [
+                      "clubhouse",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/_/name/tb/tampa-bay-rays",
+                    "text": "Clubhouse",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "roster",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/roster/_/name/tb/tampa-bay-rays",
+                    "text": "Roster",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "roster",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:1~l:10~t:30&section=roster",
+                    "text": "Roster",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/stats/_/name/tb/tampa-bay-rays",
+                    "text": "Statistics",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "stats",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:1~l:10~t:30&section=stats",
+                    "text": "Statistics",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "desktop",
+                      "team"
+                    ],
+                    "href": "https://www.espn.com/mlb/team/schedule/_/name/tb",
+                    "text": "Schedule",
+                    "isExternal": false,
+                    "isPremium": false
+                  },
+                  {
+                    "rel": [
+                      "schedule",
+                      "sportscenter",
+                      "app",
+                      "team"
+                    ],
+                    "href": "sportscenter://x-callback-url/showClubhouse?uid=s:1~l:10~t:30&section=scores",
+                    "text": "Schedule",
+                    "isExternal": false,
+                    "isPremium": false
+                  }
+                ],
+                "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/tb.png",
+                "logoDark": "https://a.espncdn.com/i/teamlogos/mlb/500-dark/scoreboard/tb.png"
+              },
+              "score": "0",
+              "hits": 0,
+              "errors": 0
+            },
+            {
+              "id": "-2",
+              "uid": "s:1~l:10~t:-2",
+              "type": "team",
+              "order": 1,
+              "homeAway": "away",
+              "name": "CLE/CHW",
+              "team": {
+                "id": "-2",
+                "uid": "s:1~l:10~t:-2",
+                "location": "TBD",
+                "name": "CLE/CHW",
+                "abbreviation": "CLE/CHW",
+                "displayName": "CLE/CHW",
+                "shortDisplayName": "CLE/CHW",
+                "isActive": false,
+                "links": []
+              },
+              "score": "0",
+              "hits": 0,
+              "errors": 0
+            }
+          ],
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0:00",
+            "period": 1,
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Scheduled",
+              "shortDetail": "10/12 - 8:00 PM EDT"
+            }
+          },
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "TBS",
+                "truTV"
+              ]
+            }
+          ],
+          "format": {
+            "regulation": {
+              "periods": 9
+            }
+          },
+          "tickets": [
+            {
+              "summary": "Tickets as low as $107",
+              "numberAvailable": 3788,
+              "links": [
+                {
+                  "href": "https://www.vividseats.com/tampa-bay-rays-tickets-tropicana-field-10-10-2026--sports-mlb-baseball/production/7371101?wsUser=717"
+                },
+                {
+                  "href": "https://www.vividseats.com/tropicana-field-tickets/venue/1741?wsUser=717"
+                }
+              ]
+            }
+          ],
+          "startDate": "2026-10-13T00:00Z",
+          "broadcast": "TBS/truTV",
+          "geoBroadcasts": [
+            {
+              "type": {
+                "id": "1",
+                "shortName": "TV"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "TBS"
+              },
+              "lang": "en",
+              "region": "us"
+            },
+            {
+              "type": {
+                "id": "1",
+                "shortName": "TV"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "truTV"
+              },
+              "lang": "en",
+              "region": "us"
+            }
+          ],
+          "highlights": []
+        }
+      ],
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/mlb/game/_/gameId/401908023/tbd-rays",
+          "text": "Gamecast",
+          "shortText": "Gamecast",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "weather": {
+        "displayValue": "Clear",
+        "temperature": 82,
+        "highTemperature": 82,
+        "conditionId": "33",
+        "link": {
+          "language": "en-US",
+          "rel": [
+            "33705"
+          ],
+          "href": "http://www.accuweather.com/en/us/tropicana-field-fl/33712/hourly-weather-forecast/44502_poi?day=4&hbhhour=20&lang=en-us",
+          "text": "Weather",
+          "shortText": "Weather",
+          "isExternal": true,
+          "isPremium": false
+        }
+      },
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0:00",
+        "period": 1,
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Scheduled",
+          "shortDetail": "10/12 - 8:00 PM EDT"
+        }
+      }
+    },
+    {
+      "id": "401908048",
+      "uid": "s:1~l:10~e:401908048",
+      "date": "2026-10-31T04:00Z",
+      "name": "TBD at TBD",
+      "shortName": "TBD @ TBD",
+      "season": {
+        "year": 2026,
+        "type": 3,
+        "slug": "post-season"
+      },
+      "competitions": [
+        {
+          "id": "401908048",
+          "uid": "s:1~l:10~e:401908048~c:401908048",
+          "date": "2026-10-31T04:00Z",
+          "attendance": 0,
+          "type": {
+            "id": "17",
+            "abbreviation": "FINAL"
+          },
+          "timeValid": false,
+          "neutralSite": false,
+          "conferenceCompetition": false,
+          "playByPlayAvailable": false,
+          "recent": false,
+          "wasSuspended": false,
+          "competitors": [
+            {
+              "id": "-1",
+              "uid": "s:1~l:10~t:-1",
+              "type": "team",
+              "order": 0,
+              "homeAway": "home",
+              "name": "TBD",
+              "team": {
+                "id": "-1",
+                "uid": "s:1~l:10~t:-1",
+                "location": "TBD",
+                "name": "TBD",
+                "abbreviation": "TBD",
+                "displayName": "TBD",
+                "shortDisplayName": "TBD",
+                "isActive": false,
+                "links": []
+              },
+              "score": "0",
+              "hits": 0,
+              "errors": 0
+            },
+            {
+              "id": "-2",
+              "uid": "s:1~l:10~t:-2",
+              "type": "team",
+              "order": 1,
+              "homeAway": "away",
+              "name": "TBD",
+              "team": {
+                "id": "-2",
+                "uid": "s:1~l:10~t:-2",
+                "location": "TBD",
+                "name": "TBD",
+                "abbreviation": "TBD",
+                "displayName": "TBD",
+                "shortDisplayName": "TBD",
+                "isActive": false,
+                "links": []
+              },
+              "score": "0",
+              "hits": 0,
+              "errors": 0
+            }
+          ],
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0:00",
+            "period": 1,
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Scheduled",
+              "shortDetail": "TBD"
+            }
+          },
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "Fox"
+              ]
+            }
+          ],
+          "format": {
+            "regulation": {
+              "periods": 9
+            }
+          },
+          "startDate": "2026-10-31T04:00Z",
+          "broadcast": "Fox",
+          "geoBroadcasts": [
+            {
+              "type": {
+                "id": "1",
+                "shortName": "TV"
+              },
+              "market": {
+                "id": "1",
+                "type": "National"
+              },
+              "media": {
+                "shortName": "Fox"
+              },
+              "lang": "en",
+              "region": "us"
+            }
+          ],
+          "highlights": []
+        }
+      ],
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/mlb/game/_/gameId/401908048/tbd-tbd",
+          "text": "Gamecast",
+          "shortText": "Gamecast",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0:00",
+        "period": 1,
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Scheduled",
+          "shortDetail": "TBD"
+        }
+      }
+    }
+  ]
+}

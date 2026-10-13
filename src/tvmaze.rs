@@ -99,10 +99,10 @@ pub fn normalize(
         if !ids.insert(id) {
             return Err("duplicate episode IDs in provider response".into());
         }
-        if let Some(href) = e["_links"]["show"]["href"].as_str() {
-            if href != format!("https://api.tvmaze.com/shows/{show_id}") {
-                return Err("episode belongs to a different show".into());
-            }
+        if let Some(href) = e["_links"]["show"]["href"].as_str()
+            && href != format!("https://api.tvmaze.com/shows/{show_id}")
+        {
+            return Err("episode belongs to a different show".into());
         }
         let airdate = date(&e["airdate"])?;
         let airtime = match raw(&e["airtime"]) {
@@ -200,7 +200,7 @@ trait JsonResponse {
 }
 impl JsonResponse for reqwest::blocking::Response {
     fn json_value(self) -> std::result::Result<Value, RequestError> {
-        let text = self.text().map_err(|e| RequestError {
+        let text = crate::http::response_text(self).map_err(|e| RequestError {
             message: e.to_string(),
             retry_seconds: 900,
         })?;
@@ -229,7 +229,7 @@ pub fn collect(db: &mut Db, dry_run: bool, force: bool) -> Result<Value> {
     let mut api = Api {
         base: "https://api.tvmaze.com".into(),
         pacing: Duration::from_millis(600),
-        client: Client::builder()
+        client: crate::http::client_builder()
             .timeout(Duration::from_secs(20))
             .user_agent("MyNewsFeed-web_scraper/0.1 (TVmaze episode tracking)")
             .build()?,
@@ -345,7 +345,7 @@ pub(crate) mod tests {
         let mut api = Api {
             base: format!("http://{addr}"),
             pacing: Duration::ZERO,
-            client: Client::builder().no_proxy().build().unwrap(),
+            client: crate::http::client_builder().no_proxy().build().unwrap(),
             last: None,
         };
         assert_eq!(api.get("/retry").unwrap()["id"], 90632);
@@ -454,7 +454,7 @@ pub(crate) mod tests {
         let mut api = Api {
             base: format!("http://{addr}"),
             pacing: Duration::ZERO,
-            client: Client::builder().no_proxy().build().unwrap(),
+            client: crate::http::client_builder().no_proxy().build().unwrap(),
             last: None,
         };
         let error = api.get("/failure").unwrap_err();

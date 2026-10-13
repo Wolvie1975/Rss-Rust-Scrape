@@ -6,10 +6,21 @@ services:
     container_name: web-scraper
     restart: unless-stopped
     env_file: .env
+    mem_limit: 512m
+    cpus: 2.0
+    pids_limit: 128
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
     command: ["--from-db", "--per-source", "10", "--every-hours", "1",
-              "-o", "/data/feed.xml", "--events-from-db", "--youtube-from-db", "--movies", "--tv-from-db"]
+              "-o", "/data/feed.xml", "--events-from-db", "--standings-from-db", "--rankings-from-db", "--youtube-from-db", "--youtube-latest", "10", "--movies", "--tv-from-db"]
     volumes:
       - scraper-data:/data
+      - ./certs/sql-ca.crt:/data/certs/sql-ca.crt:ro
     networks:
       - dev-bridge
 networks:

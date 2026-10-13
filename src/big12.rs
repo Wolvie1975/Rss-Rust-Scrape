@@ -3,7 +3,7 @@ use crate::{
     db::EventFeed,
     events::{self, Event},
 };
-use chrono::{Datelike, NaiveDate};
+use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Timelike, Utc};
 use reqwest::blocking::Client;
 use scraper::{Html, Selector};
 use serde_json::{Value, json};
@@ -55,7 +55,7 @@ pub fn feed_url(id: i32) -> String {
     )
 }
 fn fetch(client: &Client, url: &str) -> Result<String> {
-    Ok(client.get(url).send()?.error_for_status()?.text()?)
+    crate::http::get_text(client, url)
 }
 pub fn members(html: &str) -> Result<Vec<Member>> {
     let doc = Html::parse_document(html);
@@ -188,8 +188,25 @@ pub fn enrich(
             _ => None,
         };
         timezone = string(&m["timezone"]);
-        if let (Some(start), Some(utc)) = (e.starts_at, m["date_utc"].as_str()) {
-            if start.format("%Y-%m-%dT%H:%M:%S").to_string() != utc.get(..19).unwrap_or(utc) {
+        if let (Some(start), Some(raw)) = (e.starts_at, m["date_utc"].as_str()) {
+            let utc = DateTime::parse_from_rfc3339(raw)
+                .ok()
+                .map(|d| d.with_timezone(&Utc).naive_utc())
+                .or_else(|| NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M:%S%.f").ok());
+            // SIDEARM can leave date_utc at midnight Central after announcing
+            // kickoff. Only accept this placeholder when JSON's local kickoff
+            // independently agrees with the RSS instant in Central time.
+            let central_start = start.with_timezone(&chrono_tz::America::Chicago);
+            let local = m["date"]
+                .as_str()
+                .and_then(|raw| NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M:%S%.f").ok());
+            let date_only_placeholder = utc.is_some_and(|utc| {
+                let central = utc.and_utc().with_timezone(&chrono_tz::America::Chicago);
+                central.time().num_seconds_from_midnight() == 0
+                    && central.date_naive() == central_start.date_naive()
+                    && local == Some(central_start.naive_local())
+            });
+            if utc != Some(start.naive_utc()) && !date_only_placeholder {
                 warning = fail("RSS/JSON UTC disagreement; RSS timing retained");
             }
         }
@@ -312,13 +329,13 @@ pub fn collect(client: &Client, feeds: &[EventFeed]) -> Result<Vec<FeedResult>> 
     let mut timings: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for r in &results {
         for o in &r.observations {
-            if o["issue"].is_null() {
-                if let Some(key) = o["canonical_key"].as_str() {
-                    timings.entry(key.to_owned()).or_default().insert(format!(
-                        "{}|{}|{}",
-                        o["event"]["event_date"], o["event"]["starts_at"], o["event"]["time_tbd"]
-                    ));
-                }
+            if o["issue"].is_null()
+                && let Some(key) = o["canonical_key"].as_str()
+            {
+                timings.entry(key.to_owned()).or_default().insert(format!(
+                    "{}|{}|{}",
+                    o["event"]["event_date"], o["event"]["starts_at"], o["event"]["time_tbd"]
+                ));
             }
         }
     }
@@ -382,7 +399,7 @@ pub(crate) mod tests {
         assert_eq!(kansas["event"]["opponent"], "Utah");
         assert_eq!(utah["event"]["opponent"], "Kansas");
         assert_eq!(kansas["event"]["starts_at"], "2026-10-11T02:15:00+00:00");
-        assert!(kansas["warning"].is_string());
+        assert!(kansas["warning"].is_null());
         assert!(kansas["issue"].is_null());
         assert!(
             kansas["event"]["team_logo_url"]
@@ -390,6 +407,33 @@ pub(crate) mod tests {
                 .unwrap()
                 .contains("jhwk")
         );
+    }
+    #[test]
+    fn midnight_json_placeholder_requires_matching_local_kickoff() {
+        let catalog = members(include_str!("../tests/fixtures/big12-members.html")).unwrap();
+        let school = catalog.iter().find(|s| s.id == 3).unwrap();
+        let mut e = events::parse_feed(
+            include_str!("../tests/fixtures/big12-kansas-calendar.xml"),
+            &feed_url(3),
+            Some("Kansas"),
+            None,
+        )
+        .unwrap()
+        .events
+        .remove(0);
+        e.starts_at = Some("2026-10-17T19:30:00Z".parse().unwrap());
+        let mut m = fixture(3)["metadata"].clone();
+        m["date"] = json!("2026-10-17T14:30:00");
+        m["date_utc"] = json!("2026-10-17T05:00:00");
+        let o = enrich(e.clone(), school, &catalog, Some(&m));
+        assert!(o["warning"].is_null());
+        assert_eq!(o["event"]["starts_at"], "2026-10-17T19:30:00+00:00");
+        m["date"] = json!("2026-10-17T15:30:00");
+        assert!(enrich(e.clone(), school, &catalog, Some(&m))["warning"].is_string());
+        m["date_utc"] = json!("2026-10-17T19:30:00Z");
+        assert!(enrich(e.clone(), school, &catalog, Some(&m))["warning"].is_null());
+        m["date_utc"] = json!("2026-10-17T18:30:00Z");
+        assert!(enrich(e, school, &catalog, Some(&m))["warning"].is_string());
     }
     #[test]
     fn neutral_tbd_does_not_invent_a_home_side_or_time() {

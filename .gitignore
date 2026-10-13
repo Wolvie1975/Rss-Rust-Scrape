@@ -1,3 +1,7 @@
 /target
 .env
 scraper.log
+
+.env.*
+certs/
+.deployment-backups/

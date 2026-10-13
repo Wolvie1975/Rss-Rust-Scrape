@@ -1,0 +1,5 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CRON_TZ=America/Chicago
+*/15 * * * * root /usr/local/sbin/webscraper-sql-backup log >> /var/log/webscraper-sql-backup.log 2>&1
+35 2 * * * root /usr/local/sbin/webscraper-sql-backup full >> /var/log/webscraper-sql-backup.log 2>&1
