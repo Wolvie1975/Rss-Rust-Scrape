@@ -4,6 +4,7 @@ Historical evidence and the former long handoff are preserved here. Earlier tabl
 
 ## Contents
 
+- [NHL production deployment and validation — October 14, 2026](#nhl-operations-deployment-2026-10-14)
 - [SQL log maintenance — October 13, 2026](#sql-log-maintenance-2026-10-13)
 - [Retention deployment — October 13, 2026](#retention-deployment-2026-10-13)
 - [Initial optimization release — October 13, 2026](#optimizations-deployment-2026-10-13)
@@ -12,6 +13,33 @@ Historical evidence and the former long handoff are preserved here. Earlier tabl
 - [Audit remediation — October 10, 2026 (Central)](#audit-remediation-2026-10-10)
 - [Rust scraper application audit — October 10, 2026 (America/Chicago)](#application-audit-2026-10-10)
 - [web_scraper — handoff notes](#previous-handoff)
+
+<a id="nhl-operations-deployment-2026-10-14"></a>
+
+## NHL production deployment and validation — October 14, 2026
+
+Deployed image `web-scraper:nhl-20261014`; the production scraper and front-end were
+healthy at verification. NHL sources 5637 (schedule/results) and 13 (standings)
+were enabled. Imported 1,239 fixtures, 170 results and 32 current standings teams.
+Targeted runs 104, 105 and release-image run 106 succeeded; repeat imports kept
+stable identities and first-seen timestamps. Existing sports source settings and
+hourly container configuration matched the pre-deployment snapshot.
+
+Full offline tests, formatting, strict Clippy and Cargo audit passed. The existing
+poster SQL method received a scoped argument-count lint allowance, and Rustls was
+patched from 0.23.45 to 0.23.46 for newly published advisories. Read-only release
+verification and the SQL test in an isolated validation database passed. The
+validation database and temporary operator tools were removed afterward.
+
+Rollback image `web-scraper:before-nhl-20261014` and the stopped previous container
+were retained. Source and private configuration backups are in
+`.deployment-backups/20261014-nhl/` on the Docker host. Disable NHL sources before
+restoring the older collector. No SQL Server restart, frontend deployment, Git
+commit or push was part of this release.
+
+Complete data counts, validation and rollback evidence:
+[sports deployment history](sports-history.md#nhl-deployment-2026-10-14).
+Current operation: [NHL setup guide](../docs/operations.md#nhl-operations).
 
 <a id="sql-log-maintenance-2026-10-13"></a>
 

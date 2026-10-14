@@ -4,8 +4,8 @@ Read [HANDOFF.md](HANDOFF.md) for the current documented deployment and working 
 
 | Topic | Guide |
 | --- | --- |
-| Fixtures, Big 12, MLS, Championship/Wrexham, EPL, MLB, WNBA, NWSL | [Sports schedules and results](docs/sports-schedules.md) |
-| Standings, NFL divisions, MLS conferences, national Top 25 | [Sports standings and rankings](docs/sports-tables.md) |
+| Fixtures, NHL, Big 12, MLS, Championship/Wrexham, EPL, MLB, WNBA, NWSL | [Sports schedules and results](docs/sports-schedules.md) |
+| Standings, NHL divisions, NFL divisions, MLS conferences, national Top 25 | [Sports standings and rankings](docs/sports-tables.md) |
 | Movie releases, actual box office, forecasts and posters | [Movies, box office and posters](docs/movies-and-box-office.md) |
 | TVmaze tracking, series and episodes | [TV series and episodes](docs/tv.md) |
 | Retention, SQL backups, security, credentials and performance | [Operations](docs/operations.md) |

@@ -1,9 +1,10 @@
 # Sports schedules and match results
 
-Current fixtures use the existing SportsEvents model. MLS and Championship final results use SportsMatchResults, separately from schedule retention; shootout tallies are separate from match goals. MLS source 5525, Championship 5326 and EPL 5357 are enabled. Past/canceled schedules are removed. The provider design proposal at the end is historical; deployed implementation and current retention take precedence.
+Current fixtures use the existing SportsEvents model. NHL, MLS and Championship final results use SportsMatchResults, separately from schedule retention; shootout tallies are separate from match goals. MLS source 5525, Championship 5326 and EPL 5357 and NHL 5637 are enabled. Past/canceled schedules are removed. The provider design proposal at the end is historical; deployed implementation and current retention take precedence.
 
 ## Contents
 
+- [NHL schedules and final results](#nhl-schedule-results)
 - [Big 12 calendar ingestion](#big12-sports)
 - [MLS schedule, standings and results](#mls-schedule-results-frontend-handoff)
 - [EFL Championship schedule, table and results — frontend handoff](#my-newsfeed-championship-wrexham)
@@ -12,6 +13,71 @@ Current fixtures use the existing SportsEvents model. MLS and Championship final
 - [WNBA schedule import / My-Newsfeed handoff](#wnba-schedule)
 - [Kansas City Current schedule import / My-Newsfeed handoff](#kansas-city-current-schedule)
 - [Big 12 sports calendar expansion proposal](#big12-sports-expansion-plan)
+
+<a id="nhl-schedule-results"></a>
+
+## NHL schedules and final results
+
+NHL schedule/results source **5637** is enabled, with provider key `espn-nhl`,
+sport `Hockey`, ESPN league ID `90`, and feed:
+`https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard`.
+The deployed hourly collector reads it through `--events-from-db`.
+
+Verification on October 14, 2026 recorded **1,239 current/future fixtures** and
+**170 final results** for ESPN season **2027 (2026–27)**. These are deployment
+snapshots, not guaranteed current counts. See the [deployment history](../reports/sports-history.md#nhl-deployment-2026-10-14).
+
+### Schedule read contract
+
+Use `dbo.SportsEvents` joined to enabled `dbo.SportsEventsType` rows. A league game
+has one row from the home team's perspective; `SchoolId`/`SchoolName` identify the
+home NHL team and opponent fields identify the away team. These ESPN team IDs
+are scoped to the NHL provider and do not map to Big 12 school metadata.
+Canonical identity is `espn:nhl:<gameId>`; links use the ESPN NHL game URL.
+UTC start time, Central calendar date, venue, broadcasts and both team logos use
+the shared event columns. Preserve TBD, postponement and cancellation handling.
+Completed observations reconcile existing rows without inserting past results
+as fixtures. Existing schedule retention removes past/canceled entries.
+
+```sql
+SELECT e.* FROM dbo.SportsEvents e
+JOIN dbo.SportsEventsType s ON s.ID=e.SportsEventsTypeId
+WHERE s.Enabled=1 AND e.ProviderKey='espn-nhl'
+ORDER BY e.EventDate,e.StartsAtUtc;
+```
+
+### Results and season handling
+
+Final scores live in `dbo.SportsMatchResults` independently of fixture retention.
+Identity is `(ProviderKey,GameId)`; corrections update scores and preserve `ID`
+and `FirstSeenAt`. Include home/away names, logos and scores in the results view.
+Render `STATUS_FINAL` as Final, `STATUS_FINAL_OT` as Final/OT, and
+`STATUS_FINAL_SO` as Final/SO. Score columns hold ESPN's final scoreboard totals,
+including the deciding shootout goal; optional shootout fields are not inferred.
+Live games and tied NHL scores never become final results.
+
+```sql
+DECLARE @Season INT=2027; -- 2026–27, using ESPN's ending year
+SELECT r.* FROM dbo.SportsMatchResults r
+JOIN dbo.SportsEventsType s ON s.ID=r.SourceId
+WHERE s.Enabled=1 AND r.ProviderKey='espn-nhl' AND r.Season=@Season
+ORDER BY r.StartsAtUtc DESC;
+```
+
+Collection covers July through June and rolls to the next season in July.
+Preseason, regular season and playoffs are included when published by ESPN.
+Each event must match the requested season; preseason league headers can lag,
+so NHL event season fields are authoritative. Empty responses do not delete
+previous results. Prior seasons are removed only after a successful nonempty
+new-season results import.
+
+Standings source **13** and its display contract are covered in the
+[NHL standings section](sports-tables.md#nhl-standings). The separate My-Newsfeed
+application can use these shared read models; scraper deployment does not
+establish whether its NHL selectors or pages have been implemented.
+
+Setup and activation: [operations guide](operations.md#nhl-operations).
+Detailed collector/reference commands: [NHL reference](nhl.md).
 
 <a id="big12-sports"></a>
 

@@ -1,7 +1,7 @@
 //! Full Championship season: future fixtures and completed results stored separately.
 use crate::espn_schedule::{self, Fixture, League};
 use chrono::{Datelike, Utc};
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::collections::BTreeMap;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub const WREXHAM_ID: i32 = 352;
@@ -14,104 +14,7 @@ pub fn is_feed(url: &str) -> bool {
     espn_schedule::is_feed(url, League::Championship)
 }
 pub fn parse(root: &Value, season: i32) -> Result<(Vec<Fixture>, Vec<Value>)> {
-    parse_soccer(root, season, League::Championship, "3914")
-}
-pub(crate) fn parse_soccer(
-    root: &Value,
-    season: i32,
-    league: League,
-    league_id: &str,
-) -> Result<(Vec<Fixture>, Vec<Value>)> {
-    if !root["leagues"]
-        .as_array()
-        .is_some_and(|ls| ls.iter().any(|l| l["id"] == league_id))
-    {
-        return Err("wrong soccer league response".into());
-    }
-    let fixtures = espn_schedule::parse(root, league, None)?;
-    if !fixtures.is_empty()
-        && root["leagues"][0]["season"]["year"].as_i64() != Some(i64::from(season))
-    {
-        return Err("wrong soccer season response".into());
-    }
-    if root["events"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|e| e["season"]["year"].as_i64() != Some(i64::from(season)))
-    {
-        return Err("mixed soccer event seasons".into());
-    }
-    let mut results = Vec::new();
-    for fixture in &fixtures {
-        if !fixture.completed
-            || !(fixture.status == "STATUS_FULL_TIME" || fixture.status.starts_with("STATUS_FINAL"))
-        {
-            continue;
-        }
-        let raw = root["events"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|r| r["id"].as_str().and_then(|s| s.parse::<i32>().ok()) == fixture.event.game_id)
-            .ok_or("soccer result missing event")?;
-        let competitors = raw["competitions"][0]["competitors"]
-            .as_array()
-            .ok_or("missing result teams")?;
-        let home = competitors
-            .iter()
-            .find(|c| c["homeAway"] == "home")
-            .ok_or("missing home result")?;
-        let away = competitors
-            .iter()
-            .find(|c| c["homeAway"] == "away")
-            .ok_or("missing away result")?;
-        let score = |v: &Value| -> Result<i32> {
-            v["score"]
-                .as_str()
-                .and_then(|s| s.parse::<i32>().ok())
-                .filter(|s| *s >= 0)
-                .ok_or_else(|| "final soccer score missing or invalid".into())
-        };
-        let date = raw["competitions"][0]["date"]
-            .as_str()
-            .or(raw["date"].as_str())
-            .ok_or("result kickoff missing")?;
-        let kickoff = chrono::DateTime::parse_from_rfc3339(date)
-            .map(|d| d.with_timezone(&Utc))
-            .or_else(|_| {
-                chrono::NaiveDateTime::parse_from_str(date, "%Y-%m-%dT%H:%MZ").map(|d| d.and_utc())
-            })?;
-        let shootout = |v: &Value| -> Result<Option<i32>> {
-            if v["shootoutScore"].is_null() {
-                return Ok(None);
-            }
-            let n = v["shootoutScore"]
-                .as_i64()
-                .or_else(|| v["shootoutScore"].as_str().and_then(|s| s.parse().ok()))
-                .ok_or("invalid shootout score")?;
-            Ok(Some(
-                i32::try_from(n)
-                    .ok()
-                    .filter(|n| *n >= 0)
-                    .ok_or("invalid shootout score")?,
-            ))
-        };
-        let home_pen = shootout(home)?;
-        let away_pen = shootout(away)?;
-        if fixture.status == "STATUS_FINAL_PEN"
-            && (home_pen.is_none() || away_pen.is_none() || home_pen == away_pen)
-        {
-            return Err("final shootout scores missing or tied".into());
-        }
-        results.push(json!({"gameId":fixture.event.game_id,"season":season,
-            "matchDate":fixture.event.event_date.to_string(),"startsAt":kickoff.to_rfc3339(),
-            "homeId":fixture.team_id,"homeName":fixture.team_name,"awayId":fixture.opponent_id,
-            "awayName":fixture.event.opponent,"homeScore":score(home)?,"awayScore":score(away)?,"homeShootout":home_pen,"awayShootout":away_pen,
-            "homeLogo":fixture.event.team_logo_url,"awayLogo":fixture.event.opponent_logo_url,
-            "status":fixture.status,"url":fixture.event.url}));
-    }
-    Ok((fixtures, results))
+    crate::match_results::parse(root, season, League::Championship, "3914")
 }
 pub fn fetch(client: &reqwest::blocking::Client, raw: &str) -> Result<Batch> {
     let today = Utc::now()
@@ -163,6 +66,7 @@ pub fn fetch(client: &reqwest::blocking::Client, raw: &str) -> Result<Batch> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
     #[test]
     fn final_scores_and_wrexham_identity_are_preserved() {
         let root: Value = serde_json::from_str(include_str!(

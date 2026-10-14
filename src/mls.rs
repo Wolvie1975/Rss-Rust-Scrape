@@ -13,7 +13,7 @@ pub fn is_feed(url: &str) -> bool {
     crate::espn_schedule::is_feed(url, League::Mls)
 }
 pub fn parse(root: &Value, season: i32) -> Result<(Vec<Fixture>, Vec<Value>)> {
-    crate::championship::parse_soccer(root, season, League::Mls, "770")
+    crate::match_results::parse(root, season, League::Mls, "770")
 }
 pub fn fetch(client: &reqwest::blocking::Client, raw: &str) -> Result<Batch> {
     if !is_feed(raw) {

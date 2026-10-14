@@ -4,11 +4,69 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 
 ## Contents
 
+- [NHL production setup and operation](#nhl-operations)
 - [Database schema snapshot](#database-schema-snapshot)
 - [Production data retention](#data-retention)
 - [WebScraper SQL backup maintenance](#sql-backups)
 - [Scraper hardening and SQL credential split](#scraper-security-and-sql-credentials)
 - [Scraper performance instrumentation and optimizations](#scraper-performance)
+
+<a id="nhl-operations"></a>
+
+## NHL production setup and operation
+
+NHL is deployed as `web-scraper:nhl-20261014`, verified October 14, 2026.
+Schedule/results source **5637** and standings source **13** are enabled.
+The existing hourly command already includes `--events-from-db` and
+`--standings-from-db`; preserve its environment, TLS certificate mount, persistent
+volume, network, limits, security settings, logging and restart policy.
+
+For a new installation, initialize the shared schema and provision runtime
+permissions first. Register NHL using the migration profile:
+
+```sh
+( set -a; . ./.env.migrations; set +a; cargo run --locked -- --configure-nhl )
+```
+
+Registration creates missing shared results/standings objects and seeds only NHL
+sources disabled. Repeating it preserves URLs, enabled flags and limits. Runtime
+imports use ingestion credentials; migration credentials stay out of the scheduler.
+After deploying the updated image and validating its feeds, enable the sources:
+
+```sql
+BEGIN TRANSACTION;
+UPDATE dbo.SportsEventsType SET Enabled=1
+WHERE ProviderKey='espn-nhl' AND ProviderSchoolId=0;
+UPDATE dbo.SportsStandingsSources SET Enabled=1
+WHERE ProviderKey='espn-nhl' AND Sport='Hockey';
+COMMIT;
+```
+
+Read-only feed verification:
+
+```sh
+cargo test --locked nhl::tests::live_nhl_feeds -- --ignored --nocapture
+cargo run --locked -- --events-feed https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard --dry-run
+```
+
+The SQL integration test requires a newly created isolated database named
+`WebScraper_NHL_Validation_*` selected through `NHL_TEST_DATABASE` and migration
+credentials. Never point it at production. October 14 verification passed this
+test in `WebScraper_NHL_Validation_20261014`, which was removed afterward.
+
+Production verification imported 1,239 fixtures, 170 results and 32 standings teams.
+Repeated imports retained IDs and first-seen timestamps. Real release-image run
+106 succeeded with zero source failures, and normal retention succeeded. The
+container became healthy and logged its next hourly slot for 09:00 Central that
+day; the scheduled slot was not awaited as part of deployment verification.
+
+Rollback image: `web-scraper:before-nhl-20261014`. The prior container is retained
+stopped as `web-scraper-before-nhl-20261014`. Protected host backups are under
+`.deployment-backups/20261014-nhl/`. Disable both NHL sources before restoring the
+older collector so it does not attempt unsupported feeds. Keep rollback profiles
+private. Full verification and rollback details are in the
+[deployment record](../reports/nhl-production-20261014.md) and
+[operations history](../reports/operations-history.md#nhl-operations-deployment-2026-10-14).
 
 <a id="data-retention"></a>
 
@@ -28,7 +86,7 @@ child records before parent records. Today is determined in America/Chicago.
 | Rankings | Keep only each source's current poll and current team rows; replace atomically after successful import |
 | Scraper runs | Delete finished runs started more than 7 days ago |
 | Standings | EPL retains only current rows; other leagues retain existing history |
-| Championship results | Current season, separately from schedules; old seasons removed after a successful new-season result import |
+| NHL, MLS and Championship results | Current season, separately from schedules; old seasons removed after a successful new-season result import |
 
 Today's records remain even if their start time has passed. Unknown/TBD movie
 release dates and TV episode dates remain because they cannot be classified as
@@ -140,7 +198,7 @@ Use administrator/deployment credentials for explicit schema changes:
 ( set -a; . ./.env.migrations; set +a; cargo run --locked -- --initialize-db )
 ```
 
-The --configure-tv/--configure-big12/--configure-nwsl/--configure-wnba/--configure-mlb/--configure-standings/--configure-movieinsider/--configure-rankings
+The --configure-nhl/--configure-tv/--configure-big12/--configure-nwsl/--configure-wnba/--configure-mlb/--configure-standings/--configure-movieinsider/--configure-rankings
 commands also belong to the deployment/admin path. `MSSQL_MIGRATION_CONNECTION_STRING`
 can optionally override the setup connection; ordinary collection never uses it.
 Do not inject that administrator variable into the hourly service.

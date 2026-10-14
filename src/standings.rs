@@ -357,6 +357,33 @@ fn current_soccer_url(html: &str) -> Result<String> {
     }
     Err("current Big 12 soccer standings link missing".into())
 }
+fn validate_nhl(snapshot: &Snapshot) -> Result<()> {
+    let ids = snapshot
+        .entries
+        .iter()
+        .map(|e| &e.team_id)
+        .collect::<BTreeSet<_>>();
+    if snapshot.entries.len() != 32 || ids.len() != 32 {
+        return Err("NHL standings require 32 distinct teams".into());
+    }
+    for entry in &snapshot.entries {
+        let stats = entry
+            .stats
+            .as_array()
+            .ok_or("NHL standings statistics missing")?;
+        for required in ["points", "gamesPlayed", "otLosses"] {
+            if !stats.iter().any(|s| {
+                s["name"] == required
+                    && s["value"]
+                        .as_f64()
+                        .is_some_and(|n| n.is_finite() && n >= 0.0 && n.fract() == 0.0)
+            }) {
+                return Err(format!("NHL standings missing {required}").into());
+            }
+        }
+    }
+    Ok(())
+}
 pub fn fetch(client: &Client, source: &Source) -> Result<Snapshot> {
     let mut url = crate::http::public_url(&source.url)?.to_string();
     let body = if source.provider == "big12"
@@ -376,8 +403,9 @@ pub fn fetch(client: &Client, source: &Source) -> Result<Snapshot> {
     };
     let out = match source.provider.as_str() {
         "espn-mlb" | "espn-wnba" | "espn-nwsl" | "espn-mls" | "espn-nfl" | "espn-championship"
-        | "espn-epl" => {
+        | "espn-epl" | "espn-nhl" => {
             let expected = match source.provider.as_str() {
+                "espn-nhl" => "l:90",
                 "espn-mlb" => "l:10",
                 "espn-wnba" => "l:59",
                 "espn-mls" => "l:770",
@@ -393,7 +421,11 @@ pub fn fetch(client: &Client, source: &Source) -> Result<Snapshot> {
             {
                 return Err("wrong ESPN league in standings response".into());
             }
-            parse_espn(&body, &url)?
+            let snapshot = parse_espn(&body, &url)?;
+            if source.provider == "espn-nhl" {
+                validate_nhl(&snapshot)?;
+            }
+            snapshot
         }
         "big12" => parse_big12(&body, &url, &source.sport)?,
         _ => return Err("unsupported standings provider".into()),
@@ -404,6 +436,41 @@ pub fn fetch(client: &Client, source: &Source) -> Result<Snapshot> {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    #[test]
+    fn nhl_divisions_keep_points_overtime_and_all_32_teams() {
+        let body = include_str!("../tests/fixtures/standings/nhl.json");
+        let snapshot = super::parse_espn(
+            body,
+            "https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings?level=3",
+        )
+        .unwrap();
+        snapshot.validate(32).unwrap();
+        super::validate_nhl(&snapshot).unwrap();
+        assert_eq!(snapshot.season, "2027");
+        assert_eq!(
+            snapshot
+                .entries
+                .iter()
+                .map(|e| &e.group_id)
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            4
+        );
+        let mut partial = snapshot.clone();
+        partial.entries.pop();
+        assert!(super::validate_nhl(&partial).is_err());
+        let mut duplicate = snapshot.clone();
+        duplicate.entries[1].team_id = duplicate.entries[0].team_id.clone();
+        assert!(super::validate_nhl(&duplicate).is_err());
+        let mut missing = snapshot;
+        missing.entries[0]
+            .stats
+            .as_array_mut()
+            .unwrap()
+            .retain(|s| s["name"] != "otLosses");
+        assert!(super::validate_nhl(&missing).is_err());
+    }
+
     use super::*;
     pub fn professional(provider: &str) -> Snapshot {
         let (data, path) = match provider {

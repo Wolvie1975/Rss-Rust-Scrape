@@ -12,11 +12,13 @@ mod espn_schedule;
 mod events;
 mod feed;
 mod http;
+mod match_results;
 mod metrics;
 mod mlb;
 mod mls;
 mod movie_metadata;
 mod movies;
+mod nhl;
 mod nwsl;
 mod posters;
 mod rankings;
@@ -209,6 +211,9 @@ struct Cli {
     /// Register league-wide MLS fixtures/results disabled.
     #[arg(long)]
     configure_mls: bool,
+    /// Register NHL fixtures/results and division standings disabled.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_nhl: bool,
     /// Create the latest domestic weekend box-office chart table.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_boxoffice: bool,
@@ -353,6 +358,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         || cli.boxoffice_forecasts
         || cli.configure_boxoffice
         || cli.configure_mls
+        || cli.configure_nhl
         || cli.configure_epl
         || cli.configure_nwsl
         || cli.configure_tv
@@ -378,6 +384,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             || cli.configure_championship
             || cli.configure_boxoffice
             || cli.configure_mls
+            || cli.configure_nhl
             || cli.configure_epl
             || cli.configure_nwsl
             || cli.configure_tv
@@ -435,6 +442,11 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     if cli.configure_boxoffice {
         db.as_mut().unwrap().configure_boxoffice()?;
         eprintln!("Box-office chart table configured");
+        return Ok(());
+    }
+    if cli.configure_nhl {
+        db.as_mut().unwrap().configure_nhl()?;
+        eprintln!("NHL schedule/results and standings registered disabled");
         return Ok(());
     }
     if cli.configure_mls {
@@ -1041,6 +1053,58 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 }
                 continue;
             }
+            if nhl::is_feed(feed_url) {
+                let _stage_timer = metrics::Stage::new("nhl_schedule");
+                let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                    let batch = nhl::fetch(&client, feed_url)?;
+                    eprintln!(
+                        "NHL season {}: {} schedule observations, {} final results",
+                        batch.season,
+                        batch.fixtures.len(),
+                        batch.results.len()
+                    );
+                    if !cli.dry_run {
+                        let d = db.as_mut().unwrap();
+                        let id = match known_id {
+                            Some(id) => *id,
+                            None => d.ensure_sports_events_type(feed_url, "NHL")?,
+                        };
+                        d.save_espn_schedule(id, &batch.fixtures)?;
+                        d.save_match_results(
+                            id,
+                            espn_schedule::League::Nhl,
+                            batch.season,
+                            &batch.results,
+                        )?;
+                        d.event_result(
+                            id,
+                            true,
+                            batch.fixtures.iter().filter(|f| !f.completed).count() as i32,
+                            0,
+                            None,
+                        )?;
+                    }
+                    Ok(())
+                })();
+                match result {
+                    Ok(()) => succeeded_sources += 1,
+                    Err(e) => {
+                        failures.push(format!("NHL: {e}"));
+                        if !cli.dry_run
+                            && let Some(id) = known_id
+                        {
+                            db.as_mut().unwrap().event_result(
+                                *id,
+                                false,
+                                0,
+                                1,
+                                Some(&e.to_string()),
+                            )?;
+                        }
+                    }
+                }
+                continue;
+            }
             if mls::is_feed(feed_url) {
                 let _stage_timer = metrics::Stage::new("mls_schedule");
                 let result = (|| -> Result<(), Box<dyn std::error::Error>> {
@@ -1058,7 +1122,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                             None => d.ensure_sports_events_type(feed_url, "MLS")?,
                         };
                         d.save_espn_schedule(id, &batch.fixtures)?;
-                        d.save_soccer_results(
+                        d.save_match_results(
                             id,
                             espn_schedule::League::Mls,
                             batch.season,

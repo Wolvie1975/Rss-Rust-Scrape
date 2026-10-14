@@ -983,6 +983,7 @@ END CATCH
             Ok(rows.into_iter().map(|r|(r.get::<&str,_>(0).unwrap().to_string(),crate::cinema_posters::Cache{poster:r.get::<&str,_>(1).map(str::to_string),status:r.get::<&str,_>(2).unwrap().to_string(),retry:r.get::<chrono::NaiveDateTime,_>(3).unwrap()})).collect())
         }, &self.poisoned))
     }
+    #[allow(clippy::too_many_arguments)] // Parameter order mirrors the bound SQL columns.
     pub fn save_cinema_poster(
         &mut self,
         key: &str,
@@ -1133,12 +1134,28 @@ END CATCH
         source: i32,
         batch: &crate::championship::Batch,
     ) -> Result<()> {
-        self.save_soccer_results(
+        self.save_match_results(
             source,
             crate::espn_schedule::League::Championship,
             batch.season,
             &batch.results,
         )
+    }
+    pub fn configure_nhl(&mut self) -> Result<()> {
+        self.rt.block_on(bounded(
+            async {
+                for sql in [
+                    include_str!("../sql/championship.sql"),
+                    include_str!("../sql/soccer_shootouts.sql"),
+                    include_str!("../sql/standings.sql"),
+                    include_str!("../sql/nhl_seed.sql"),
+                ] {
+                    self.client.simple_query(sql).await?.into_results().await?;
+                }
+                Ok(())
+            },
+            &self.poisoned,
+        ))
     }
     pub fn configure_mls(&mut self) -> Result<()> {
         self.rt.block_on(bounded(
@@ -1155,7 +1172,7 @@ END CATCH
             &self.poisoned,
         ))
     }
-    pub fn save_soccer_results(
+    pub fn save_match_results(
         &mut self,
         source: i32,
         league: crate::espn_schedule::League,
@@ -1164,9 +1181,11 @@ END CATCH
     ) -> Result<()> {
         if !matches!(
             league,
-            crate::espn_schedule::League::Mls | crate::espn_schedule::League::Championship
+            crate::espn_schedule::League::Mls
+                | crate::espn_schedule::League::Championship
+                | crate::espn_schedule::League::Nhl
         ) {
-            return Err("unsupported soccer results league".into());
+            return Err("unsupported match results league".into());
         }
         let provider = league.provider_key();
         let rows = serde_json::to_string(results)?;
@@ -1177,7 +1196,7 @@ SET XACT_ABORT ON;
 BEGIN TRY
  BEGIN TRANSACTION;
  IF NOT EXISTS(SELECT 1 FROM dbo.SportsEventsType WITH(UPDLOCK,HOLDLOCK) WHERE ID=@P1 AND Enabled=1 AND ProviderKey=@P4)
-  THROW 50000,'Soccer results source disabled or unavailable',1;
+  THROW 50000,'Match results source disabled or unavailable',1;
  MERGE dbo.SportsMatchResults WITH(HOLDLOCK) AS t
  USING OPENJSON(@P2) WITH (
  GameId INT '$.gameId',Season INT '$.season',MatchDate DATE '$.matchDate',StartsAt DATETIMEOFFSET '$.startsAt',
@@ -2931,14 +2950,14 @@ mod championship_sql_tests {
             .unwrap();
         let penalty_id = penalty["gameId"].as_i64().unwrap() as i32;
         let rows = vec![penalty.clone()];
-        db.save_soccer_results(mls_source, crate::espn_schedule::League::Mls, 2025, &rows)?;
+        db.save_match_results(mls_source, crate::espn_schedule::League::Mls, 2025, &rows)?;
         let read_penalty = |db: &mut Db| -> Result<Vec<tiberius::Row>> {
             Ok(db.rt.block_on(async {
                 db.client.query("SELECT ID,FirstSeenAt,HomeScore,AwayScore,HomeShootoutScore,AwayShootoutScore FROM dbo.SportsMatchResults WHERE ProviderKey='espn-mls' AND GameId=@P1",&[&penalty_id]).await?.into_first_result().await
             })?)
         };
         let original = read_penalty(&mut db)?;
-        db.save_soccer_results(mls_source, crate::espn_schedule::League::Mls, 2025, &rows)?;
+        db.save_match_results(mls_source, crate::espn_schedule::League::Mls, 2025, &rows)?;
         let repeated = read_penalty(&mut db)?;
         assert_eq!(original.len(), 1);
         assert_eq!(original[0].get::<i64, _>(0), repeated[0].get::<i64, _>(0));
@@ -2966,7 +2985,7 @@ mod championship_sql_tests {
                 .await
         })?;
         assert!(
-            db.save_soccer_results(mls_source, crate::espn_schedule::League::Mls, 2025, &rows)
+            db.save_match_results(mls_source, crate::espn_schedule::League::Mls, 2025, &rows)
                 .is_err()
         );
         assert_eq!(
@@ -3062,6 +3081,95 @@ mod schedule_batch_sql_tests {
                 b.get::<chrono::NaiveDateTime, _>(1)
             );
         }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod nhl_sql_tests {
+    use super::*;
+    #[test]
+    #[ignore = "requires isolated NHL_TEST_DATABASE and migration credentials"]
+    fn nhl_setup_results_and_disabled_source_are_safe() -> Result<()> {
+        let name = std::env::var("NHL_TEST_DATABASE")?;
+        if !name.starts_with("WebScraper_NHL_Validation_") {
+            return Err("isolated NHL validation database required".into());
+        }
+        let mut db = Db::open_named(&std::env::var("MSSQL_CONNECTION_STRING")?, &name)?;
+        db.configure_nhl()?;
+        let source = db.rt.block_on(async {
+            db.client
+                .execute(
+                    "UPDATE dbo.SportsEventsType SET Enabled=1 WHERE ProviderKey='espn-nhl'",
+                    &[],
+                )
+                .await?;
+            db.client
+                .query(
+                    "SELECT ID FROM dbo.SportsEventsType WHERE ProviderKey='espn-nhl'",
+                    &[],
+                )
+                .await?
+                .into_first_result()
+                .await
+        })?[0]
+            .get::<i32, _>(0)
+            .unwrap();
+        db.configure_nhl()?;
+        let enabled = db.rt.block_on(async {
+            db.client
+                .query(
+                    "SELECT Enabled FROM dbo.SportsEventsType WHERE ID=@P1",
+                    &[&source],
+                )
+                .await?
+                .into_first_result()
+                .await
+        })?;
+        assert_eq!(enabled[0].get::<bool, _>(0), Some(true));
+        let root = serde_json::from_str(include_str!("../tests/fixtures/nhl/october-2026.json"))?;
+        let (fixtures, mut results) = crate::nhl::parse(&root, 2027)?;
+        let game_id = results[0]["gameId"].as_i64().unwrap() as i32;
+        db.save_espn_schedule(source, &fixtures)?;
+        db.save_match_results(source, crate::espn_schedule::League::Nhl, 2027, &results)?;
+        let read = |db: &mut Db| -> Result<Vec<tiberius::Row>> {
+            Ok(db.rt.block_on(async {
+                db.client.query("SELECT ID,FirstSeenAt,HomeScore,ScheduleStatus FROM dbo.SportsMatchResults WHERE ProviderKey='espn-nhl' AND GameId=@P1", &[&game_id]).await?.into_first_result().await
+            })?)
+        };
+        let original = read(&mut db)?;
+        results[0]["homeScore"] = serde_json::json!(7);
+        db.save_match_results(source, crate::espn_schedule::League::Nhl, 2027, &results)?;
+        let corrected = read(&mut db)?;
+        assert_eq!(original.len(), 1);
+        assert_eq!(corrected.len(), 1);
+        assert_eq!(original[0].get::<i64, _>(0), corrected[0].get::<i64, _>(0));
+        assert_eq!(
+            original[0].get::<chrono::NaiveDateTime, _>(1),
+            corrected[0].get::<chrono::NaiveDateTime, _>(1)
+        );
+        assert_eq!(corrected[0].get::<i32, _>(2), Some(7));
+        db.rt.block_on(async {
+            db.client
+                .execute(
+                    "DELETE dbo.SportsEvents WHERE SportsEventsTypeId=@P1",
+                    &[&source],
+                )
+                .await?;
+            db.client
+                .execute(
+                    "UPDATE dbo.SportsEventsType SET Enabled=0 WHERE ID=@P1",
+                    &[&source],
+                )
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        assert_eq!(read(&mut db)?.len(), 1); // Schedule removal never removes results.
+        assert!(
+            db.save_match_results(source, crate::espn_schedule::League::Nhl, 2027, &results)
+                .is_err()
+        );
+        assert_eq!(read(&mut db)?[0].get::<i32, _>(2), Some(7));
         Ok(())
     }
 }

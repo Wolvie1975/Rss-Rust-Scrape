@@ -15,6 +15,7 @@ pub enum League {
     Championship,
     Epl,
     Mls,
+    Nhl,
 }
 impl League {
     pub fn path(self) -> &'static str {
@@ -25,6 +26,7 @@ impl League {
             Self::Championship => "/apis/site/v2/sports/soccer/eng.2/scoreboard",
             Self::Epl => "/apis/site/v2/sports/soccer/eng.1/scoreboard",
             Self::Mls => "/apis/site/v2/sports/soccer/usa.1/scoreboard",
+            Self::Nhl => "/apis/site/v2/sports/hockey/nhl/scoreboard",
         }
     }
     pub fn provider_key(self) -> &'static str {
@@ -35,6 +37,7 @@ impl League {
             Self::Championship => "espn-championship",
             Self::Epl => "espn-epl",
             Self::Mls => "espn-mls",
+            Self::Nhl => "espn-nhl",
         }
     }
     pub fn canonical_key(self, id: i32) -> String {
@@ -47,6 +50,7 @@ impl League {
                 Self::Championship => "eng.2",
                 Self::Epl => "eng.1",
                 Self::Mls => "usa.1",
+                Self::Nhl => "nhl",
             }
         )
     }
@@ -57,6 +61,7 @@ impl League {
             }
             Self::Wnba => format!("https://www.espn.com/wnba/game/_/gameId/{id}"),
             Self::Mlb => format!("https://www.espn.com/mlb/game/_/gameId/{id}"),
+            Self::Nhl => format!("https://www.espn.com/nhl/game/_/gameId/{id}"),
         }
     }
     fn sport(self) -> &'static str {
@@ -64,6 +69,7 @@ impl League {
             Self::Nwsl | Self::Championship | Self::Epl | Self::Mls => "Soccer",
             Self::Wnba => "Basketball",
             Self::Mlb => "Baseball",
+            Self::Nhl => "Hockey",
         }
     }
 }
@@ -238,7 +244,7 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
             .or_else(|_| {
                 chrono::NaiveDateTime::parse_from_str(date, "%Y-%m-%dT%H:%MZ").map(|d| d.and_utc())
             })?;
-        let status = c["status"]["type"]["name"]
+        let mut status = c["status"]["type"]["name"]
             .as_str()
             .or(raw["status"]["type"]["name"].as_str())
             .ok_or("missing fixture status")?
@@ -248,6 +254,18 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
         } else {
             &raw["status"]["type"]
         };
+        // NHL uses STATUS_FINAL for regulation, OT and SO; retain the finish in storage.
+        if league == League::Nhl && status == "STATUS_FINAL" {
+            let detail = status_type["shortDetail"]
+                .as_str()
+                .or(status_type["detail"].as_str())
+                .unwrap_or("");
+            if detail.ends_with("/SO") {
+                status = "STATUS_FINAL_SO".into();
+            } else if detail.ends_with("OT") {
+                status = "STATUS_FINAL_OT".into();
+            }
+        }
         let reconciliation = matches!(
             status.as_str(),
             "STATUS_CANCELED"

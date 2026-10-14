@@ -1,14 +1,76 @@
 # Sports standings and rankings
 
-Use the shared standings read contract plus the league-specific sections below. NFL is grouped by conference and division; MLS uses conference groups. National Top 25 polls retain only the current poll per source. Current production standings IDs: NFL 10, MLS 9, Championship 11, EPL 12. Dated import counts are snapshots, not guaranteed current values.
+Use the shared standings read contract plus the league-specific sections below. NFL is grouped by conference and division; MLS uses conference groups; NHL uses divisions. National Top 25 polls retain only the current poll per source. Current production standings IDs: NFL 10, MLS 9, Championship 11, EPL 12, NHL 13. Dated import counts are snapshots, not guaranteed current values.
 
 ## Contents
 
+- [NHL division standings — frontend handoff](#nhl-standings)
 - [My-Newsfeed frontend: sports standings](#my-newsfeed-standings-frontend)
 - [Sports standings for My-Newsfeed](#sports-standings)
 - [NFL standings — frontend handoff](#my-newsfeed-nfl-standings)
 - [My-Newsfeed MLS standings](#my-newsfeed-mls-standings)
 - [My-Newsfeed: national Top 25 with Big 12 highlighted](#my-newsfeed-top25-rankings)
+
+<a id="nhl-standings"></a>
+
+## NHL division standings — frontend handoff
+
+Production source **13** is enabled: ProviderKey `espn-nhl`, Sport `Hockey`,
+DisplayName `NHL`, MinimumTeams `32`, URL
+`https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings?level=3`.
+The existing hourly `--standings-from-db` collector refreshes this source.
+October 14 deployment verification recorded **32 current teams** in four divisions,
+with season `2027` representing **2026–27**.
+
+Use the shared standings source selector and read contract below. Filter on
+source enablement and `IsCurrent=1`; group by `GroupId`/`GroupName` and keep each
+division's published `Position` order. Source IDs come from enabled configuration,
+not a hardcoded provider count. Never infer NHL team identity from Big 12 metadata.
+
+```sql
+SELECT t.* FROM dbo.SportsStandings t
+JOIN dbo.SportsStandingsSources s ON s.ID=t.SourceId
+WHERE s.Enabled=1 AND s.ProviderKey='espn-nhl' AND t.IsCurrent=1
+ORDER BY t.GroupName,t.Position;
+```
+
+`StatsJson` retains ESPN's statistics. Use provider `displayValue` for display,
+show missing values as an em dash, and do not calculate missing statistics.
+
+| Visible column | Statistic name |
+| --- | --- |
+| GP | gamesPlayed |
+| W | wins |
+| L | losses |
+| OTL | otLosses |
+| Pts | points |
+| RW | regWins |
+| ROW | rotWins |
+| GF | pointsFor |
+| GA | pointsAgainst |
+| Diff | pointDifferential |
+| Streak | streak |
+
+Other retained fields include overtime/shootout win and loss counts. Keep provider
+rank/seed metadata separate from published division position; do not infer
+playoff qualification. Render season `2027` as `2026–27` for NHL, preserving the
+stored ending-year value for queries. Convert refresh timestamps to Central time
+using the site's existing conventions.
+
+The collector requires all 32 distinct teams plus valid points, games played and
+overtime-loss statistics before replacing a snapshot. A partial response leaves
+previous standings available and records an error. Source `LastSuccessAt`,
+`LastError`, `LatestSeason` and `LastTeamCount` support the existing stale/error UI.
+Repeated imports preserve row IDs and first-seen timestamps.
+
+Validate the selector, four division groups, NHL columns, season label, missing
+stats/logos, disabled sources and stale/error states using
+`tests/fixtures/standings/nhl.json`. Scraper deployment and enabling are complete;
+My-Newsfeed UI changes belong to its separate checkout.
+
+[Schedule/results contract](sports-schedules.md#nhl-schedule-results) ·
+[Setup and activation](operations.md#nhl-operations) ·
+[Production history](../reports/sports-history.md#nhl-deployment-2026-10-14).
 
 <a id="my-newsfeed-standings-frontend"></a>
 
@@ -20,7 +82,7 @@ Use the shared standings read contract plus the league-specific sections below. 
 
 Add a `/standings` page and a Standings navigation link using My-Newsfeed's existing
 page, data-access, styling and authorization patterns. Read the scraper-owned
-standings from the shared WebScraper database. Support MLB, WNBA, MLS, full NWSL and
+standings from the shared WebScraper database. Support NHL, MLB, WNBA, MLS, full NWSL and
 Big 12 football, men's basketball, women's basketball, soccer and volleyball.
 
 This document is the frontend implementation handoff. Schema and scraper setup
@@ -47,7 +109,7 @@ scraper guide's deployment order. Keep SQL credentials on the server.
 
 1. Page heading: **Standings**.
 2. A selector populated from enabled sources, using their ID and DisplayName.
-   Include all nine enabled sources, even when a source has no rows yet. Preserve
+   Include all enabled sources, even when a source has no rows yet. Preserve
    the selected source in `?sourceId=<ID>` so links and reloads retain the selection.
    Default to the first enabled source in DisplayName order. Invalid or disabled
    IDs fall back to that default. If none are enabled, show the empty state.
@@ -225,7 +287,7 @@ in the public page.
 
 ### Acceptance checks for the My-Newsfeed implementation
 
-- All nine enabled sources are selectable, including sources with no rows.
+- All enabled sources are selectable, including sources with no rows.
 - Professional tables use the correct sport-specific columns and provider groups.
 - Full NWSL remains visible when highlighting Kansas City Current.
 - Big 12 shows both conference and overall data, preserving duplicate column
