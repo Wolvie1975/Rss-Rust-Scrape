@@ -19,6 +19,8 @@ Last verified deployment: `web-scraper:cinema-posters-20261013`; scraper and fro
 
 ## Development and deployment
 
+The validated [schema-only database snapshot](sql/schema/WebScraper.schema.sql) captures 31 tables and one view, without data or credentials. See the [operations guide](docs/operations.md#database-schema-snapshot) for scope and empty-database restore instructions.
+
 Use runtime credentials for ingestion and migration credentials for explicit setup. Never print or commit credentials. Preserve existing environment, network, scheduler, retention and rollback settings during deployments. Use appropriate tests and verify the deployed image and targeted live imports. The user commits and pushes Git changes themselves unless they explicitly request otherwise.
 
 Historical images, table counts, earlier open items and source audits: [operations history](reports/operations-history.md#previous-handoff), [sports history](reports/sports-history.md), [entertainment history](reports/entertainment-history.md).

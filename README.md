@@ -13,3 +13,9 @@ Read [HANDOFF.md](HANDOFF.md) for the current documented deployment and working 
 Each guide contains a linked contents list and preserves its SQL examples and provider-specific contracts. Read the guide introduction and operations policy before applying older examples.
 
 Historical deployment evidence is grouped into [sports](reports/sports-history.md), [movies/TV](reports/entertainment-history.md), and [operations/audits](reports/operations-history.md). These are dated observations, not current run status. The previous long handoff is archived in the operations history.
+
+## Database structure
+
+[WebScraper.schema.sql](sql/schema/WebScraper.schema.sql) is a validated, schema-only snapshot of the live database: 31 tables and one view, with columns, identities, computed columns, keys, defaults, checks, foreign keys and indexes. It contains no table data or credentials. Shared front-end tables in the WebScraper database are included.
+
+Use it to recreate structure in an empty database; it is not an incremental production migration. Details: [schema snapshot](docs/operations.md#database-schema-snapshot).

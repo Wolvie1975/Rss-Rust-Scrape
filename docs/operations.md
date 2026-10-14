@@ -4,6 +4,7 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 
 ## Contents
 
+- [Database schema snapshot](#database-schema-snapshot)
 - [Production data retention](#data-retention)
 - [WebScraper SQL backup maintenance](#sql-backups)
 - [Scraper hardening and SQL credential split](#scraper-security-and-sql-credentials)
@@ -310,3 +311,19 @@ fixture refresh frequency needs a deliberate freshness policy. Neither change is
 included in this release. Large-payload unchanged-row suppression also needs
 comparison metrics before its benefit can be claimed.
 
+
+<a id="database-schema-snapshot"></a>
+
+## Database schema snapshot
+
+The live structure is exported to [WebScraper.schema.sql](../sql/schema/WebScraper.schema.sql). Captured October 14, 2026 UTC (October 13 Central), using Microsoft SQL Server Management Objects with `ScriptSchema=true`, `ScriptData=false`, dependency ordering, and keys/constraints/indexes enabled.
+
+This snapshot includes the whole shared `WebScraper` database: 31 user tables, 395 columns, 77 indexes including primary/unique keys, 48 default constraints, 34 check constraints, 18 foreign keys and one view. There were no user stored procedures, functions, or triggers at export time. Identity definitions and computed-column expressions are included; live identity counters and table rows are not.
+
+Server logins, database users, grants, role memberships, secrets, database files, backup configuration and SQL Agent jobs are excluded. Environment-specific runtime permissions remain in the existing provisioning scripts, not this structural snapshot. No enabled source rows, source URLs stored as data, feeds, article contents or movie/sports records are exported.
+
+Validation recreated the script in a temporary empty database on SQL Server 2025 and compared table, column, index, default, check, foreign-key and module metadata against production. Every compared definition matched, the temporary database contained zero rows, and it was removed afterward. Scans found no DML, security statements or known credential values in the saved SQL file. The running scraper was not stopped.
+
+To recreate the structure, create an **empty** target database using collation `SQL_Latin1_General_CP1_CI_AS` and the source compatibility level `170` on a compatible SQL Server version, select that database, then execute the snapshot with a tool that recognizes `GO` batches (for example, SSMS or sqlcmd). The file deliberately contains no database creation or `USE` statement. It is a creation snapshot, not an idempotent migration: do not run it against the populated production database.
+
+Regenerate from live metadata after schema changes rather than appending seed/import scripts. Source configuration and lookup data must be provisioned separately when starting a new installation.
