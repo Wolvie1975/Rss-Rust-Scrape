@@ -280,6 +280,7 @@ impl Db {
             client.simple_query(include_str!("../sql/nwsl_events.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/rankings.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/championship.sql")).await?.into_results().await?;
+            client.simple_query(include_str!("../sql/soccer_shootouts.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/standings.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/scraper_runs.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/big12_views.sql")).await?.into_results().await?;
@@ -949,6 +950,154 @@ END CATCH
         }, &self.poisoned))
     }
 
+    pub fn cinema_poster_jobs(&mut self) -> Result<Vec<crate::cinema_posters::Job>> {
+        self.rt.block_on(bounded(async {
+            let exists=self.client.query("SELECT CASE WHEN OBJECT_ID('dbo.CinemaPosterCache','U') IS NULL THEN 0 ELSE 1 END",&[]).await?.into_first_result().await?;
+            if exists[0].get::<i32,_>(0)==Some(0){return Ok(Vec::new());}
+            let rows=self.client.query("SELECT 'results' AS Section,MovieTitle,CAST(NULL AS SMALLINT) AS OriginalYear,MovieUrl FROM dbo.BoxOfficeWeekend UNION SELECT 'forecasts',MovieTitle,CAST(YEAR(TargetDate) AS SMALLINT),NULL FROM dbo.BoxOfficeForecasts",&[]).await?.into_first_result().await?;
+            Ok(rows.into_iter().map(|r| {
+                let url=r.get::<&str,_>(3).map(str::to_string);
+                let year=r.get::<i16,_>(2).or_else(||url.as_deref().and_then(crate::cinema_posters::url_year));
+                crate::cinema_posters::Job{section:r.get::<&str,_>(0).unwrap().to_string(),title:r.get::<&str,_>(1).unwrap().to_string(),year,url}
+            }).collect())
+        }, &self.poisoned))
+    }
+    pub fn cinema_release_posters(
+        &mut self,
+    ) -> Result<Vec<(crate::movie_metadata::MovieIdentity, String)>> {
+        self.rt.block_on(bounded(async {
+            let rows=self.client.query("SELECT Title,OriginalYear,PosterUrl FROM dbo.Movies WHERE PosterUrl IS NOT NULL AND PosterLookupStatus IN ('matched','valid')",&[]).await?.into_first_result().await?;
+            Ok(rows.into_iter().map(|r| {
+                let (title,suffix_year)=crate::movie_metadata::title_year(r.get::<&str,_>(0).unwrap());
+                (crate::movie_metadata::MovieIdentity{title,year:r.get::<i16,_>(1).or(suffix_year),..Default::default()},r.get::<&str,_>(2).unwrap().to_string())
+            }).collect())
+        }, &self.poisoned))
+    }
+    pub fn cinema_poster_caches(
+        &mut self,
+    ) -> Result<std::collections::BTreeMap<String, crate::cinema_posters::Cache>> {
+        self.rt.block_on(bounded(async {
+            let exists=self.client.query("SELECT CASE WHEN OBJECT_ID('dbo.CinemaPosterCache','U') IS NULL THEN 0 ELSE 1 END",&[]).await?.into_first_result().await?;
+            if exists[0].get::<i32,_>(0)==Some(0){return Ok(std::collections::BTreeMap::new());}
+            let rows=self.client.query("SELECT IdentityKey,PosterUrl,LookupStatus,RetryAfterUtc FROM dbo.CinemaPosterCache",&[]).await?.into_first_result().await?;
+            Ok(rows.into_iter().map(|r|(r.get::<&str,_>(0).unwrap().to_string(),crate::cinema_posters::Cache{poster:r.get::<&str,_>(1).map(str::to_string),status:r.get::<&str,_>(2).unwrap().to_string(),retry:r.get::<chrono::NaiveDateTime,_>(3).unwrap()})).collect())
+        }, &self.poisoned))
+    }
+    pub fn save_cinema_poster(
+        &mut self,
+        key: &str,
+        identity: &crate::movie_metadata::MovieIdentity,
+        poster: Option<&str>,
+        source: Option<&str>,
+        status: &str,
+        error: Option<&str>,
+        retry: chrono::NaiveDateTime,
+    ) -> Result<()> {
+        let error = error.map(|s| s.chars().take(1000).collect::<String>());
+        self.rt.block_on(bounded(async {
+            self.client.execute("MERGE dbo.CinemaPosterCache WITH(HOLDLOCK) t USING(SELECT @P1 AS IdentityKey) s ON t.IdentityKey=s.IdentityKey WHEN MATCHED THEN UPDATE SET PosterUrl=@P4,SourceUrl=COALESCE(@P5,t.SourceUrl),LookupStatus=@P6,LastError=@P7,CheckedAtUtc=SYSUTCDATETIME(),RetryAfterUtc=@P8,LastUsedAtUtc=SYSUTCDATETIME() WHEN NOT MATCHED THEN INSERT(IdentityKey,MovieTitle,OriginalYear,PosterUrl,SourceUrl,LookupStatus,LastError,CheckedAtUtc,RetryAfterUtc,LastUsedAtUtc) VALUES(@P1,@P2,@P3,@P4,@P5,@P6,@P7,SYSUTCDATETIME(),@P8,SYSUTCDATETIME());",&[&key,&identity.title,&identity.year,&poster,&source,&status,&error,&retry]).await?;
+            Ok(())
+        }, &self.poisoned))
+    }
+    pub fn attach_cinema_poster(
+        &mut self,
+        job: &crate::cinema_posters::Job,
+        key: &str,
+        poster: Option<&str>,
+        status: &str,
+    ) -> Result<()> {
+        self.rt.block_on(bounded(async {
+            if job.section=="results" {
+                self.client.execute("UPDATE dbo.BoxOfficeWeekend SET PosterUrl=@P1,PosterLookupStatus=@P2 WHERE MovieTitle=@P3 AND MovieUrl=@P4",&[&poster,&status,&job.title,&job.url]).await?;
+            } else {
+                self.client.execute("UPDATE dbo.BoxOfficeForecasts SET PosterUrl=@P1,PosterLookupStatus=@P2 WHERE MovieTitle=@P3 AND YEAR(TargetDate)=@P4",&[&poster,&status,&job.title,&job.year]).await?;
+            }
+            self.client.execute("UPDATE dbo.CinemaPosterCache SET LastUsedAtUtc=SYSUTCDATETIME() WHERE IdentityKey=@P1",&[&key]).await?;
+            Ok(())
+        }, &self.poisoned))
+    }
+    pub fn configure_boxoffice(&mut self) -> Result<()> {
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .simple_query(concat!(
+                        include_str!("../sql/boxoffice.sql"),
+                        "\n",
+                        include_str!("../sql/boxoffice_forecasts.sql"),
+                        "\n",
+                        include_str!("../sql/cinema_posters.sql")
+                    ))
+                    .await?
+                    .into_results()
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+    pub fn save_boxoffice(&mut self, chart: &crate::boxoffice::Chart) -> Result<()> {
+        if chart.rows.len() != 10 {
+            return Err("Expected ten box office rows".into());
+        }
+        let date = chart.weekend.to_string();
+        let rows = serde_json::to_string(&chart.rows)?;
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .execute(
+                        include_str!("../sql/boxoffice_replace.sql"),
+                        &[&date, &rows, &crate::boxoffice::URL],
+                    )
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+    pub fn boxoffice_forecast_status(&mut self, error: Option<&str>) -> Result<()> {
+        let message = error.map(|s| s.chars().take(1000).collect::<String>());
+        self.rt.block_on(bounded(async {
+            if error.is_some() {
+                self.client.execute("UPDATE dbo.BoxOfficeForecastSources SET LastError=@P1", &[&message]).await?;
+            } else {
+                self.client.execute("UPDATE dbo.BoxOfficeForecastSources SET LastAttemptAt=SYSUTCDATETIME()", &[]).await?;
+            }
+            Ok(())
+        }, &self.poisoned))
+    }
+    pub fn save_boxoffice_forecasts(
+        &mut self,
+        snapshots: &[crate::boxoffice_forecasts::Snapshot],
+    ) -> Result<()> {
+        if snapshots.len() != 2
+            || !snapshots.iter().any(|s| s.kind == "long-range")
+            || !snapshots.iter().any(|s| s.kind == "weekend-preview")
+        {
+            return Err("Expected both domestic forecast snapshots".into());
+        }
+        let rows = serde_json::to_string(
+            &snapshots
+                .iter()
+                .map(|s| serde_json::json!({"kind":s.kind,"published":s.published,"rows":s.rows}))
+                .collect::<Vec<_>>(),
+        )?;
+        let today = chrono::Utc::now()
+            .with_timezone(&chrono_tz::America::Chicago)
+            .date_naive()
+            .to_string();
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .execute(
+                        include_str!("../sql/boxoffice_forecasts_replace.sql"),
+                        &[&rows, &today],
+                    )
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
     pub fn configure_epl(&mut self) -> Result<()> {
         self.rt.block_on(bounded(
             async {
@@ -969,6 +1118,7 @@ END CATCH
                 for sql in [
                     include_str!("../sql/championship.sql"),
                     include_str!("../sql/championship_seed.sql"),
+                    include_str!("../sql/soccer_shootouts.sql"),
                     include_str!("../sql/standings_seed.sql"),
                 ] {
                     self.client.simple_query(sql).await?.into_results().await?;
@@ -983,27 +1133,64 @@ END CATCH
         source: i32,
         batch: &crate::championship::Batch,
     ) -> Result<()> {
-        let rows = serde_json::to_string(&batch.results)?;
+        self.save_soccer_results(
+            source,
+            crate::espn_schedule::League::Championship,
+            batch.season,
+            &batch.results,
+        )
+    }
+    pub fn configure_mls(&mut self) -> Result<()> {
+        self.rt.block_on(bounded(
+            async {
+                for sql in [
+                    include_str!("../sql/championship.sql"),
+                    include_str!("../sql/soccer_shootouts.sql"),
+                    include_str!("../sql/mls_seed.sql"),
+                ] {
+                    self.client.simple_query(sql).await?.into_results().await?;
+                }
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+    pub fn save_soccer_results(
+        &mut self,
+        source: i32,
+        league: crate::espn_schedule::League,
+        season: i32,
+        results: &[serde_json::Value],
+    ) -> Result<()> {
+        if !matches!(
+            league,
+            crate::espn_schedule::League::Mls | crate::espn_schedule::League::Championship
+        ) {
+            return Err("unsupported soccer results league".into());
+        }
+        let provider = league.provider_key();
+        let rows = serde_json::to_string(results)?;
+
         self.rt.block_on(bounded(async {
             self.client.execute(r#"
 SET XACT_ABORT ON;
 BEGIN TRY
  BEGIN TRANSACTION;
- IF NOT EXISTS(SELECT 1 FROM dbo.SportsEventsType WITH(UPDLOCK,HOLDLOCK) WHERE ID=@P1 AND Enabled=1 AND ProviderKey='espn-championship')
-  THROW 50000,'Championship source disabled or unavailable',1;
+ IF NOT EXISTS(SELECT 1 FROM dbo.SportsEventsType WITH(UPDLOCK,HOLDLOCK) WHERE ID=@P1 AND Enabled=1 AND ProviderKey=@P4)
+  THROW 50000,'Soccer results source disabled or unavailable',1;
  MERGE dbo.SportsMatchResults WITH(HOLDLOCK) AS t
  USING OPENJSON(@P2) WITH (
  GameId INT '$.gameId',Season INT '$.season',MatchDate DATE '$.matchDate',StartsAt DATETIMEOFFSET '$.startsAt',
  HomeId INT '$.homeId',HomeName NVARCHAR(200) '$.homeName',AwayId INT '$.awayId',AwayName NVARCHAR(200) '$.awayName',
- HomeScore INT '$.homeScore',AwayScore INT '$.awayScore',HomeLogo NVARCHAR(2048) '$.homeLogo',AwayLogo NVARCHAR(2048) '$.awayLogo',
+ HomeScore INT '$.homeScore',AwayScore INT '$.awayScore',HomeShootout INT '$.homeShootout',AwayShootout INT '$.awayShootout',HomeLogo NVARCHAR(2048) '$.homeLogo',AwayLogo NVARCHAR(2048) '$.awayLogo',
  Status NVARCHAR(100) '$.status',Url NVARCHAR(2048) '$.url') AS s
- ON t.ProviderKey='espn-championship' AND t.GameId=s.GameId
+ ON t.ProviderKey=@P4 AND t.GameId=s.GameId
  WHEN MATCHED THEN UPDATE SET SourceId=@P1,Season=s.Season,MatchDate=s.MatchDate,
  StartsAtUtc=CONVERT(datetime2,SWITCHOFFSET(s.StartsAt,'+00:00')),HomeTeamId=s.HomeId,HomeTeamName=s.HomeName,
- AwayTeamId=s.AwayId,AwayTeamName=s.AwayName,HomeScore=s.HomeScore,AwayScore=s.AwayScore,
+ AwayTeamId=s.AwayId,AwayTeamName=s.AwayName,HomeScore=s.HomeScore,AwayScore=s.AwayScore,HomeShootoutScore=s.HomeShootout,AwayShootoutScore=s.AwayShootout,
  HomeLogoUrl=s.HomeLogo,AwayLogoUrl=s.AwayLogo,ScheduleStatus=s.Status,SourceUrl=s.Url,LastSeenAt=SYSUTCDATETIME()
- WHEN NOT MATCHED THEN INSERT(SourceId,ProviderKey,GameId,Season,MatchDate,StartsAtUtc,HomeTeamId,HomeTeamName,AwayTeamId,AwayTeamName,HomeScore,AwayScore,HomeLogoUrl,AwayLogoUrl,ScheduleStatus,SourceUrl)
- VALUES(@P1,'espn-championship',s.GameId,s.Season,s.MatchDate,CONVERT(datetime2,SWITCHOFFSET(s.StartsAt,'+00:00')),s.HomeId,s.HomeName,s.AwayId,s.AwayName,s.HomeScore,s.AwayScore,s.HomeLogo,s.AwayLogo,s.Status,s.Url);
+ WHEN NOT MATCHED THEN INSERT(SourceId,ProviderKey,GameId,Season,MatchDate,StartsAtUtc,HomeTeamId,HomeTeamName,AwayTeamId,AwayTeamName,HomeScore,AwayScore,HomeShootoutScore,AwayShootoutScore,HomeLogoUrl,AwayLogoUrl,ScheduleStatus,SourceUrl)
+ VALUES(@P1,@P4,s.GameId,s.Season,s.MatchDate,CONVERT(datetime2,SWITCHOFFSET(s.StartsAt,'+00:00')),s.HomeId,s.HomeName,s.AwayId,s.AwayName,s.HomeScore,s.AwayScore,s.HomeShootout,s.AwayShootout,s.HomeLogo,s.AwayLogo,s.Status,s.Url);
  IF EXISTS(SELECT 1 FROM OPENJSON(@P2))
   DELETE dbo.SportsMatchResults WHERE SourceId=@P1 AND Season<@P3;
  COMMIT;
@@ -1012,7 +1199,7 @@ BEGIN CATCH
  IF @@TRANCOUNT>0 ROLLBACK;
  THROW;
 END CATCH;
-"#, &[&source,&rows,&batch.season]).await?;
+"#, &[&source,&rows,&season,&provider]).await?;
             Ok(())
         }, &self.poisoned))
     }
@@ -2714,6 +2901,78 @@ mod championship_sql_tests {
             Ok::<_, Box<dyn std::error::Error>>(())
         })?;
         assert!(db.save_championship_results(source, &batch).is_err());
+        assert_eq!(read(&mut db)?[0].get::<i32, _>(2), Some(7));
+        // The shared writer must preserve MLS shootouts without affecting Championship results.
+        db.configure_mls()?;
+        let mls_source = db.rt.block_on(async {
+            db.client
+                .execute(
+                    "UPDATE dbo.SportsEventsType SET Enabled=1 WHERE ProviderKey='espn-mls'",
+                    &[],
+                )
+                .await?;
+            db.client
+                .query(
+                    "SELECT ID FROM dbo.SportsEventsType WHERE ProviderKey='espn-mls'",
+                    &[],
+                )
+                .await?
+                .into_first_result()
+                .await
+        })?[0]
+            .get::<i32, _>(0)
+            .unwrap();
+        let playoff =
+            serde_json::from_str(include_str!("../tests/fixtures/mls/playoffs-2025.json"))?;
+        let (_, scores) = crate::mls::parse(&playoff, 2025)?;
+        let penalty = scores
+            .into_iter()
+            .find(|r| r["status"] == "STATUS_FINAL_PEN")
+            .unwrap();
+        let penalty_id = penalty["gameId"].as_i64().unwrap() as i32;
+        let rows = vec![penalty.clone()];
+        db.save_soccer_results(mls_source, crate::espn_schedule::League::Mls, 2025, &rows)?;
+        let read_penalty = |db: &mut Db| -> Result<Vec<tiberius::Row>> {
+            Ok(db.rt.block_on(async {
+                db.client.query("SELECT ID,FirstSeenAt,HomeScore,AwayScore,HomeShootoutScore,AwayShootoutScore FROM dbo.SportsMatchResults WHERE ProviderKey='espn-mls' AND GameId=@P1",&[&penalty_id]).await?.into_first_result().await
+            })?)
+        };
+        let original = read_penalty(&mut db)?;
+        db.save_soccer_results(mls_source, crate::espn_schedule::League::Mls, 2025, &rows)?;
+        let repeated = read_penalty(&mut db)?;
+        assert_eq!(original.len(), 1);
+        assert_eq!(original[0].get::<i64, _>(0), repeated[0].get::<i64, _>(0));
+        assert_eq!(
+            original[0].get::<chrono::NaiveDateTime, _>(1),
+            repeated[0].get::<chrono::NaiveDateTime, _>(1)
+        );
+        for (column, key) in [
+            (2, "homeScore"),
+            (3, "awayScore"),
+            (4, "homeShootout"),
+            (5, "awayShootout"),
+        ] {
+            assert_eq!(
+                repeated[0].get::<i32, _>(column),
+                Some(penalty[key].as_i64().unwrap() as i32)
+            );
+        }
+        db.rt.block_on(async {
+            db.client
+                .execute(
+                    "UPDATE dbo.SportsEventsType SET Enabled=0 WHERE ID=@P1",
+                    &[&mls_source],
+                )
+                .await
+        })?;
+        assert!(
+            db.save_soccer_results(mls_source, crate::espn_schedule::League::Mls, 2025, &rows)
+                .is_err()
+        );
+        assert_eq!(
+            read_penalty(&mut db)?[0].get::<i64, _>(0),
+            original[0].get::<i64, _>(0)
+        );
         assert_eq!(read(&mut db)?[0].get::<i32, _>(2), Some(7));
         Ok(())
     }

@@ -25,6 +25,10 @@ BEGIN TRY
  WHERE p.IsCurrent=0 OR t.IsCurrent=0;
  DELETE dbo.SportsRankingPolls WHERE IsCurrent=0;
  DELETE dbo.ScraperRuns WHERE FinishedAt IS NOT NULL AND StartedAt<DATEADD(day,-7,SYSUTCDATETIME());
+ IF OBJECT_ID('dbo.BoxOfficeForecasts','U') IS NOT NULL
+  EXEC sys.sp_executesql N'DELETE dbo.BoxOfficeForecasts WHERE PeriodEnd<@Today',N'@Today DATE',@Today=@P1;
+ IF OBJECT_ID('dbo.CinemaPosterCache','U') IS NOT NULL
+  EXEC(N'DELETE dbo.CinemaPosterCache WHERE LastUsedAtUtc<DATEADD(day,-90,SYSUTCDATETIME())');
  COMMIT;
 END TRY
 BEGIN CATCH

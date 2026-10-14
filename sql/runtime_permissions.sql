@@ -52,3 +52,16 @@ IF OBJECT_ID('dbo.SportsMatchResults','U') IS NOT NULL
 
 -- EPL snapshot rollover removes this source's non-current standings rows.
 GRANT DELETE ON dbo.SportsStandings TO [WebScraperIngest];
+IF OBJECT_ID('dbo.BoxOfficeWeekend','U') IS NOT NULL
+ GRANT SELECT,INSERT,DELETE ON dbo.BoxOfficeWeekend TO [WebScraperIngest];
+
+IF OBJECT_ID('dbo.BoxOfficeForecasts','U') IS NOT NULL
+ GRANT SELECT,INSERT,DELETE ON dbo.BoxOfficeForecasts TO [WebScraperIngest];
+IF OBJECT_ID('dbo.BoxOfficeForecastSources','U') IS NOT NULL
+ GRANT SELECT,UPDATE ON dbo.BoxOfficeForecastSources TO [WebScraperIngest];
+IF OBJECT_ID('dbo.CinemaPosterCache','U') IS NOT NULL
+ GRANT SELECT,INSERT,UPDATE,DELETE ON dbo.CinemaPosterCache TO [WebScraperIngest];
+IF COL_LENGTH('dbo.BoxOfficeWeekend','PosterUrl') IS NOT NULL
+ GRANT UPDATE(PosterUrl,PosterLookupStatus) ON dbo.BoxOfficeWeekend TO [WebScraperIngest];
+IF COL_LENGTH('dbo.BoxOfficeForecasts','PosterUrl') IS NOT NULL
+ GRANT UPDATE(PosterUrl,PosterLookupStatus) ON dbo.BoxOfficeForecasts TO [WebScraperIngest];

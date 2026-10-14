@@ -14,6 +14,7 @@ pub enum League {
     Mlb,
     Championship,
     Epl,
+    Mls,
 }
 impl League {
     pub fn path(self) -> &'static str {
@@ -23,6 +24,7 @@ impl League {
             Self::Mlb => "/apis/site/v2/sports/baseball/mlb/scoreboard",
             Self::Championship => "/apis/site/v2/sports/soccer/eng.2/scoreboard",
             Self::Epl => "/apis/site/v2/sports/soccer/eng.1/scoreboard",
+            Self::Mls => "/apis/site/v2/sports/soccer/usa.1/scoreboard",
         }
     }
     pub fn provider_key(self) -> &'static str {
@@ -32,6 +34,7 @@ impl League {
             Self::Mlb => "espn-mlb",
             Self::Championship => "espn-championship",
             Self::Epl => "espn-epl",
+            Self::Mls => "espn-mls",
         }
     }
     pub fn canonical_key(self, id: i32) -> String {
@@ -43,12 +46,13 @@ impl League {
                 Self::Mlb => "mlb",
                 Self::Championship => "eng.2",
                 Self::Epl => "eng.1",
+                Self::Mls => "usa.1",
             }
         )
     }
     fn game_url(self, id: i32) -> String {
         match self {
-            Self::Nwsl | Self::Championship | Self::Epl => {
+            Self::Nwsl | Self::Championship | Self::Epl | Self::Mls => {
                 format!("https://www.espn.com/soccer/match/_/gameId/{id}")
             }
             Self::Wnba => format!("https://www.espn.com/wnba/game/_/gameId/{id}"),
@@ -57,7 +61,7 @@ impl League {
     }
     fn sport(self) -> &'static str {
         match self {
-            Self::Nwsl | Self::Championship | Self::Epl => "Soccer",
+            Self::Nwsl | Self::Championship | Self::Epl | Self::Mls => "Soccer",
             Self::Wnba => "Basketball",
             Self::Mlb => "Baseball",
         }

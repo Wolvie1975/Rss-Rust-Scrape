@@ -17,7 +17,7 @@ services:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}
     command: ["--from-db", "--per-source", "10", "--every-hours", "1",
-              "-o", "/data/feed.xml", "--events-from-db", "--standings-from-db", "--rankings-from-db", "--youtube-from-db", "--youtube-latest", "10", "--movies", "--tv-from-db"]
+              "-o", "/data/feed.xml", "--events-from-db", "--standings-from-db", "--rankings-from-db", "--youtube-from-db", "--youtube-latest", "10", "--movies", "--tv-from-db", "--boxoffice", "--boxoffice-forecasts"]
     volumes:
       - scraper-data:/data
       - ./certs/sql-ca.crt:/data/certs/sql-ca.crt:ro

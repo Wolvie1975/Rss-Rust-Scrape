@@ -153,7 +153,7 @@ fn check_image(client: &Client, raw: &str) -> std::result::Result<String, String
     }
     Ok(url)
 }
-fn validate_candidates(
+pub(crate) fn validate_candidates(
     client: &Client,
     m: &SourceMovie,
     memo: &mut BTreeMap<String, std::result::Result<String, String>>,
@@ -170,7 +170,7 @@ fn validate_candidates(
     }
     (None, error)
 }
-fn search(
+pub(crate) fn search(
     client: &Client,
     target: &MovieIdentity,
     memo: &mut BTreeMap<String, std::result::Result<String, String>>,
@@ -439,6 +439,15 @@ pub fn enrich(db: &mut Db, inputs: &BTreeMap<String, SourceMovie>) -> Result<Val
                 Ok(Some((m, url))) => picked = m.posters.first().cloned().map(|p| (p, url)),
                 Ok(None) => {}
                 Err(e) => failure = Some(e),
+            }
+        }
+        if picked.is_none() && due && identity.year.is_some() {
+            source_requests += 1;
+            if let Ok(Some((m, url))) =
+                crate::cinema_posters::number_lookup(&client, &identity, &mut memo)
+            {
+                picked = m.posters.first().cloned().map(|p| (p, url));
+                failure = None;
             }
         }
         if let Some((url, source)) = picked {
