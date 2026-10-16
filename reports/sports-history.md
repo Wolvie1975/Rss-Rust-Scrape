@@ -4,6 +4,7 @@ Historical evidence, newest dates first. Counts, image tags and rollout details 
 
 ## Contents
 
+- [Big 12 soccer and men’s basketball standings verification — October 15, 2026](#big12-standings-review-2026-10-15)
 - [NHL schedules, standings and results deployment — October 14, 2026](#nhl-deployment-2026-10-14)
 - [WNBA correction and stale schedule review — October 13, 2026](#wnba-stale-correction-2026-10-13)
 - [WNBA schedule data review — October 13, 2026](#wnba-data-review-2026-10-13)
@@ -24,6 +25,37 @@ Historical evidence, newest dates first. Counts, image tags and rollout details 
 - [Kansas City Current schedule verification — 2026-10-09](#kansas-city-current-schedule-2026-10-09)
 - [ESPN schedule cutoff — 2026-10-09](#espn-upcoming-only-2026-10-09)
 - [Big 12 expansion verification — October 9, 2026](#big12-expansion-2026-10-09)
+
+<a id="big12-standings-review-2026-10-15"></a>
+
+## Big 12 soccer and men’s basketball standings verification — October 15, 2026
+
+Compared the live production standings with the conference’s published tables in
+response to a soccer display discrepancy and a men’s basketball screenshot.
+
+- Soccer source **7**, season **2026**: all 16 teams, row order and 12 statistic
+  columns (192 values) matched the official explicit standings page
+  `https://big12sports.com/standings.aspx?standings=238&path=soc`.
+  Its latest successful refresh observed was 18:00 UTC / 1:00 p.m. Central.
+- The rendered app at `/standings?sourceId=7` also matched all conference records
+  and points after accounting for W–L–T record strings versus W/D/L columns.
+  It displayed conference GP/W/D/L/points and omitted other stored columns.
+  No stale or incorrect scraper data was found.
+- Men’s basketball source **5**, season **2025-26**: all 16 teams, row order and
+  10 statistic columns (160 values) matched
+  `https://big12sports.com/standings.aspx?path=mbball`, including the supplied
+  screenshot’s conference/overall records, percentages, home/away splits, neutral
+  records and streak. Latest successful refresh observed was 19:00 UTC /
+  2:00 p.m. Central.
+- Both sources were enabled and had no reported source error at inspection.
+  No scraper fixes, database writes, configuration changes, deployment or
+  scheduler restart were required. The user will adjust the soccer frontend;
+  frontend changes were not implemented or verified in this review.
+
+The consolidated [standings guide](../docs/sports-tables.md#big12-soccer-basketball-columns)
+now records both complete `StatsJson` mappings. Consumers must distinguish
+repeated column labels using their positional `name` within each source’s layout.
+These timestamps and values are historical observations, not live status.
 
 <a id="nhl-deployment-2026-10-14"></a>
 

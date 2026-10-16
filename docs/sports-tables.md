@@ -4,12 +4,85 @@ Use the shared standings read contract plus the league-specific sections below. 
 
 ## Contents
 
+- [Big 12 soccer and men’s basketball column mappings](#big12-soccer-basketball-columns)
 - [NHL division standings — frontend handoff](#nhl-standings)
 - [My-Newsfeed frontend: sports standings](#my-newsfeed-standings-frontend)
 - [Sports standings for My-Newsfeed](#sports-standings)
 - [NFL standings — frontend handoff](#my-newsfeed-nfl-standings)
 - [My-Newsfeed MLS standings](#my-newsfeed-mls-standings)
 - [My-Newsfeed: national Top 25 with Big 12 highlighted](#my-newsfeed-top25-rankings)
+
+<a id="big12-soccer-basketball-columns"></a>
+
+## Big 12 soccer and men’s basketball column mappings
+
+Verified against the live production database and official conference pages on
+**October 15, 2026**. These checks were read-only; no scraper code, source
+configuration, production data or frontend changes were made during the review.
+The user plans to adjust the frontend separately.
+
+| Source | ID | Stored season | Verified teams | Last successful refresh observed (Central) |
+| --- | ---: | --- | ---: | --- |
+| Big 12 Soccer | 7 | 2026 | 16 | October 15, 1:00 p.m. |
+| Big 12 Men’s Basketball | 5 | 2025-26 | 16 | October 15, 2:00 p.m. |
+
+The soccer source resolves its current explicit standings URL from conference
+navigation. The reviewed page was
+[2026 soccer standings](https://big12sports.com/standings.aspx?standings=238&path=soc).
+All 16 teams, their order and all 192 statistic values matched the database.
+The [men’s basketball page](https://big12sports.com/standings.aspx?path=mbball)
+matched all 16 teams, their order and all 160 statistic values, including every
+column shown in the user’s 2025–26 screenshot. The basketball season label follows
+the provider’s published table; it is not inferred from today’s calendar year.
+Refresh times and counts above are recorded observations, not live status.
+
+### Frontend field mapping
+
+Team name comes from `TeamName`; table order comes from `Position`. The remaining
+columns are retained in `StatsJson` as `name`, `displayName` and `displayValue`.
+Use the positional `name` within the selected source’s mapping. Repeated labels
+such as Pct., Home, Away and Streak represent different conference/overall fields;
+do not index or deduplicate statistics by `displayName` alone. Preserve the
+provider’s `displayValue`, including leading decimal points and record strings.
+
+| Stat key | Soccer (source 7) | Men’s basketball (source 5) |
+| --- | --- | --- |
+| `column1` | Big 12 record | Big 12 record |
+| `column2` | Conference percentage | Conference percentage |
+| `column3` | Conference points | Conference home record |
+| `column4` | Conference home record | Conference away record |
+| `column5` | Conference away record | Overall record |
+| `column6` | Conference streak | Overall percentage |
+| `column7` | Overall record | Overall home record |
+| `column8` | Overall percentage | Overall away record |
+| `column9` | Overall home record | Overall neutral record |
+| `column10` | Overall away record | Overall streak |
+| `column11` | Overall neutral record | — |
+| `column12` | Overall streak | — |
+
+These mappings describe the verified table layouts. Positional keys are
+source/layout-specific, not shared statistic identifiers across sports. If the
+provider changes its table layout, recheck the published headers and mapping.
+
+Soccer record strings use **W–L–T**, while the reviewed app displays separate
+**W, D, L** columns. For example, Texas Tech’s conference `5-0-1` corresponds to
+W 5, D 1, L 0. The reviewed soccer app showed conference GP/W/D/L/points correctly
+for every team but omitted stored overall records, percentages, home/away splits,
+neutral records and streaks. That difference was presentation, not missing data.
+No basketball frontend rendering change was verified during this review.
+
+Read only current rows from enabled sources using the existing shared contract:
+
+```sql
+DECLARE @SourceId INT=5; -- 5: men's basketball; 7: soccer
+SELECT t.TeamName,t.Position,t.Season,t.StatsJson,t.FetchedAt
+FROM dbo.SportsStandings t
+JOIN dbo.SportsStandingsSources s ON s.ID=t.SourceId
+WHERE s.ID=@SourceId AND s.Enabled=1 AND t.IsCurrent=1
+ORDER BY t.Position;
+```
+
+Review evidence: [October 15 standings verification](../reports/sports-history.md#big12-standings-review-2026-10-15).
 
 <a id="nhl-standings"></a>
 

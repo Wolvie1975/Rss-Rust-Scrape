@@ -17,6 +17,17 @@ Last verified deployment: `web-scraper:nhl-20261014`; scraper and front-end were
 - Initial performance changes deployed: ESPN batches of 100, stage/HTTP metrics, and filtering past movie releases before persistence. Further caching/concurrency work remains a candidate.
 - Front-end work for the newer movie/sports sections is documented in the topic guides; scraper deployment alone does not implement those views.
 
+## Big 12 standings review — October 15, 2026
+
+Read-only verification found soccer source **7** (2026, 16 teams) and men’s
+basketball source **5** (2025-26, 16 teams) match the official tables in full.
+The soccer app’s conference columns were correct; it omitted stored overall
+and split statistics. The user plans frontend changes separately. No scraper or
+production changes were needed. Full source-specific `StatsJson` mappings:
+[standings guide](docs/sports-tables.md#big12-soccer-basketball-columns).
+Recorded refresh times and comparison evidence:
+[sports history](reports/sports-history.md#big12-standings-review-2026-10-15).
+
 ## NHL production deployment — October 14, 2026
 
 Image `web-scraper:nhl-20261014` is deployed and healthy. NHL schedule/results
