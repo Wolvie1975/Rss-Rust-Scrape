@@ -434,7 +434,7 @@ SELECT DISTINCT m.ID,m.Title,m.OriginalYear,m.ImdbId,l.Url,
  CASE WHEN c.MovieId IS NULL OR c.RetryAfter IS NULL OR c.RetryAfter<=SYSUTCDATETIME()
  OR c.IdentityTitle COLLATE Latin1_General_100_BIN2<>m.Title COLLATE Latin1_General_100_BIN2
  OR ISNULL(c.IdentityYear,0)<>ISNULL(m.OriginalYear,0) OR ISNULL(c.IdentityImdbId,'')<>ISNULL(m.ImdbId,'') THEN 1 ELSE 0 END AS Due,
- c.CheckedAt
+ c.CheckedAt,c.DirectUrl,c.VerifiedUntil
 FROM dbo.MovieReleases r JOIN dbo.MovieSourceLinks l ON l.ID=r.MovieSourceLinkId
 JOIN dbo.Movies m ON m.ID=l.MovieId JOIN dbo.MovieReleaseSources s ON s.ID=l.MovieReleaseSourceId
 LEFT JOIN dbo.MovieCommerceLinks c ON c.MovieId=m.ID AND c.Provider=CASE WHEN r.ReleaseType='theatrical' THEN 'fandango' ELSE 'fandango-at-home' END
@@ -448,7 +448,7 @@ ORDER BY c.CheckedAt,m.ID;
                 let provider=Provider::from_key(r.get::<&str,_>("Provider").unwrap_or("")).ok_or("invalid retailer provider")?;
                 let source=r.get::<&str,_>("Url").ok_or("missing movie source URL")?.to_owned();
                 if let Some(j)=jobs.iter_mut().find(|j|j.movie_id==movie_id && j.provider==provider) { j.source_urls.push(source); continue; }
-                jobs.push(Job{movie_id,provider,source_urls:vec![source],due:r.get::<i32,_>("Due")==Some(1),identity:crate::movie_metadata::MovieIdentity{
+                jobs.push(Job{movie_id,provider,source_urls:vec![source],due:r.get::<i32,_>("Due")==Some(1),cached_direct:r.get::<&str,_>("DirectUrl").map(str::to_owned),verified_until:r.get::<chrono::NaiveDateTime,_>("VerifiedUntil"),identity:crate::movie_metadata::MovieIdentity{
                     title:r.get::<&str,_>("Title").unwrap_or("").to_owned(),year:r.get::<i16,_>("OriginalYear"),imdb_id:r.get::<&str,_>("ImdbId").map(str::to_owned),tmdb_id:None,
                 }});
             }
@@ -480,14 +480,14 @@ WHEN NOT MATCHED THEN INSERT(MovieId,Provider,IdentityTitle,IdentityYear,Identit
             self.client.execute(r#"
 UPDATE c SET DirectUrl=CASE WHEN @P8 IS NOT NULL THEN c.DirectUrl ELSE @P6 END,
  PurchaseVerified=CASE WHEN @P8 IS NOT NULL THEN c.PurchaseVerified ELSE @P7 END,
- VerifiedUntil=CASE WHEN @P8 IS NOT NULL THEN c.VerifiedUntil WHEN @P6 IS NOT NULL THEN DATEADD(day,7,SYSUTCDATETIME()) ELSE NULL END,
- CheckedAt=SYSUTCDATETIME(),RetryAfter=DATEADD(hour,CASE WHEN @P6 IS NOT NULL THEN 168 ELSE 6 END,SYSUTCDATETIME()),LastError=@P8
+ VerifiedUntil=CASE WHEN @P8 IS NOT NULL THEN c.VerifiedUntil WHEN @P6 IS NOT NULL THEN CASE WHEN @P9<DATEADD(day,7,SYSUTCDATETIME()) THEN @P9 ELSE DATEADD(day,7,SYSUTCDATETIME()) END ELSE NULL END,
+ CheckedAt=SYSUTCDATETIME(),RetryAfter=CASE WHEN @P9<DATEADD(hour,CASE WHEN @P6 IS NOT NULL THEN 168 ELSE 6 END,SYSUTCDATETIME()) THEN @P9 ELSE DATEADD(hour,CASE WHEN @P6 IS NOT NULL THEN 168 ELSE 6 END,SYSUTCDATETIME()) END,LastError=@P8
 FROM dbo.MovieCommerceLinks c JOIN dbo.Movies m ON m.ID=c.MovieId
 WHERE c.MovieId=@P1 AND c.Provider=@P2 AND c.IdentityTitle COLLATE Latin1_General_100_BIN2=@P3 COLLATE Latin1_General_100_BIN2
 AND ISNULL(c.IdentityYear,0)=ISNULL(@P4,0) AND ISNULL(c.IdentityImdbId,'')=ISNULL(@P5,'')
 AND m.Title COLLATE Latin1_General_100_BIN2=c.IdentityTitle COLLATE Latin1_General_100_BIN2
 AND ISNULL(m.OriginalYear,0)=ISNULL(@P4,0) AND ISNULL(m.ImdbId,'')=ISNULL(@P5,'');
-"#,&[&job.movie_id,&provider,&job.identity.title,&job.identity.year,&job.identity.imdb_id,&outcome.direct_url,&outcome.purchase,&outcome.error]).await?;
+"#,&[&job.movie_id,&provider,&job.identity.title,&job.identity.year,&job.identity.imdb_id,&outcome.direct_url,&outcome.purchase,&outcome.error,&outcome.reviewed_until]).await?;
             Ok(())
         },&self.poisoned))
     }
@@ -3589,6 +3589,7 @@ mod movie_commerce_sql_tests {
                 direct_url: Some("https://www.fandango.com/fixture-123/movie-overview".into()),
                 purchase: false,
                 error: None,
+                ..Default::default()
             },
         )?;
         assert_eq!(read(&mut db)?.0, "direct");
@@ -3600,6 +3601,18 @@ mod movie_commerce_sql_tests {
             },
         )?;
         assert_eq!(read(&mut db)?.0, "direct");
+        let cap = chrono::Utc::now().naive_utc() + chrono::Duration::hours(2);
+        db.save_movie_commerce(
+            &job,
+            &Outcome {
+                direct_url: Some("https://www.fandango.com/fixture-123/movie-overview".into()),
+                reviewed_until: Some(cap),
+                ..Default::default()
+            },
+        )?;
+        let capped=db.rt.block_on(async {db.client.query("SELECT VerifiedUntil,RetryAfter FROM dbo.MovieCommerceLinks WHERE MovieId=@P1 AND Provider='fandango'",&[&job.movie_id]).await?.into_first_result().await})?;
+        assert!(capped[0].get::<chrono::NaiveDateTime, _>(0).unwrap() <= cap);
+        assert!(capped[0].get::<chrono::NaiveDateTime, _>(1).unwrap() <= cap);
         db.rt.block_on(async {db.client.execute("UPDATE dbo.MovieCommerceLinks SET VerifiedUntil=DATEADD(day,-1,SYSUTCDATETIME()) WHERE MovieId=@P1",&[&job.movie_id]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
         assert_eq!(read(&mut db)?.0, "search");
         db.rt.block_on(async {

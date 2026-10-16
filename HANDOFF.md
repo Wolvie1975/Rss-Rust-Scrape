@@ -6,7 +6,7 @@ Start with [README.md](README.md). Five topic guides replace the overlapping ind
 
 ## Latest documented production state
 
-Last verified deployment: `web-scraper:movie-commerce-20261016`; scraper and front-end were healthy at verification. This document is not a live status check.
+Last verified deployment: `web-scraper:movie-direct-links-20261016`; scraper and front-end were healthy at verification. This document is not a live status check.
 
 - Hourly collection includes news, rankings, standings, sports schedules, YouTube, movie releases, TV, actual box office and Boxoffice Pro forecasts.
 - MLS schedule/results source 5525, standings 9; Championship schedule/results 5326, standings 11; EPL schedule 5357, standings 12; NFL standings 10.
@@ -59,15 +59,18 @@ validation and rollback.
 
 ## Movie purchase links — deployed October 16, 2026
 
-Deployed Fandango theatrical / Fandango at Home digital link enrichment with
-verified movie links and labeled search fallbacks. Production run 160 saved 34
-releases with zero source issues and seeded 13 retailer actions (nine theatrical,
-four digital). All currently use search fallbacks; no direct match was verified.
-The existing hourly command/runtime settings and original movie rows are intact.
+Current image `web-scraper:movie-direct-links-20261016` adds expiring reviewed
+Fandango mappings and improved candidate selection. Production run 165 saved 34
+releases with zero source issues. Eight of nine theatrical actions now use direct
+Fandango movie pages; Sacrifice and four digital actions use search fallbacks.
+The live `/Movies` page rendered eight direct buttons, including the exact Street
+Fighter detail URL, without a frontend image replacement. Existing movie data,
+hourly configuration and the article-ID recovery mapping are preserved.
+
 Read [cache and operations](docs/movie-purchase-links.md), [the standalone frontend
-integration request](docs/movie-commerce-frontend-integration.md) and [deployment
-evidence](reports/operations-history.md#movie-commerce-deployment-2026-10-16).
-The separate My-Newsfeed UI still needs the documented buttons/query integration.
+integration request](docs/movie-commerce-frontend-integration.md) and [direct-link
+deployment evidence](reports/operations-history.md#movie-direct-links-deployment-2026-10-16).
+The existing frontend is now confirmed to consume the view and render direct links.
 
 ## Development and deployment
 

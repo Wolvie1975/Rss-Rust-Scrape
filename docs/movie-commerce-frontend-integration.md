@@ -1,9 +1,9 @@
 # Frontend integration: Fandango movie links
 
-Backend deployed October 16, 2026; **frontend integration remains pending**.
+Backend and existing frontend integration verified October 16, 2026.
 Prepared for the separate My-Newsfeed application. This document
-is the UI implementation request. Scraper deployment supplies the data; it does
-not add buttons to the frontend image. Operational details and deployment status
+is the UI implementation request. Scraper deployment supplies the data. The existing frontend already consumes
+this contract; no frontend image replacement was needed for the direct-link update. Operational details and deployment status
 are maintained in [movie purchase links](movie-purchase-links.md).
 
 ## Requested behavior
@@ -149,10 +149,24 @@ Do not add subscription services to the digital tab or change release dates.
 
 ## Production data available for integration
 
-Verified after scraper deployment: `dbo.MovieCommerce` returns nine theatrical
-and four digital actions. All 13 currently have `LinkKind='search'`; direct-link
+Initial deployment verification: `dbo.MovieCommerce` returns nine theatrical
+and four digital actions. All 13 initially had `LinkKind='search'`; direct-link
 rendering remains covered by isolated fixtures until a production movie match is
 verified. Use these actual search actions for initial UI acceptance, and fixtures
 for direct/expired/Buy/View variations. All original 23 movies, 23 source links and
 34 release IDs/dates/source URLs were preserved. The frontend's existing database
 permissions can read the view; no new runtime credentials are needed.
+
+## Current direct-link verification — October 16, 2026
+
+The backend now returns eight theatrical direct links and one theatrical search
+fallback (Sacrifice). Four digital actions remain search fallbacks. Reviewed
+mappings preserve verified movie URLs when the collector's own request receives
+HTTP 403; they expire absolutely within 30 days and never assert purchase stock.
+The view/DTO contract is unchanged.
+
+The live `/Movies` HTML returned HTTP 200 and rendered eight direct Fandango
+buttons, including
+`https://www.fandango.com/street-fighter-2026-246472/movie-overview`.
+No Street Fighter search href remained. This confirms the existing frontend's
+integration works; no frontend image change was made in this deployment.

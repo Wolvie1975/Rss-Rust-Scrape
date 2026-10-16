@@ -4,6 +4,8 @@ Historical evidence and the former long handoff are preserved here. Earlier tabl
 
 ## Contents
 
+- [Reviewed direct Fandango links — October 16, 2026](#movie-direct-links-deployment-2026-10-16)
+
 - [Movie retailer links deployment — October 16, 2026](#movie-commerce-deployment-2026-10-16)
 
 - [Article URL identity deployment — October 16, 2026](#article-identity-deployment-2026-10-16)
@@ -16,6 +18,55 @@ Historical evidence and the former long handoff are preserved here. Earlier tabl
 - [Audit remediation — October 10, 2026 (Central)](#audit-remediation-2026-10-10)
 - [Rust scraper application audit — October 10, 2026 (America/Chicago)](#application-audit-2026-10-10)
 - [web_scraper — handoff notes](#previous-handoff)
+
+<a id="movie-direct-links-deployment-2026-10-16"></a>
+
+## Reviewed direct Fandango links — October 16, 2026
+
+Deployed `web-scraper:movie-direct-links-20261016`, image
+`sha256:3343b5f8854e8ae7fafa3e9227f3c479c8c2f6aec3963c8bf5c52ff691cb0cf2`;
+`:latest` points to the same image. User requested confirmed movie details instead
+of search results after supplying Street Fighter's correct Fandango URL.
+
+Added an embedded reviewed-mapping registry for eight theatrical films with exact
+title/original year, observed detail URLs, review timestamp/evidence and a maximum
+30-day absolute expiry. Wrong years/providers, conflicting optional IMDb IDs,
+invalid URLs, ambiguous mappings, future/expired/overlong reviews fail closed.
+Mappings are applied before due network checks; HTTP 403 does not create evidence.
+Cache expiry and RetryAfter are capped by the absolute review expiry. Purchase
+stock is not inferred. Search discovery prioritizes exact-title/year anchors;
+Movie JSON-LD names with a parenthesized year now match with year conflict checks.
+No schema or permission migration was required.
+
+161 offline tests and strict Clippy passed. Restricted-account SQL integration
+passed separately, including expiry/retry caps. The isolated test database was
+removed. New-image read-only preview found 34 releases with zero source issues.
+Targeted production run **165**, **1:29:46–1:30:13 p.m. Central**, saved 34 releases
+with zero source issues. All original movie IDs/source links/release dates and
+source URLs matched before/after; enabled sources and the article recovery mapping
+are unchanged. Runtime Env, Cmd, user, healthcheck, mounts, network, restart,
+security and resource settings were preserved. Scraper and frontend were healthy;
+hourly scheduler's next slot at verification was **2:00 p.m. Central**.
+
+Production cache: **8 direct / 1 search** theatrical, **0 direct / 4 search** digital.
+The remaining theatrical fallback is Sacrifice. Live `/Movies` HTML returned 200,
+rendered eight direct overview links, and used Street Fighter's exact
+`https://www.fandango.com/street-fighter-2026-246472/movie-overview` href. Its old
+search href was absent. The existing frontend consumes the view correctly; no
+frontend image was replaced.
+
+Fresh verified copy-only/checksum backup:
+`/var/opt/mssql/backup/webscraper-managed/manual/WebScraper_before_movie_direct_links_20261016.bak`.
+Rollback image `web-scraper:before-movie-direct-links-20261016` and stopped container
+`web-scraper-before-movie-direct-links-20261016` retain the previous commerce build.
+Protected host source/configuration/evidence backup is under
+`.deployment-backups/20261016-movie-direct-links/`. Host source and handoffs were
+synced; no Git commit/push was performed. Cache links remain independently expiring
+on rollback and can be explicitly reverted to search without restoring Movies.
+
+Policy/maintenance: [reviewed mappings](../docs/movie-purchase-links.md#reviewed-movie-mappings).
+Frontend contract and live evidence:
+[standalone integration handoff](../docs/movie-commerce-frontend-integration.md).
 
 <a id="movie-commerce-deployment-2026-10-16"></a>
 

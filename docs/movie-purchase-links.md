@@ -1,7 +1,8 @@
 # Movie tickets and digital purchase links
 
-Backend deployed October 16, 2026 as `web-scraper:movie-commerce-20261016`. The separate
-My-Newsfeed frontend still needs the query/button changes below. User preference:
+Backend deployed October 16, 2026; current image is
+`web-scraper:movie-direct-links-20261016`. The existing My-Newsfeed frontend is
+confirmed to render these actions. User preference:
 direct movie pages when verified, with explicitly labeled search fallbacks.
 
 ## Reader behavior
@@ -76,6 +77,42 @@ Sell, InStock and carrying a valid price. Rental-only and unspecified offers use
 expire/recheck after seven days; missing/error results retry after six hours.
 Transient failures preserve a previous verified link only until its original
 expiry. A successful unmatched check clears that link.
+
+## Reviewed movie mappings
+
+`src/movie_commerce_mappings.json` holds explicitly reviewed retailer detail URLs
+for pages that can be read through the web reader but return HTTP 403 to the
+collector. This is a separate evidence path: HTTP 403 itself never proves a match.
+Each entry records provider, exact movie title/original year, full validated URL,
+review timestamp, expiry timestamp and the evidence checked. Optional IMDb IDs
+must match when present. The registry is embedded in the scraper image.
+
+Reviewed mappings are evaluated before network discovery, even when the existing
+search-fallback cache is not due. A matching reviewed entry may replace that
+fallback without another blocked request. Wrong/unknown original years, wrong
+providers, conflicting IMDb IDs, unsafe URLs, duplicate matching entries,
+future reviews, expired reviews and review periods longer than 30 days are
+rejected. Reviewed mappings never assert digital purchase stock or prices.
+
+A cache write expires at the earlier of its usual seven-day lifetime and the
+review's absolute expiry; RetryAfter is also capped. Hourly imports do not extend
+the review timestamp. After expiry, ordinary independent network verification or
+a new documented review is required; otherwise the view uses search fallbacks.
+The existing DTO, view and frontend query remain unchanged.
+
+To add/renew a mapping, read the actual retailer detail page, verify film title
+and original year (check cast/director for ambiguous remakes), and record the full
+observed URL and UTC review/expiry in the registry. Do not copy a search snippet
+as purchase evidence or invent a retailer ID. Validate with the commerce tests,
+build/deploy the image, and run a targeted movie import. The current registry
+contains eight reviewed theatrical movies, including
+[Street Fighter (2026)](https://www.fandango.com/street-fighter-2026-246472/movie-overview).
+
+Automatic search discovery now selects exact-title/year anchors before applying
+the candidate request limit, so unrelated sidebar films cannot consume the first
+three requests. Search results remain candidates: the final detail page must
+verify identity. Movie JSON-LD names containing a parenthesized original year are
+supported, with conflicting years rejected.
 
 ## Frontend integration
 
@@ -178,7 +215,7 @@ are not rewritten by this feature.
 Provider references: [Fandango digital purchase guidance](https://streamsupport.fandango.com/s/article/So-how-do-I-rent-or-buy-movies-and-TV-shows)
 and [Fandango theatrical movie pages](https://www.fandango.com/moana-2026-243429/movie-overview).
 
-## Production deployment — October 16, 2026
+## Initial production deployment — October 16, 2026
 
 Image `web-scraper:movie-commerce-20261016` (`:latest` points to the same image):
 `sha256:931488d3f6ea962215f0d773f6bac12081036bdf1a10ab6a424522054dc05e5f`.
@@ -201,4 +238,38 @@ rollback image: `web-scraper:before-movie-commerce-20261016`.
 Protected host source/configuration backup:
 `/home/jcarpio/Projects/Rss-Rust-Scrape/.deployment-backups/20261016-movie-commerce/`.
 The additive cache can remain when rolling back; existing movie data needs no
-restore merely to remove the new feature. Frontend integration is still pending.
+restore merely to remove the new feature. Frontend integration was pending at this initial deployment; see the direct-link verification below.
+
+## Direct-link deployment — October 16, 2026, 1:30 p.m. Central
+
+Current image `web-scraper:movie-direct-links-20261016` (`:latest`):
+`sha256:3343b5f8854e8ae7fafa3e9227f3c479c8c2f6aec3963c8bf5c52ff691cb0cf2`.
+No additional database migration or grants were needed; existing cache/view fields
+support the reviewed mapping expiry. Eight theatrical mappings were reviewed on
+October 16 through the Fandango detail pages; their absolute review expiry is
+recorded in the embedded registry and cannot exceed 30 days.
+
+Run **165**, **1:29:46–1:30:13 p.m. Central**, saved 34 releases, zero source issues.
+Production now returns **eight direct theatrical actions**, one theatrical search
+fallback (Sacrifice), and four digital search fallbacks. The unchanged frontend
+`/Movies` response returned HTTP 200, rendered all eight direct Fandango buttons,
+and included Street Fighter's exact `street-fighter-2026-246472/movie-overview`
+href with no Street Fighter search href. No frontend image change was required.
+The earlier all-search counts above describe the initial deployment only.
+
+161 offline tests and strict Clippy passed. The restricted-account SQL cache test
+passed separately, including review-expiry and RetryAfter caps. Validation database
+`WebScraper_MovieCommerce_Validation_20261016_Direct` was removed. Original movie
+IDs, source links, release dates/source URLs, source settings and article recovery
+mapping matched before/after. Hourly runtime/security/network settings were
+preserved; the next slot at verification was 2:00 p.m. Central.
+
+Verified copy-only/checksum database backup:
+`/var/opt/mssql/backup/webscraper-managed/manual/WebScraper_before_movie_direct_links_20261016.bak`.
+Rollback image `web-scraper:before-movie-direct-links-20261016` and stopped container
+`web-scraper-before-movie-direct-links-20261016` retain the preceding commerce build.
+Host source/config/evidence backup:
+`/home/jcarpio/Projects/Rss-Rust-Scrape/.deployment-backups/20261016-movie-direct-links/`.
+Rollback may leave these valid expiring cache links intact, or the reviewed rows
+can be changed back to search fallbacks explicitly; existing movie data need not
+be restored merely to remove direct-link support.

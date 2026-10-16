@@ -370,7 +370,7 @@ Give this document to the My-Newsfeed application along with
 
 October 16 deployed addition: optional Fandango theatrical and Fandango at Home digital
 links, with labeled search fallbacks. See [purchase-link implementation and frontend
-handoff](movie-purchase-links.md). Backend deployed; the separate frontend still needs its button/query integration.
+handoff](movie-purchase-links.md). Backend and existing frontend direct buttons verified; eight theatrical films now link directly to Fandango.
 
 2026-10-11 update: Movie Insider digital provider and separate When To Stream VOD
 parsing are implemented. See [the digital release correction/frontend handoff](movies-and-box-office.md#my-newsfeed-digital-releases)

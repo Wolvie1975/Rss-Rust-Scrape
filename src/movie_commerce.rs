@@ -86,12 +86,104 @@ pub struct Job {
     pub provider: Provider,
     pub source_urls: Vec<String>,
     pub due: bool,
+    pub cached_direct: Option<String>,
+    pub verified_until: Option<chrono::NaiveDateTime>,
 }
 #[derive(Debug, Default)]
 pub struct Outcome {
     pub direct_url: Option<String>,
     pub purchase: bool,
     pub error: Option<String>,
+    pub reviewed_until: Option<chrono::NaiveDateTime>,
+}
+
+/// Explicitly reviewed retailer identities can survive a collector-side HTTP 403.
+/// This registry never asserts purchase availability and cannot renew its review.
+fn reviewed_mapping(raw: &str, job: &Job, now: chrono::DateTime<chrono::Utc>) -> Option<Outcome> {
+    let rows: Vec<Value> = serde_json::from_str(raw).ok()?;
+    let mut matches = Vec::new();
+    for row in rows {
+        if row["provider"].as_str() != Some(job.provider.key())
+            || row["title"]
+                .as_str()
+                .map(crate::movie_metadata::normalized_title)
+                != Some(crate::movie_metadata::normalized_title(&job.identity.title))
+            || job.identity.year.map(i64::from) != row["original_year"].as_i64()
+            || job.identity.year.is_none()
+        {
+            continue;
+        }
+        if let Some(id) = row["imdb_id"].as_str()
+            && job.identity.imdb_id.as_deref() != Some(id)
+        {
+            continue;
+        }
+        let Some(url) = row["url"].as_str().and_then(|u| job.provider.direct(u)) else {
+            continue;
+        };
+        let Some(reviewed) = row["reviewed_at"]
+            .as_str()
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        else {
+            continue;
+        };
+        let Some(expires) = row["expires_at"]
+            .as_str()
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        else {
+            continue;
+        };
+        if reviewed > now
+            || expires <= now
+            || expires <= reviewed
+            || expires - reviewed > chrono::Duration::days(30)
+            || row["evidence"].as_str().is_none_or(|s| s.trim().is_empty())
+        {
+            continue;
+        }
+        matches.push(Outcome {
+            direct_url: Some(url),
+            reviewed_until: Some(expires.naive_utc()),
+            ..Default::default()
+        });
+    }
+    (matches.len() == 1).then(|| matches.remove(0))
+}
+
+/// Rank exact title/year anchors before related films, bundles and other search hits.
+fn matching_candidates(
+    html: &str,
+    base: &str,
+    provider: Provider,
+    identity: &MovieIdentity,
+) -> Vec<String> {
+    let Ok(base) = Url::parse(base) else {
+        return vec![];
+    };
+    let expected = crate::movie_metadata::normalized_title(&identity.title);
+    let mut matches = BTreeSet::new();
+    for a in Html::parse_document(html).select(&Selector::parse("a[href]").unwrap()) {
+        let Some(url) = a
+            .value()
+            .attr("href")
+            .and_then(|h| base.join(h).ok())
+            .and_then(|u| provider.direct(u.as_str()))
+        else {
+            continue;
+        };
+        let title = a
+            .value()
+            .attr("title")
+            .map(str::to_owned)
+            .unwrap_or_else(|| a.text().collect::<Vec<_>>().join(" "));
+        let (title, year) = crate::movie_metadata::title_year(&title);
+        if crate::movie_metadata::normalized_title(&title) == expected
+            && (year.is_none() || identity.year.is_none() || year == identity.year)
+        {
+            matches.insert(url);
+        }
+    }
+    matches.into_iter().collect()
 }
 
 pub fn candidates(html: &str, base: &str, provider: Provider) -> Vec<String> {
@@ -142,14 +234,18 @@ pub fn verified(html: &str, identity: &MovieIdentity) -> Option<bool> {
                 continue;
             }
             movie_nodes += 1;
-            let same_title = m["name"].as_str().is_some_and(|s| {
-                crate::movie_metadata::normalized_title(s)
-                    == crate::movie_metadata::normalized_title(&identity.title)
-            });
+            let (movie_name, name_year) =
+                crate::movie_metadata::title_year(m["name"].as_str().unwrap_or(""));
+            let same_title = crate::movie_metadata::normalized_title(&movie_name)
+                == crate::movie_metadata::normalized_title(&identity.title);
             let year = m["datePublished"]
                 .as_str()
                 .and_then(|s| s.get(..4))
-                .and_then(|s| s.parse::<i16>().ok());
+                .and_then(|s| s.parse::<i16>().ok())
+                .or(name_year);
+            if name_year.is_some() && identity.year.is_some() && name_year != identity.year {
+                continue;
+            }
             let mut ids = vec![];
             for key in ["sameAs", "url"] {
                 if let Some(s) = m[key].as_str() {
@@ -252,7 +348,12 @@ fn lookup(
         let search = job.provider.search(&job.identity.title);
         match crate::http::get_text(client, &search) {
             Ok(html) => {
-                links.extend(candidates(&html, &search, job.provider));
+                links.extend(matching_candidates(
+                    &html,
+                    &search,
+                    job.provider,
+                    &job.identity,
+                ));
             }
             Err(e) => errors.push(e.to_string()),
         }
@@ -286,6 +387,7 @@ fn lookup(
             direct_url: found.into_iter().next(),
             purchase: buy,
             error: None,
+            reviewed_until: None,
         }
     } else {
         Outcome {
@@ -312,6 +414,25 @@ pub fn enrich(db: &mut Db, report: &Value) -> Result<usize> {
     let mut checked = 0;
     for job in jobs {
         db.seed_movie_commerce(&job)?; // Every eligible movie gets a fallback immediately.
+        if let Some(outcome) = reviewed_mapping(
+            include_str!("movie_commerce_mappings.json"),
+            &job,
+            chrono::Utc::now(),
+        ) {
+            if job.due
+                || job.cached_direct != outcome.direct_url
+                || job.verified_until.is_none()
+                || job.verified_until > outcome.reviewed_until
+            {
+                db.save_movie_commerce(&job, &outcome)?;
+                eprintln!(
+                    "movie retailer links: reviewed mapping movie_id={} provider={}",
+                    job.movie_id,
+                    job.provider.key()
+                );
+            }
+            continue;
+        }
         if !job.due || checked >= 12 || Instant::now() >= deadline {
             continue;
         }
@@ -343,6 +464,98 @@ pub fn enrich(db: &mut Db, report: &Value) -> Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn mapping_job() -> Job {
+        Job {
+            movie_id: 2185,
+            identity: MovieIdentity {
+                title: "Street Fighter".into(),
+                year: Some(2026),
+                ..Default::default()
+            },
+            provider: Provider::FandangoTickets,
+            source_urls: vec![],
+            due: false,
+            cached_direct: None,
+            verified_until: None,
+        }
+    }
+    #[test]
+    fn reviewed_mapping_handles_blocked_http_without_guessing_or_claiming_stock() {
+        let raw = include_str!("movie_commerce_mappings.json");
+        let entries: Value = serde_json::from_str(raw).unwrap();
+        let now = chrono::DateTime::parse_from_rfc3339(entries[0]["reviewed_at"].as_str().unwrap())
+            .unwrap()
+            .with_timezone(&chrono::Utc)
+            + chrono::Duration::seconds(1);
+        let job = mapping_job();
+        let result = reviewed_mapping(raw, &job, now).unwrap();
+        assert_eq!(
+            result.direct_url.as_deref(),
+            Some("https://www.fandango.com/street-fighter-2026-246472/movie-overview")
+        );
+        assert!(!result.purchase);
+        assert!(result.reviewed_until.is_some());
+        for job in [
+            Job {
+                identity: MovieIdentity {
+                    year: Some(1994),
+                    ..job.identity.clone()
+                },
+                ..mapping_job()
+            },
+            Job {
+                identity: MovieIdentity {
+                    year: None,
+                    ..job.identity.clone()
+                },
+                ..mapping_job()
+            },
+            Job {
+                provider: Provider::Fandango,
+                ..mapping_job()
+            },
+        ] {
+            assert!(reviewed_mapping(raw, &job, now).is_none());
+        }
+        assert!(reviewed_mapping(raw, &job, now + chrono::Duration::days(31)).is_none());
+        assert!(reviewed_mapping(raw, &job, now - chrono::Duration::days(1)).is_none());
+        let mut duplicate = entries.as_array().unwrap().clone();
+        duplicate.push(duplicate[0].clone());
+        assert!(reviewed_mapping(&serde_json::to_string(&duplicate).unwrap(), &job, now).is_none());
+        let unsafe_url = raw.replace(
+            "https://www.fandango.com/street-fighter-2026-246472/movie-overview",
+            "https://evil.com/street-fighter-2026-246472/movie-overview",
+        );
+        assert!(reviewed_mapping(&unsafe_url, &job, now).is_none());
+        let mut conflicting = entries.clone();
+        conflicting[0]["imdb_id"] = serde_json::json!("tt9999999");
+        assert!(reviewed_mapping(&conflicting.to_string(), &job, now).is_none());
+    }
+    #[test]
+    fn discovery_does_not_spend_candidate_budget_on_unrelated_sidebar_links() {
+        let html = r#"<a href="/other-123/movie-overview">Other (2026)</a><a href="/street-fighter-1994-456/movie-overview">Street Fighter (1994)</a><a href="/street-fighter-2026-246472/movie-overview">Street Fighter (2026)</a><a href="https://evil.com/street-fighter-2026-246472/movie-overview">Street Fighter (2026)</a>"#;
+        assert_eq!(
+            matching_candidates(
+                html,
+                "https://www.fandango.com/search?q=Street+Fighter",
+                Provider::FandangoTickets,
+                &mapping_job().identity
+            ),
+            vec!["https://www.fandango.com/street-fighter-2026-246472/movie-overview"]
+        );
+    }
+    #[test]
+    fn structured_movie_name_can_include_year() {
+        let html = r#"<script type="application/ld+json">{"@type":"Movie","name":"Street Fighter (2026)","datePublished":"2026-10-16"}</script>"#;
+        assert_eq!(verified(html, &mapping_job().identity), Some(false));
+        assert_eq!(
+            verified(
+                &html.replace("Street Fighter (2026)", "Street Fighter (1994)"),
+                &mapping_job().identity
+            ),
+            None
+        );
+    }
     #[test]
     fn search_encodes_titles_and_avoids_extra_parameters() {
         for p in [Provider::FandangoTickets, Provider::Fandango] {
