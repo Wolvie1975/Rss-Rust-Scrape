@@ -138,6 +138,7 @@ fn parse_entries(body: &str, feed_url: &str, source: &str) -> Result<Vec<PageMet
             Some(PageMeta {
                 source: source.to_string(),
                 url: link,
+                identity_urls: vec![],
                 title,
                 description: html.and_then(plain_text),
                 // Some feeds mislabel their time zone, which lands dates in the future.

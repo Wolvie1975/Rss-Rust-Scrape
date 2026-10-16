@@ -28,10 +28,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await?
                 .into_results()
                 .await?;
-            println!("Movie release schema ready in WebScraper (4 tables).");
+            client
+                .simple_query(include_str!("../sql/movie_commerce.sql"))
+                .await?
+                .into_results()
+                .await?;
+            client
+                .simple_query(include_str!("../sql/movie_commerce_view.sql"))
+                .await?
+                .into_results()
+                .await?;
+            println!("Movie release schema and retailer links ready in WebScraper.");
             if verify {
                 client
                     .simple_query(include_str!("../tests/sql/movie_releases.sql"))
+                    .await?
+                    .into_results()
+                    .await?;
+                client
+                    .simple_query(include_str!("../tests/sql/movie_commerce.sql"))
                     .await?
                     .into_results()
                     .await?;

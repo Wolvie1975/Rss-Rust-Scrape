@@ -6,7 +6,7 @@ Start with [README.md](README.md). Five topic guides replace the overlapping ind
 
 ## Latest documented production state
 
-Last verified deployment: `web-scraper:nhl-20261014`; scraper and front-end were healthy at verification. This document is not a live status check.
+Last verified deployment: `web-scraper:movie-commerce-20261016`; scraper and front-end were healthy at verification. This document is not a live status check.
 
 - Hourly collection includes news, rankings, standings, sports schedules, YouTube, movie releases, TV, actual box office and Boxoffice Pro forecasts.
 - MLS schedule/results source 5525, standings 9; Championship schedule/results 5326, standings 11; EPL schedule 5357, standings 12; NFL standings 10.
@@ -16,6 +16,24 @@ Last verified deployment: `web-scraper:nhl-20261014`; scraper and front-end were
 - Current retention and backup rules: [operations guide](docs/operations.md#data-retention). SQL remains in FULL recovery with managed log/full backups.
 - Initial performance changes deployed: ESPN batches of 100, stage/HTTP metrics, and filtering past movie releases before persistence. Further caching/concurrency work remains a candidate.
 - Front-end work for the newer movie/sports sections is documented in the topic guides; scraper deployment alone does not implement those views.
+
+## Article URL identity — October 16, 2026
+
+Verified URL redirects/canonicals now reconcile same-source article URL changes
+through `ArticleUrlAliases` and `UpsertArticleIdentity`. The additive migration
+also creates `ArticleIdRedirects` and grants runtime permissions. No title/image/
+timestamp similarity merges are allowed; runtime source settings and hourly
+frequency are preserved.
+
+The approved Pure Xbox cleanup keeps **25604**, archives/maps **25647 → 25604**,
+and retains both URL aliases. The frontend showed one public card. Browser saves
+using retired IDs need frontend recovery through that mapping; this release does
+not change browser storage. A verified copy-only database backup and protected
+host source/configuration backups are retained.
+
+Read [article URL identity](docs/article-url-identity.md) for request budgets,
+migration order, metadata/reference handling and saved-ID recovery. Actual schema,
+tests, cleanup scope and rollback: [deployment evidence](reports/operations-history.md#article-identity-deployment-2026-10-16).
 
 ## Big 12 standings review — October 15, 2026
 
@@ -38,6 +56,18 @@ scheduler and runtime settings are preserved. See the consolidated [schedules/re
 [standings](docs/sports-tables.md#nhl-standings), [operations](docs/operations.md#nhl-operations)
 and [deployment history](reports/sports-history.md#nhl-deployment-2026-10-14) for contracts,
 validation and rollback.
+
+## Movie purchase links — deployed October 16, 2026
+
+Deployed Fandango theatrical / Fandango at Home digital link enrichment with
+verified movie links and labeled search fallbacks. Production run 160 saved 34
+releases with zero source issues and seeded 13 retailer actions (nine theatrical,
+four digital). All currently use search fallbacks; no direct match was verified.
+The existing hourly command/runtime settings and original movie rows are intact.
+Read [cache and operations](docs/movie-purchase-links.md), [the standalone frontend
+integration request](docs/movie-commerce-frontend-integration.md) and [deployment
+evidence](reports/operations-history.md#movie-commerce-deployment-2026-10-16).
+The separate My-Newsfeed UI still needs the documented buttons/query integration.
 
 ## Development and deployment
 

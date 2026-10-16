@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use std::{
     sync::atomic::{AtomicBool, Ordering},
     time::Duration,
@@ -110,8 +110,8 @@ impl Db {
         let poisoned = AtomicBool::new(false);
         let mut client = rt.block_on(bounded(connect(ado, database), &poisoned))?;
         rt.block_on(bounded(async {
-            let r=client.query("SELECT CASE WHEN OBJECT_ID('dbo.ScraperRuns','U') IS NOT NULL AND COL_LENGTH('dbo.SportsEvents','ScheduleStatus') IS NOT NULL THEN 1 ELSE 0 END",&[]).await?.into_first_result().await?;
-            if r.first().and_then(|r|r.get::<i32,_>(0))!=Some(1){return Err("schema missing: run --initialize-db with migration credentials".into())}
+            let r=client.query("SELECT CASE WHEN OBJECT_ID('dbo.ScraperRuns','U') IS NOT NULL AND COL_LENGTH('dbo.SportsEvents','ScheduleStatus') IS NOT NULL AND OBJECT_ID('dbo.UpsertArticleIdentity','P') IS NOT NULL THEN 1 ELSE 0 END",&[]).await?.into_first_result().await?;
+            if r.first().and_then(|r|r.get::<i32,_>(0))!=Some(1){return Err("schema missing: apply scraper migrations with migration credentials".into())}
             Ok(())
         },&poisoned))?;
         Ok(Db {
@@ -276,6 +276,8 @@ impl Db {
                 .into_results()
                 .await?;
             client.simple_query(include_str!("../sql/movie_posters.sql")).await?.into_results().await?;
+            client.simple_query(include_str!("../sql/movie_commerce.sql")).await?.into_results().await?;
+            client.simple_query(include_str!("../sql/movie_commerce_view.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/big12_events.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/nwsl_events.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/rankings.sql")).await?.into_results().await?;
@@ -283,6 +285,8 @@ impl Db {
             client.simple_query(include_str!("../sql/soccer_shootouts.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/standings.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/scraper_runs.sql")).await?.into_results().await?;
+            client.simple_query(include_str!("../sql/article_identity.sql")).await?.into_results().await?;
+            client.simple_query(include_str!("../sql/upsert_article_identity.sql")).await?.into_results().await?;
             client.simple_query(include_str!("../sql/big12_views.sql")).await?.into_results().await?;
             Result::Ok(client)
         },&poisoned))?;
@@ -411,6 +415,80 @@ impl Db {
         let error = error.chars().take(1000).collect::<String>();
         self.rt.block_on(bounded(async {
             self.client.execute("UPDATE dbo.TvTrackedSeries SET LastError=@P3,LastIssueCount=1,RetryAfter=DATEADD(second,@P4,SYSUTCDATETIME()),LeaseUntil=NULL,LeaseToken=NULL WHERE TvmazeShowId=@P1 AND LeaseToken=TRY_CONVERT(UNIQUEIDENTIFIER,@P2)",&[&id,&lease,&error,&retry]).await?;Ok(())
+        },&self.poisoned))
+    }
+
+    pub fn movie_commerce_jobs(&mut self) -> Result<Vec<crate::movie_commerce::Job>> {
+        use crate::movie_commerce::{Job, Provider};
+        self.rt.block_on(bounded(async {
+            let available=self.client.query("SELECT OBJECT_ID('dbo.MovieCommerceLinks','U') AS Id",&[]).await?.into_first_result().await?;
+            if available.first().and_then(|r|r.get::<i32,_>(0)).is_none() {
+                eprintln!("movie retailer links: migration not applied; see sql/movie_commerce.sql");
+                return Ok(vec![]);
+            }
+            let rows=self.client.query(r#"
+DECLARE @Today DATE=CONVERT(date,SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time');
+DECLARE @Monday DATE=DATEADD(day,-((DATEDIFF(day,CONVERT(date,'19000101'),@Today)%7+7)%7),@Today);
+SELECT DISTINCT m.ID,m.Title,m.OriginalYear,m.ImdbId,l.Url,
+ CASE WHEN r.ReleaseType='theatrical' THEN 'fandango' ELSE 'fandango-at-home' END AS Provider,
+ CASE WHEN c.MovieId IS NULL OR c.RetryAfter IS NULL OR c.RetryAfter<=SYSUTCDATETIME()
+ OR c.IdentityTitle COLLATE Latin1_General_100_BIN2<>m.Title COLLATE Latin1_General_100_BIN2
+ OR ISNULL(c.IdentityYear,0)<>ISNULL(m.OriginalYear,0) OR ISNULL(c.IdentityImdbId,'')<>ISNULL(m.ImdbId,'') THEN 1 ELSE 0 END AS Due,
+ c.CheckedAt
+FROM dbo.MovieReleases r JOIN dbo.MovieSourceLinks l ON l.ID=r.MovieSourceLinkId
+JOIN dbo.Movies m ON m.ID=l.MovieId JOIN dbo.MovieReleaseSources s ON s.ID=l.MovieReleaseSourceId
+LEFT JOIN dbo.MovieCommerceLinks c ON c.MovieId=m.ID AND c.Provider=CASE WHEN r.ReleaseType='theatrical' THEN 'fandango' ELSE 'fandango-at-home' END
+WHERE s.Enabled=1 AND r.CountryCode='US' AND r.ReleaseStatus='scheduled' AND r.DateStatus='announced'
+AND r.ReleaseDate>=@Monday AND r.ReleaseType IN ('theatrical','digital','digital_purchase','digital_rental')
+ORDER BY c.CheckedAt,m.ID;
+"#,&[]).await?.into_first_result().await?;
+            let mut jobs:Vec<Job>=vec![];
+            for r in rows {
+                let movie_id=r.get::<i32,_>("ID").ok_or("missing movie ID")?;
+                let provider=Provider::from_key(r.get::<&str,_>("Provider").unwrap_or("")).ok_or("invalid retailer provider")?;
+                let source=r.get::<&str,_>("Url").ok_or("missing movie source URL")?.to_owned();
+                if let Some(j)=jobs.iter_mut().find(|j|j.movie_id==movie_id && j.provider==provider) { j.source_urls.push(source); continue; }
+                jobs.push(Job{movie_id,provider,source_urls:vec![source],due:r.get::<i32,_>("Due")==Some(1),identity:crate::movie_metadata::MovieIdentity{
+                    title:r.get::<&str,_>("Title").unwrap_or("").to_owned(),year:r.get::<i16,_>("OriginalYear"),imdb_id:r.get::<&str,_>("ImdbId").map(str::to_owned),tmdb_id:None,
+                }});
+            }
+            Ok(jobs)
+        },&self.poisoned))
+    }
+    pub fn seed_movie_commerce(&mut self, job: &crate::movie_commerce::Job) -> Result<()> {
+        let provider = job.provider.key();
+        let search = job.provider.search(&job.identity.title);
+        self.rt.block_on(bounded(async {
+            self.client.execute(r#"
+MERGE dbo.MovieCommerceLinks WITH(HOLDLOCK) t USING(SELECT @P1 AS MovieId,@P2 AS Provider) s
+ON t.MovieId=s.MovieId AND t.Provider=s.Provider
+WHEN MATCHED AND (t.IdentityTitle COLLATE Latin1_General_100_BIN2<>@P3 COLLATE Latin1_General_100_BIN2 OR ISNULL(t.IdentityYear,0)<>ISNULL(@P4,0) OR ISNULL(t.IdentityImdbId,'')<>ISNULL(@P5,''))
+THEN UPDATE SET IdentityTitle=@P3,IdentityYear=@P4,IdentityImdbId=@P5,SearchUrl=@P6,DirectUrl=NULL,PurchaseVerified=0,VerifiedUntil=NULL,CheckedAt=NULL,RetryAfter=NULL,LastError=NULL
+WHEN NOT MATCHED THEN INSERT(MovieId,Provider,IdentityTitle,IdentityYear,IdentityImdbId,SearchUrl) VALUES(@P1,@P2,@P3,@P4,@P5,@P6);
+"#,&[&job.movie_id,&provider,&job.identity.title,&job.identity.year,&job.identity.imdb_id,&search]).await?;
+            Ok(())
+        },&self.poisoned))
+    }
+    pub fn save_movie_commerce(
+        &mut self,
+        job: &crate::movie_commerce::Job,
+        outcome: &crate::movie_commerce::Outcome,
+    ) -> Result<()> {
+        let provider = job.provider.key();
+        self.rt.block_on(bounded(async {
+            // Errors preserve a previously verified link only until its original expiry.
+            self.client.execute(r#"
+UPDATE c SET DirectUrl=CASE WHEN @P8 IS NOT NULL THEN c.DirectUrl ELSE @P6 END,
+ PurchaseVerified=CASE WHEN @P8 IS NOT NULL THEN c.PurchaseVerified ELSE @P7 END,
+ VerifiedUntil=CASE WHEN @P8 IS NOT NULL THEN c.VerifiedUntil WHEN @P6 IS NOT NULL THEN DATEADD(day,7,SYSUTCDATETIME()) ELSE NULL END,
+ CheckedAt=SYSUTCDATETIME(),RetryAfter=DATEADD(hour,CASE WHEN @P6 IS NOT NULL THEN 168 ELSE 6 END,SYSUTCDATETIME()),LastError=@P8
+FROM dbo.MovieCommerceLinks c JOIN dbo.Movies m ON m.ID=c.MovieId
+WHERE c.MovieId=@P1 AND c.Provider=@P2 AND c.IdentityTitle COLLATE Latin1_General_100_BIN2=@P3 COLLATE Latin1_General_100_BIN2
+AND ISNULL(c.IdentityYear,0)=ISNULL(@P4,0) AND ISNULL(c.IdentityImdbId,'')=ISNULL(@P5,'')
+AND m.Title COLLATE Latin1_General_100_BIN2=c.IdentityTitle COLLATE Latin1_General_100_BIN2
+AND ISNULL(m.OriginalYear,0)=ISNULL(@P4,0) AND ISNULL(m.ImdbId,'')=ISNULL(@P5,'');
+"#,&[&job.movie_id,&provider,&job.identity.title,&job.identity.year,&job.identity.imdb_id,&outcome.direct_url,&outcome.purchase,&outcome.error]).await?;
+            Ok(())
         },&self.poisoned))
     }
 
@@ -606,34 +684,74 @@ impl Db {
         self.save_page_refs(&pages.iter().collect::<Vec<_>>())
     }
     pub fn save_page_refs(&mut self, pages: &[&PageMeta]) -> Result<usize> {
-        self.rt.block_on(bounded(async {
-            for p in pages {
-                let published: Option<DateTime<Utc>> = p.published;
-                let title: String = utf16_prefix(&p.title,500);
-                self.client
-                    .execute(
-                        "DECLARE @sid INT = (SELECT ID FROM dbo.Sources WHERE UrlHash = HASHBYTES('SHA2_256', @P1));
-                         IF @sid IS NULL
-                         BEGIN
-                             INSERT INTO dbo.Sources (Url) VALUES (@P1);
-                             SET @sid = SCOPE_IDENTITY();
-                         END
-                         MERGE dbo.Pages AS t
-                         USING (SELECT @P2 AS Url) AS s
-                         ON t.UrlHash = HASHBYTES('SHA2_256', s.Url)
-                         WHEN MATCHED THEN UPDATE SET
-                             Title = @P3,
-                             Description = COALESCE(@P4, t.Description),
-                             Published = CASE WHEN t.Published IS NULL OR @P5<t.Published THEN COALESCE(@P5,t.Published) ELSE t.Published END,
-                             ImageUrl = COALESCE(@P6, t.ImageUrl),
-                             SourceId = @sid
-                         WHEN NOT MATCHED THEN INSERT (Url, Title, Description, Published, ImageUrl, SourceId)
-                             VALUES (@P2, @P3, @P4, @P5, @P6, @sid);",
-                        &[&p.source, &p.url, &title, &p.description, &published, &p.image_url],
-                    )
-                    .await?;
+        let mut count = 0;
+        for page in pages {
+            let (outcome, _, _) = self.save_article(page, false)?;
+            if !outcome.starts_with("skipped-") {
+                count += 1;
             }
-            Ok(pages.len())
+        }
+        Ok(count)
+    }
+    pub fn save_article(
+        &mut self,
+        p: &PageMeta,
+        dry_run: bool,
+    ) -> Result<(String, Option<i32>, String)> {
+        for attempt in 0..3 {
+            match self.save_article_once(p, dry_run) {
+                Err(error)
+                    if attempt < 2
+                        && error
+                            .downcast_ref::<tiberius::error::Error>()
+                            .and_then(|e| e.code())
+                            .is_some_and(|code| matches!(code, 1205 | 1222 | 2601 | 2627)) =>
+                {
+                    eprintln!(
+                        "article identity: retrying SQL collision/deadlock, attempt={}",
+                        attempt + 1
+                    );
+                    std::thread::sleep(Duration::from_millis(100 * (attempt + 1)));
+                }
+                result => return result,
+            }
+        }
+        unreachable!()
+    }
+    fn save_article_once(
+        &mut self,
+        p: &PageMeta,
+        dry_run: bool,
+    ) -> Result<(String, Option<i32>, String)> {
+        let title = utf16_prefix(&p.title, 500);
+        let mut urls = p.identity_urls.clone();
+        let verified = !urls.is_empty();
+        urls.push(p.url.clone());
+        urls.sort();
+        urls.dedup();
+        let aliases = serde_json::to_string(&urls)?;
+        let published = p.published.map(|d| d.naive_utc());
+        self.rt.block_on(bounded(async {
+            let rows=self.client.query("EXEC dbo.UpsertArticleIdentity @P1,@P2,@P3,@P4,@P5,@P6,@P7,@P8,@P9",
+                &[&p.source,&p.url,&title,&p.description,&published,&p.image_url,&aliases,&verified,&dry_run]).await?.into_first_result().await?;
+            let row=rows.first().ok_or("article identity result missing")?;
+            let outcome=row.get::<&str,_>("Outcome").ok_or("article outcome missing")?.to_owned();
+            let id=row.get::<i32,_>("PageId");
+            let candidates=row.get::<&str,_>("Candidates").unwrap_or("[]").to_owned();
+            if outcome!="updated" { eprintln!("article identity: outcome={outcome} page_id={id:?} candidates={candidates} source={} target={} aliases={aliases}",p.source,p.url); }
+            Ok((outcome,id,candidates))
+        },&self.poisoned))
+    }
+    pub fn article_checked(&mut self, source: &str, url: &str) -> Result<()> {
+        self.rt.block_on(bounded(async {
+            self.client.execute("UPDATE a SET LastCheckedAt=SYSUTCDATETIME() FROM dbo.ArticleUrlAliases a JOIN dbo.Sources s ON s.ID=a.SourceId WHERE s.UrlHash=HASHBYTES('SHA2_256',@P1) AND a.UrlHash=HASHBYTES('SHA2_256',@P2)",&[&source,&url]).await?;
+            Ok(())
+        },&self.poisoned))
+    }
+    pub fn recent_articles(&mut self, source: &str) -> Result<Vec<PageMeta>> {
+        self.rt.block_on(bounded(async {
+            let rows=self.client.query("WITH recent AS (SELECT TOP(10) p.* FROM dbo.Pages p JOIN dbo.Sources s ON s.ID=p.SourceId WHERE s.UrlHash=HASHBYTES('SHA2_256',@P1) ORDER BY CASE WHEN p.Published IS NULL THEN 1 ELSE 0 END,p.Published DESC,p.ScrapedAt DESC,p.ID DESC) SELECT p.Url,p.Title,p.Description,p.Published,p.ImageUrl FROM recent p LEFT JOIN dbo.ArticleUrlAliases a ON a.SourceId=p.SourceId AND a.UrlHash=p.UrlHash ORDER BY a.LastCheckedAt,p.ID",&[&source]).await?.into_first_result().await?;
+            Ok(rows.into_iter().map(|row|PageMeta{source:source.to_owned(),url:row.get::<&str,_>("Url").unwrap().to_owned(),title:row.get::<&str,_>("Title").unwrap().to_owned(),description:row.get::<&str,_>("Description").map(str::to_owned),published:row.get::<chrono::NaiveDateTime,_>("Published").map(|d|d.and_utc()),image_url:row.get::<&str,_>("ImageUrl").map(str::to_owned),identity_urls:vec![]}).collect())
         },&self.poisoned))
     }
 
@@ -3170,6 +3288,357 @@ mod nhl_sql_tests {
                 .is_err()
         );
         assert_eq!(read(&mut db)?[0].get::<i32, _>(2), Some(7));
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod article_identity_sql_tests {
+    use super::*;
+    fn page(source: &str, url: &str) -> PageMeta {
+        PageMeta {
+            source: source.into(),
+            url: url.into(),
+            title: "same title".into(),
+            description: Some("last-good description".into()),
+            published: Some("2026-10-16T10:00:00Z".parse().unwrap()),
+            image_url: Some("https://publisher.test/img/good.jpg".into()),
+            identity_urls: vec![],
+        }
+    }
+    fn scalar(db: &mut Db, sql: &str) -> Result<i32> {
+        db.rt.block_on(async {
+            Ok(
+                db.client.query(sql, &[]).await?.into_first_result().await?[0]
+                    .get::<i32, _>(0)
+                    .unwrap(),
+            )
+        })
+    }
+    #[test]
+    #[ignore = "requires isolated ARTICLE_IDENTITY_TEST_DATABASE and migration credentials"]
+    fn identity_merge_idempotence_collision_references_and_concurrency() -> Result<()> {
+        let name = std::env::var("ARTICLE_IDENTITY_TEST_DATABASE")?;
+        if !name.starts_with("WebScraper_ArticleIdentity_Validation_") {
+            return Err("isolated article identity database required".into());
+        }
+        let ado = std::env::var("MSSQL_CONNECTION_STRING")?;
+        let mut db = Db::open_named(&ado, &name)?;
+        db.rt.block_on(async {db.client.simple_query("DROP TRIGGER IF EXISTS dbo.IdentityRollbackTest; DROP TABLE IF EXISTS dbo.IdentityTestSaved; DELETE dbo.ArticleIdRedirects; DELETE dbo.ArticleUrlAliases; DELETE dbo.Pages; DELETE dbo.Sources;").await?.into_results().await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        let source = "https://publisher.test/";
+        let old = "https://publisher.test/news/old";
+        let new = "https://publisher.test/news/new";
+        let old_page = page(source, old);
+        db.save_pages(std::slice::from_ref(&old_page))?;
+        let first = scalar(&mut db, "SELECT MIN(ID) FROM dbo.Pages")?;
+        db.save_pages(std::slice::from_ref(&old_page))?;
+        assert_eq!(scalar(&mut db, "SELECT COUNT(*) FROM dbo.Pages")?, 1);
+        // Content equality alone is never identity: same title/time/image, different URL.
+        let mut incoming = page(source, new);
+        db.save_pages(&[incoming.clone()])?;
+        assert_eq!(scalar(&mut db, "SELECT COUNT(*) FROM dbo.Pages")?, 2);
+        incoming.identity_urls = vec![old.into(), new.into()];
+        incoming.title = "new title".into();
+        incoming.description = None;
+        incoming.image_url = None;
+        let preview = db.save_article(&incoming, true)?;
+        assert_eq!(preview.1, Some(first));
+        assert_eq!(scalar(&mut db, "SELECT COUNT(*) FROM dbo.Pages")?, 2);
+        let result = db.save_article(&incoming, false)?;
+        assert_eq!(result.0, "merged");
+        assert_eq!(result.1, Some(first));
+        assert_eq!(scalar(&mut db, "SELECT COUNT(*) FROM dbo.Pages")?, 1);
+        assert_eq!(
+            scalar(&mut db, "SELECT COUNT(*) FROM dbo.ArticleIdRedirects")?,
+            1
+        );
+        assert_eq!(
+            scalar(
+                &mut db,
+                "SELECT COUNT(*) FROM dbo.Pages WHERE ImageUrl IS NOT NULL AND Description IS NOT NULL AND Published='2026-10-16T10:00:00'"
+            )?,
+            1
+        );
+        // A later unverified old URL must use its alias without reverting the canonical URL.
+        db.save_pages(&[page(source, old)])?;
+        assert_eq!(
+            scalar(
+                &mut db,
+                "SELECT COUNT(*) FROM dbo.Pages WHERE Url='https://publisher.test/news/new'"
+            )?,
+            1
+        );
+        // Stale old-URL feed entries resolve to the survivor without changing its identity.
+        let mut stale = old_page;
+        stale.url = new.into();
+        stale.identity_urls = vec![old.into(), new.into()];
+        db.save_article(&stale, false)?;
+        assert_eq!(scalar(&mut db, "SELECT MIN(ID) FROM dbo.Pages")?, first);
+        db.save_article(&incoming, false)?;
+        assert_eq!(
+            scalar(&mut db, "SELECT COUNT(*) FROM dbo.ArticleIdRedirects")?,
+            1
+        );
+        let other = page("https://another.test/", new);
+        assert!(
+            db.save_article(&other, false)?
+                .0
+                .starts_with("skipped-cross-source")
+        );
+        assert_eq!(scalar(&mut db, "SELECT COUNT(*) FROM dbo.Pages")?, 1);
+        // Unknown foreign references block retirement rather than guessing a rewrite policy.
+        let third = "https://publisher.test/news/third";
+        let third_page = page(source, third);
+        db.save_pages(&[third_page])?;
+        db.rt.block_on(async {
+            db.client
+                .simple_query(
+                    "CREATE TABLE dbo.IdentityTestSaved(PageId INT REFERENCES dbo.Pages(ID))",
+                )
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        incoming.identity_urls.push(third.into());
+        assert!(
+            db.save_article(&incoming, false)?
+                .0
+                .starts_with("skipped-unhandled")
+        );
+        assert_eq!(scalar(&mut db, "SELECT COUNT(*) FROM dbo.Pages")?, 2);
+        db.rt.block_on(async {
+            db.client
+                .simple_query("DROP TABLE dbo.IdentityTestSaved")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        db.save_article(&incoming, false)?;
+        let fourth = "https://publisher.test/news/fourth";
+        db.save_pages(&[page(source, fourth)])?;
+        incoming.identity_urls.push(fourth.into());
+        let before = scalar(&mut db, "SELECT COUNT(*) FROM dbo.ArticleIdRedirects")?;
+        db.rt.block_on(async {db.client.simple_query("CREATE OR ALTER TRIGGER dbo.IdentityRollbackTest ON dbo.Pages AFTER UPDATE AS THROW 50000,'injected rollback test',1;").await?.into_results().await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        assert!(db.save_article(&incoming, false).is_err());
+        assert_eq!(scalar(&mut db, "SELECT COUNT(*) FROM dbo.Pages")?, 2);
+        assert_eq!(
+            scalar(&mut db, "SELECT COUNT(*) FROM dbo.ArticleIdRedirects")?,
+            before
+        );
+        db.rt.block_on(async {
+            db.client
+                .simple_query("DROP TRIGGER dbo.IdentityRollbackTest")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        db.save_article(&incoming, false)?;
+        // Separate sessions racing on a single URL converge under the global hash lock.
+        let mut workers = vec![];
+        for _ in 0..4 {
+            let ado = ado.clone();
+            let name = name.clone();
+            workers.push(std::thread::spawn(
+                move || -> std::result::Result<(), String> {
+                    let mut db = Db::connect_named(&ado, &name).map_err(|e| e.to_string())?;
+                    db.save_pages(&[page(
+                        "https://publisher.test/",
+                        "https://publisher.test/news/race",
+                    )])
+                    .map_err(|e| e.to_string())?;
+                    Ok(())
+                },
+            ));
+        }
+        for worker in workers {
+            worker
+                .join()
+                .unwrap()
+                .map_err(|e| format!("concurrent ingestion: {e}"))?;
+        }
+        assert_eq!(
+            scalar(
+                &mut db,
+                "SELECT COUNT(*) FROM dbo.Pages WHERE Url='https://publisher.test/news/race'"
+            )?,
+            1
+        );
+        // Deterministic HTTP + database integration: the new row is discovered first,
+        // then revisiting the old URL confirms the redirect and preserves the oldest ID.
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
+        let address = listener.local_addr()?;
+        let base = format!("http://publisher.test:{}", address.port());
+        let server = std::thread::spawn(move || {
+            for _ in 0..3 {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0; 2048];
+                let n = socket.read(&mut request).unwrap();
+                let request = String::from_utf8_lossy(&request[..n]);
+                let response = if request.starts_with("GET /news/previous ") {
+                    "HTTP/1.1 301 Moved\r\nLocation: /news/current\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_owned()
+                } else {
+                    let body =
+                        "<title>Current article</title><meta property='og:type' content='article'>";
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        body.len(),
+                        body
+                    )
+                };
+                socket.write_all(response.as_bytes()).unwrap();
+            }
+        });
+        let test_source = format!("{base}/");
+        let previous = format!("{base}/news/previous");
+        let current = format!("{base}/news/current");
+        let old = page(&test_source, &previous);
+        let new = page(&test_source, &current);
+        let oldest = db.save_article(&old, false)?.1;
+        db.save_pages(std::slice::from_ref(&new))?;
+        let mut found = vec![new];
+        let recent = db.recent_articles(&test_source)?;
+        // Keep just the old URL as the reconciliation job; the incoming new URL
+        // supplies the other request, and its redirect adds the third request.
+        let recent = recent.into_iter().filter(|p| p.url == previous).collect();
+        let client = reqwest::blocking::Client::builder()
+            .no_proxy()
+            .resolve("publisher.test", address)
+            .redirect(reqwest::redirect::Policy::none())
+            .timeout(Duration::from_secs(2))
+            .build()?;
+        crate::enrich_article_identities(
+            &client,
+            &mut found,
+            recent,
+            std::time::Instant::now(),
+            Some(&mut db),
+            false,
+        )?;
+        db.save_pages(&found)?;
+        assert_eq!(db.save_article(&found[0], true)?.1, oldest);
+        server.join().unwrap();
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod movie_commerce_sql_tests {
+    use super::*;
+    use crate::movie_commerce::{Outcome, Provider};
+    #[test]
+    #[ignore = "requires isolated MOVIE_COMMERCE_TEST_DATABASE and migration credentials"]
+    fn movie_commerce_cache_preserves_identity_and_expires() -> Result<()> {
+        let name = std::env::var("MOVIE_COMMERCE_TEST_DATABASE")?;
+        if !name.starts_with("WebScraper_MovieCommerce_Validation_") {
+            return Err("isolated movie commerce database required".into());
+        }
+        let profile = std::env::var("MOVIE_COMMERCE_TEST_PROFILE")?;
+        dotenvy::from_filename(profile)?;
+        let mut db = Db::open_named(&std::env::var("MSSQL_CONNECTION_STRING")?, &name)?;
+        db.rt.block_on(async {
+            db.client
+                .simple_query("IF DATABASE_PRINCIPAL_ID('WebScraperIngest') IS NULL CREATE ROLE WebScraperIngest; IF USER_ID('webscraper_ingest') IS NULL CREATE USER webscraper_ingest FOR LOGIN webscraper_ingest; IF NOT EXISTS(SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('WebScraperIngest') AND member_principal_id=USER_ID('webscraper_ingest')) ALTER ROLE WebScraperIngest ADD MEMBER webscraper_ingest; GRANT SELECT,INSERT,UPDATE ON dbo.MovieReleaseSources TO WebScraperIngest; GRANT SELECT,INSERT,UPDATE ON dbo.Movies TO WebScraperIngest; GRANT SELECT,INSERT,UPDATE ON dbo.MovieSourceLinks TO WebScraperIngest; GRANT SELECT,INSERT,UPDATE ON dbo.MovieReleases TO WebScraperIngest;")
+                .await?
+                .into_results()
+                .await?;
+            db.client.simple_query(include_str!("../sql/movie_commerce_permissions.sql")).await?.into_results().await?;
+            db.client
+                .simple_query("EXECUTE AS USER='webscraper_ingest';")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        let report = serde_json::json!({"releases":[],"issues":[]});
+        let row = crate::movies::MovieRelease {
+            source: "dvdsreleasedates".into(),
+            external_id: "commerce-validation".into(),
+            title: "A & B: Commerce Fixture".into(),
+            imdb_id: None,
+            key: "theatrical:first".into(),
+            kind: "theatrical".into(),
+            date: chrono::Utc::now().date_naive() + chrono::Duration::days(1),
+            url: "https://www.dvdsreleasedates.com/movies/999999/commerce-validation".into(),
+            format: None,
+            platform: None,
+        };
+        db.save_movie_releases(&[row], &report)?;
+        let job = db
+            .movie_commerce_jobs()?
+            .into_iter()
+            .find(|j| j.identity.title == "A & B: Commerce Fixture")
+            .ok_or("missing commerce job")?;
+        assert_eq!(job.provider, Provider::FandangoTickets);
+        db.seed_movie_commerce(&job)?;
+        db.seed_movie_commerce(&job)?;
+        let read = |db: &mut Db| -> Result<(String, String)> {
+            db.rt.block_on(async {
+            let rows=db.client.query("SELECT LinkKind,ActionUrl FROM dbo.MovieCommerce WHERE MovieId=@P1 AND Provider='fandango'",&[&job.movie_id]).await?.into_first_result().await?;
+            Ok((rows[0].get::<&str,_>(0).unwrap().into(),rows[0].get::<&str,_>(1).unwrap().into()))
+        })
+        };
+        assert_eq!(read(&mut db)?.0, "search");
+        assert_eq!(url::Url::parse(&read(&mut db)?.1)?.query_pairs().count(), 1);
+        db.save_movie_commerce(
+            &job,
+            &Outcome {
+                direct_url: Some("https://www.fandango.com/fixture-123/movie-overview".into()),
+                purchase: false,
+                error: None,
+            },
+        )?;
+        assert_eq!(read(&mut db)?.0, "direct");
+        db.save_movie_commerce(
+            &job,
+            &Outcome {
+                error: Some("temporary HTTP error".into()),
+                ..Default::default()
+            },
+        )?;
+        assert_eq!(read(&mut db)?.0, "direct");
+        db.rt.block_on(async {db.client.execute("UPDATE dbo.MovieCommerceLinks SET VerifiedUntil=DATEADD(day,-1,SYSUTCDATETIME()) WHERE MovieId=@P1",&[&job.movie_id]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        assert_eq!(read(&mut db)?.0, "search");
+        db.rt.block_on(async {
+            db.client
+                .execute(
+                    "UPDATE dbo.Movies SET OriginalYear=2016 WHERE ID=@P1",
+                    &[&job.movie_id],
+                )
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        db.save_movie_commerce(
+            &job,
+            &Outcome {
+                direct_url: Some("https://www.fandango.com/fixture-123/movie-overview".into()),
+                ..Default::default()
+            },
+        )?;
+        let changed = db
+            .movie_commerce_jobs()?
+            .into_iter()
+            .find(|j| j.movie_id == job.movie_id)
+            .unwrap();
+        assert!(changed.due);
+        db.seed_movie_commerce(&changed)?;
+        assert_eq!(read(&mut db)?.0, "search");
+        db.rt.block_on(async {
+            db.client
+                .simple_query("REVERT;")
+                .await?
+                .into_results()
+                .await?;
+            db.client
+                .simple_query(include_str!("../tests/sql/movie_commerce.sql"))
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
         Ok(())
     }
 }

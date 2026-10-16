@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+mod article_identity;
 mod big12;
 mod boxoffice;
 mod boxoffice_forecasts;
@@ -16,6 +17,7 @@ mod match_results;
 mod metrics;
 mod mlb;
 mod mls;
+mod movie_commerce;
 mod movie_metadata;
 mod movies;
 mod nhl;
@@ -35,6 +37,7 @@ use rss::{ChannelBuilder, ItemBuilder};
 use scraper::{Html, Selector};
 
 /// Metadata scraped from a single page.
+#[derive(Clone)]
 struct PageMeta {
     /// The URL that was requested (the row in `Sources` this page came from).
     source: String,
@@ -43,6 +46,8 @@ struct PageMeta {
     description: Option<String>,
     published: Option<DateTime<Utc>>,
     image_url: Option<String>,
+    /// Verified source-scoped redirect/canonical aliases, never inferred from content.
+    identity_urls: Vec<String>,
 }
 
 /// Returns the `content` of the first `<meta>` tag matching `selector`.
@@ -86,18 +91,6 @@ fn scrape(client: &Client, url: &str) -> Result<PageMeta, Box<dyn std::error::Er
     let description = meta_content(&doc, r#"meta[property="og:description"]"#)
         .or_else(|| meta_content(&doc, r#"meta[name="description"]"#));
 
-    let canonical = Selector::parse(r#"link[rel="canonical"]"#)
-        .ok()
-        .and_then(|sel| {
-            doc.select(&sel)
-                .next()
-                .and_then(|el| el.value().attr("href").map(str::to_string))
-        })
-        .and_then(|href| url::Url::parse(url).ok()?.join(&href).ok())
-        .filter(|u| http::public_url(u.as_str()).is_ok())
-        .map(|u| u.to_string())
-        .unwrap_or_else(|| url.to_string());
-
     let published = meta_content(&doc, r#"meta[property="article:published_time"]"#)
         .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
         .map(|d| d.with_timezone(&Utc));
@@ -106,12 +99,148 @@ fn scrape(client: &Client, url: &str) -> Result<PageMeta, Box<dyn std::error::Er
 
     Ok(PageMeta {
         source: url.to_string(),
-        url: canonical,
+        identity_urls: vec![],
+        url: url.to_owned(),
         title,
         description,
         published,
         image_url,
     })
+}
+
+/// Resolve at most 20 recent/incoming URLs per source, within a run-wide budget.
+/// Old URLs are revisited even if the feed already switched to a newer URL.
+fn enrich_article_identities(
+    client: &Client,
+    found: &mut [PageMeta],
+    recent: Vec<PageMeta>,
+    started: std::time::Instant,
+    mut db: Option<&mut db::Db>,
+    dry: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use std::collections::BTreeSet;
+    let source = found
+        .first()
+        .map(|p| p.source.clone())
+        .or_else(|| recent.first().map(|p| p.source.clone()));
+    let Some(source) = source else { return Ok(()) };
+    let unknown = found
+        .iter()
+        .any(|p| !recent.iter().any(|old| old.url == p.url));
+    let mut jobs = recent
+        .iter()
+        .take(if unknown { 10 } else { 2 })
+        .cloned()
+        .collect::<Vec<_>>();
+    for page in found.iter() {
+        if !recent.iter().any(|old| old.url == page.url) && !jobs.iter().any(|p| p.url == page.url)
+        {
+            jobs.push(page.clone());
+        }
+    }
+    jobs.truncate(20);
+    eprintln!(
+        "article identity: plan source={source} jobs={} recent={} run_elapsed_ms={}",
+        jobs.len(),
+        recent.len(),
+        started.elapsed().as_millis()
+    );
+    let source_started = std::time::Instant::now();
+    let mut evidence = Vec::new();
+    for chunk in jobs.chunks(4) {
+        if started.elapsed() > Duration::from_secs(90)
+            || source_started.elapsed() > Duration::from_secs(12)
+        {
+            break;
+        }
+        let results = std::thread::scope(|scope| {
+            let handles = chunk
+                .iter()
+                .map(|p| {
+                    scope.spawn(move || {
+                        article_identity::fetch(client, &p.url).map_err(|e| e.to_string())
+                    })
+                })
+                .collect::<Vec<_>>();
+            handles
+                .into_iter()
+                .map(|h| {
+                    h.join()
+                        .unwrap_or_else(|_| Err("article identity worker panicked".into()))
+                })
+                .collect::<Vec<_>>()
+        });
+        for (page, result) in chunk.iter().zip(results) {
+            if !dry && let Some(d) = db.as_deref_mut() {
+                d.article_checked(&source, &page.url)?;
+            }
+            match result {
+                Ok(mut e) => {
+                    if e.target != e.requested {
+                        eprintln!(
+                            "article identity: verified {} -> {} aliases={:?}",
+                            e.requested, e.target, e.aliases
+                        );
+                    }
+                    if !e.aliases.contains(&page.url) {
+                        e.aliases.push(page.url.clone());
+                    }
+                    evidence.push((page.clone(), e));
+                }
+                Err(error) => eprintln!(
+                    "article identity: skipped source={source} url={} reason={error}",
+                    page.url
+                ),
+            }
+        }
+    }
+    // Reconcile retained URLs first. They never become extra feed/RSS entries.
+    for (old, e) in &evidence {
+        if recent.iter().any(|p| p.url == old.url) && (e.target != old.url || e.aliases.len() > 1) {
+            let mut update = found
+                .iter()
+                .find(|p| e.aliases.contains(&p.url))
+                .cloned()
+                .unwrap_or_else(|| old.clone());
+            update.url = e.target.clone();
+            update.identity_urls = e.aliases.clone();
+            if let Some(d) = db.as_deref_mut() {
+                d.save_article(&update, dry)?;
+            } else {
+                eprintln!(
+                    "article identity preview: {} -> {} aliases={:?}",
+                    old.url, e.target, e.aliases
+                );
+            }
+        }
+    }
+    for page in found {
+        let mut aliases = BTreeSet::from([page.url.clone()]);
+        let mut target = page.url.clone();
+        for _ in 0..evidence.len() + 1 {
+            let before = aliases.len();
+            for (_, e) in &evidence {
+                if aliases.iter().any(|u| e.aliases.contains(u)) {
+                    aliases.extend(e.aliases.iter().cloned());
+                    target = e.target.clone();
+                    if page.image_url.is_none() {
+                        page.image_url = image_url(&Html::parse_document(&e.body), &e.target);
+                    }
+                }
+            }
+            if before == aliases.len() {
+                break;
+            }
+        }
+        if evidence
+            .iter()
+            .any(|(_, e)| aliases.iter().any(|u| e.aliases.contains(u)))
+        {
+            page.url = target;
+            page.identity_urls = aliases.into_iter().collect();
+        }
+    }
+    Ok(())
 }
 
 /// For feed entries that came without an image, tries each article page's own `og:image`.
@@ -731,6 +860,13 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
 
         let mut pages = Vec::new();
+        let identity_started = std::time::Instant::now();
+        let identity_client = article_identity::client()?;
+        // Rotate the identity work order so the bounded HTTP budget cannot starve later sources.
+        if !urls.is_empty() {
+            let offset = (Utc::now().timestamp().div_euclid(3600) as usize) % urls.len();
+            urls.rotate_left(offset);
+        }
         let news_timer = metrics::Stage::new("news");
         for url in &urls {
             let result = scrape_source(&client, url);
@@ -748,6 +884,19 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                         found.sort_by_key(|p| std::cmp::Reverse(p.published));
                         found.truncate(cap as usize);
                     }
+                    let recent = if let Some(d) = db.as_mut() {
+                        d.recent_articles(url)?
+                    } else {
+                        vec![]
+                    };
+                    enrich_article_identities(
+                        &identity_client,
+                        &mut found,
+                        recent,
+                        identity_started,
+                        db.as_mut(),
+                        cli.dry_run,
+                    )?;
                     if how == "feed" {
                         let missing = found.iter().filter(|p| p.image_url.is_none()).count();
                         fill_missing_images(&client, &mut found);
@@ -1482,6 +1631,14 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                         Err(e) => eprintln!(
                             "movie poster enrichment failed (release ingestion completed): {e}"
                         ),
+                    }
+                }
+                if !cli.dry_run {
+                    match movie_commerce::enrich(db.as_mut().unwrap(), &report) {
+                        Ok(n) => eprintln!("movie retailer links: checked {n} movies/providers"),
+                        Err(e) => {
+                            eprintln!("movie retailer link enrichment failed (releases saved): {e}")
+                        }
                     }
                 }
                 if issues == 0 {

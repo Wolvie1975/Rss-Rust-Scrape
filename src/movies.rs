@@ -664,8 +664,32 @@ fn collect(
                 };
                 match parsed {
                     Ok(rows) => {
+                        // Keep optional retailer candidates from this movie's source
+                        // page. They still require retailer-side identity verification.
+                        let retailer_candidates = Html::parse_document(&html)
+                            .select(&sel("a[href]"))
+                            .filter_map(|a| {
+                                url::Url::parse(&url)
+                                    .ok()?
+                                    .join(a.value().attr("href")?)
+                                    .ok()
+                            })
+                            .filter(|u| {
+                                matches!(
+                                    u.host_str(),
+                                    Some(
+                                        "www.fandango.com" | "fandango.com" | "athome.fandango.com"
+                                    )
+                                )
+                            })
+                            .map(|u| u.to_string())
+                            .collect::<BTreeSet<_>>();
                         let found: Vec<_> = rows
                             .into_iter()
+                            .map(|mut r| {
+                                r["retailer_candidates"] = json!(retailer_candidates);
+                                r
+                            })
                             .filter(|r| {
                                 if tracked.contains(&url) {
                                     return true;

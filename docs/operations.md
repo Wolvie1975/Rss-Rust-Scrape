@@ -4,12 +4,51 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 
 ## Contents
 
+- [Movie retailer links](#movie-retailer-links)
+
+- [News article URL identity](#article-url-identity)
 - [NHL production setup and operation](#nhl-operations)
 - [Database schema snapshot](#database-schema-snapshot)
 - [Production data retention](#data-retention)
 - [WebScraper SQL backup maintenance](#sql-backups)
 - [Scraper hardening and SQL credential split](#scraper-security-and-sql-credentials)
 - [Scraper performance instrumentation and optimizations](#scraper-performance)
+
+<a id="movie-retailer-links"></a>
+
+## Movie retailer links
+
+Hourly `--movies` collection optionally enriches theatrical Fandango and digital
+Fandango at Home links. Apply `sql/movie_commerce.sql`, then
+`sql/movie_commerce_view.sql`, then `sql/movie_commerce_permissions.sql` with
+migration credentials; runtime ingestion performs no DDL. Existing source URLs,
+release dates and the scheduler are preserved. Match failures use labeled search
+fallbacks and do not fail the movie import. See [cache, verification and rollback
+policy](movie-purchase-links.md) and [the standalone frontend integration request](movie-commerce-frontend-integration.md).
+
+<a id="article-url-identity"></a>
+
+## News article URL identity
+
+News ingestion now uses verified, same-source redirect/canonical URL aliases to
+retain a stable article ID after a publisher changes its URL. It never merges
+from title, image or timestamp similarity. Unknown foreign references and global
+URL ownership collisions are reported without deleting/reassigning articles.
+
+Apply the separate additive migration `sql/article_identity.sql`, procedure batch
+`sql/upsert_article_identity.sql`, and `sql/article_identity_permissions.sql`
+before deploying the new collector. Runtime startup remains DDL-free. Two new
+scraper-owned tables store URL aliases and retired-ID mappings; existing article
+retention cascades to them. Retired metadata is archived during a merge.
+
+The approved existing-duplicate policy keeps the oldest ID. Browser saved IDs
+that refer to a retired row need the frontend to follow `ArticleIdRedirects`;
+recording those mappings does not itself update browser storage.
+
+Detailed matching rules, request budgets, SQL/permission contracts, saved-ID
+recovery and tests: [article URL identity](article-url-identity.md).
+Production evidence and rollback:
+[October 16 deployment](../reports/operations-history.md#article-identity-deployment-2026-10-16).
 
 <a id="nhl-operations"></a>
 

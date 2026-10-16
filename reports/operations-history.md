@@ -4,6 +4,9 @@ Historical evidence and the former long handoff are preserved here. Earlier tabl
 
 ## Contents
 
+- [Movie retailer links deployment — October 16, 2026](#movie-commerce-deployment-2026-10-16)
+
+- [Article URL identity deployment — October 16, 2026](#article-identity-deployment-2026-10-16)
 - [NHL production deployment and validation — October 14, 2026](#nhl-operations-deployment-2026-10-14)
 - [SQL log maintenance — October 13, 2026](#sql-log-maintenance-2026-10-13)
 - [Retention deployment — October 13, 2026](#retention-deployment-2026-10-13)
@@ -13,6 +16,182 @@ Historical evidence and the former long handoff are preserved here. Earlier tabl
 - [Audit remediation — October 10, 2026 (Central)](#audit-remediation-2026-10-10)
 - [Rust scraper application audit — October 10, 2026 (America/Chicago)](#application-audit-2026-10-10)
 - [web_scraper — handoff notes](#previous-handoff)
+
+<a id="movie-commerce-deployment-2026-10-16"></a>
+
+## Movie retailer links deployment — October 16, 2026
+
+Deployed `web-scraper:movie-commerce-20261016`, image
+`sha256:931488d3f6ea962215f0d773f6bac12081036bdf1a10ab6a424522054dc05e5f`.
+`:latest` points to the same image. User authorized deployment and requested a
+standalone frontend integration Markdown file. Theatrical provider is Fandango;
+digital provider is Fandango at Home. AMC was replaced before this deployment.
+
+Applied `sql/movie_commerce.sql`, `sql/movie_commerce_view.sql` and
+`sql/movie_commerce_permissions.sql` as separate migration-credential batches.
+Runtime access to the cache/view was checked with the restricted ingestion account.
+Frontend read access is already covered by its existing permissions. No runtime
+DDL or new credentials were introduced.
+
+Read-only new-image preview found 34 releases, zero source issues (36 seconds).
+Targeted real production run **160** completed **9:35:27–9:36:03 a.m. Central**:
+34 releases saved, one source-stage success, zero failures; 22 posters preserved,
+one unmatched. Twelve movie/provider jobs were checked. The cache/view contain
+13 actions: nine theatrical and four digital, all search fallbacks. No direct
+movie match was verified; one digital job awaits the next bounded pass. Buy labels
+are not inferred from generic digital release dates.
+
+Before/after comparisons preserved all 23 movie IDs, 23 source links and 34
+release identities/dates/source URLs. Enabled source settings and the existing
+Pure Xbox retired-ID mapping remain unchanged. The replacement container matched
+production Env, Cmd, entrypoint, user, working directory, healthcheck, mounts,
+network, restart policy, limits, capabilities, security options and logging.
+Hourly scheduling remains enabled; next slot at verification was **10:00 a.m.
+Central**. Scraper health check passed; unchanged frontend container was healthy.
+No UI image was deployed.
+
+158 offline tests passed, strict Clippy and formatting passed. The opt-in cache
+integration test ran separately against an isolated database under the restricted
+runtime user and passed. Independent SQL replay/view/retention tests passed; test
+databases were removed. Current production behavior is verified search fallbacks;
+direct/expired/purchase states are validated by fixtures.
+
+A fresh verified copy-only/checksum backup is retained at
+`/var/opt/mssql/backup/webscraper-managed/manual/WebScraper_before_movie_commerce_20261016.bak`.
+Source/config backup and validation evidence are protected under host
+`.deployment-backups/20261016-movie-commerce/`. Rollback image
+`web-scraper:before-movie-commerce-20261016` and stopped container
+`web-scraper-before-movie-commerce-20261016` retain the prior article-identity build.
+The additive cache/view may remain on rollback; original movie data was not
+rewritten by retailer enrichment. Source and documentation updates are synced to
+the host deployment checkout; no Git commit/push was performed.
+
+Give the frontend project [the standalone integration request](../docs/movie-commerce-frontend-integration.md).
+Cache semantics, budgets, explicit setup and fallback behavior:
+[movie purchase links](../docs/movie-purchase-links.md).
+
+<a id="article-identity-deployment-2026-10-16"></a>
+
+## Article URL identity deployment — October 16, 2026
+
+Deployed `web-scraper:article-identity-20261016`, image
+`sha256:a58252c3c576c4a66e840fc8cf8d5b75189d48d95ae16e90c72b2b26563e4f66`.
+The user authorized implementation/deployment and explicitly approved keeping the
+older Pure Xbox article ID and recording a mapping for the retired newer ID.
+
+### Implementation and actual migration
+
+Added conservative source-scoped redirect/canonical evidence, retained URL aliases,
+a bounded pass over the latest ten stored articles, rotating work order and an
+atomic SQL upsert. The global URL-hash uniqueness boundary remains unchanged.
+Titles/images/timestamps never authorize identity. Private/unrelated/generic
+redirects, bad canonicals and failed requests do not authorize destructive merges.
+Missing metadata remains intact. Unknown foreign keys block retirement rather than
+having their references guessed; cross-source ownership collisions are skipped.
+
+Applied `sql/article_identity.sql`, `sql/upsert_article_identity.sql`, and
+`sql/article_identity_permissions.sql` as separate migration batches. Actual schema
+changes: two new tables (`ArticleUrlAliases`, `ArticleIdRedirects`) and one owner-
+executed procedure (`UpsertArticleIdentity`), with runtime permission grants.
+No existing `Pages` columns or unique indexes changed. The live URL hash is persisted
+`CONVERT(binary(32),HASHBYTES('SHA2_256',Url))` over NVARCHAR, and `UQ_Pages_UrlHash`
+remains unique. Normal ingestion does not perform DDL.
+
+### Existing duplicate dry run and approved cleanup
+
+Confirmed target: **sql2025 / WebScraper**, source **1764**, configured URL
+`https://www.purexbox.com/`. The old `nine-xbox-games-are-out-today-...` URL still
+redirected to the successful `10-xbox-games-are-out-today-...` article. The Rust
+identity client independently verified both URLs converged on the same target.
+
+The read-only procedure preview listed exactly IDs **25604** and **25647** and
+proposed **25604** as survivor. Before cleanup, a fresh COPY_ONLY / CHECKSUM /
+compressed full database backup was taken and passed RESTORE VERIFYONLY:
+`/var/opt/mssql/backup/webscraper-managed/manual/WebScraper_before_article_identity_20261016_1340.bak`.
+Managed log backups were also current. No external foreign keys referenced Pages
+before this additive migration; write-time checks revalidated references/collisions.
+
+Applied only that explicit pair as the initial cleanup. Article **25604** now has
+the current URL/headline. Article **25647** was archived and maps to **25604**;
+both URLs map to the survivor. Publication time, useful metadata and the survivor's
+original ID/scrape timestamp were retained. A second cleanup pass performed no
+additional retirement. Comparing every pre/post Pages row confirmed that only
+25604 changed and 25647 left the public table; all other articles and all source
+settings were identical at that cleanup checkpoint.
+
+Read-only verification of `/news?category=11` showed exactly one card for the
+confirmed article, with ID 25604. The frontend was not deployed. Browser saves
+using 25647 need the frontend to follow the persisted `ArticleIdRedirects` mapping;
+that browser-storage recovery is explicitly outside this scraper implementation.
+No title-based purge or broad existing-article cleanup was performed.
+
+### Validation and deployment settings
+
+- Full offline suite: **152 passed** (125 main-binary tests plus 27 example tests).
+  Nineteen opt-in tests were skipped in that offline run.
+- The article SQL integration test passed separately in
+  `WebScraper_ArticleIdentity_Validation_20261016`. It covered repeated collections,
+  dry-run behavior, identical-content distinct URLs, old/new convergence with
+  deterministic HTTP, stable IDs, metadata preservation, rollback after an injected
+  failure, unknown references, cross-source ownership and concurrent sessions.
+- Formatting, strict Clippy and Cargo audit passed.
+- The release image's read-only Pure Xbox preview passed. Real targeted import 157
+  passed with one source success and zero failures. Runtime logs confirmed the
+  expected two retained-URL checks and persisted their check timestamps.
+- Runtime environment, scheduler arguments, mounts, TLS settings, volume, network,
+  restart policy, logging, security options and resource limits matched the
+  pre-deployment container. The scheduler logged its next aligned slot for
+  09:00 Central on October 16. Collection frequency was not changed.
+
+The regular **09:00 Central scheduled run 158** completed at 09:03:06 with
+**101 source successes, zero failures**, and healthy scraper/frontend containers.
+It saved 320 news articles, applied ordinary ten-per-source retention, and logged
+the next aligned slot for 10:00 Central. Source URLs/enabled flags were unchanged;
+the frontend still showed one Pure Xbox card and the retired-ID mapping remained.
+
+Diagnostic review then identified overly conservative rejection of legitimate
+single-segment article slugs. The final image accepts those only with verified
+article metadata, while still rejecting generic root/news/home/login/challenge/
+error destinations. New regression tests cover single slugs and error pages with
+misleading article metadata. The full manual collection using the original runtime arguments (without the
+hourly loop) completed as **run 159**, with **101 source successes, zero failures**,
+in 147 seconds. The final scraper and frontend were healthy; the hourly collector
+still awaited its normal 10:00 Central slot. The final frontend check again showed
+one Pure Xbox card, original publication time and the single retired-ID mapping.
+All configured source URLs/enabled flags remained unchanged.
+
+Seven identity checks were safely deferred/rejected in that final validation:
+five pages lacked verifiable article metadata or looked like challenge/error
+pages, and two redirect destinations failed publisher/target validation. No new
+existing-row retirements, cross-source ownership skips or unknown-reference skips
+occurred. These unverified identities remain unchanged; there was no content-
+similarity fallback. The isolated validation database and temporary deployment
+containers/tools were removed after verification.
+
+### Rollback and follow-up
+
+Previous image: `web-scraper:before-article-identity-20261016` (NHL release).
+The original container is retained stopped as
+`web-scraper-before-article-identity-20261016`. Protected host source/configuration
+and evidence backups are under `.deployment-backups/20261016-article-identity/`.
+They include private connection profiles and must keep restricted permissions.
+
+For a code rollback, stop/rename the new collector, restore the retained old
+container as `web-scraper`, retag the rollback image as latest, and start it with
+its saved configuration. Restore the old host source before rebuilding. The new
+tables/procedure are additive and can stay in place; do not drop the retired-ID
+mapping or restore duplicate rows as an automatic part of image rollback. Any
+scoped data reversal should use the protected pre-cleanup row snapshots after
+reviewing subsequent imports. A whole-database restore needs separate coordination
+because other applications share the database.
+
+The frontend can implement saved-ID recovery from the documented mapping. Broader
+publisher host aliases require explicit validation/tests. Future unresolved or
+cross-source collisions remain diagnostic candidates, never fuzzy merges.
+No Git commits or pushes were performed.
+
+[Identity and SQL contracts](../docs/article-url-identity.md) ·
+[Consolidated operations guide](../docs/operations.md#article-url-identity).
 
 <a id="nhl-operations-deployment-2026-10-14"></a>
 

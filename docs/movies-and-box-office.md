@@ -4,6 +4,9 @@ Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domesti
 
 ## Contents
 
+- [Fandango tickets and Fandango at Home links](movie-purchase-links.md)
+- [Frontend integration request: movie purchase buttons](movie-commerce-frontend-integration.md)
+
 - [Latest domestic weekend box-office top 10](#boxoffice-top-10-frontend-handoff)
 - [Boxoffice Pro weekend previews and future movie forecasts](#boxoffice-forecasts-frontend-handoff)
 - [Posters across movie sections](#movie-section-posters-frontend-handoff)
@@ -364,6 +367,10 @@ Give this document to the My-Newsfeed application along with
 <a id="movie-releases"></a>
 
 ## U.S. movie releases
+
+October 16 deployed addition: optional Fandango theatrical and Fandango at Home digital
+links, with labeled search fallbacks. See [purchase-link implementation and frontend
+handoff](movie-purchase-links.md). Backend deployed; the separate frontend still needs its button/query integration.
 
 2026-10-11 update: Movie Insider digital provider and separate When To Stream VOD
 parsing are implemented. See [the digital release correction/frontend handoff](movies-and-box-office.md#my-newsfeed-digital-releases)
