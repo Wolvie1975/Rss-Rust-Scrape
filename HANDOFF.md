@@ -6,7 +6,7 @@ Start with [README.md](README.md). Five topic guides replace the overlapping ind
 
 ## Latest documented production state
 
-Last verified deployment: `web-scraper:movie-direct-links-20261016`; scraper and front-end were healthy at verification. This document is not a live status check.
+Last verified deployment: `web-scraper:nwsl-league-20261016`; scraper and front-end were healthy at verification. This document is not a live status check.
 
 - Hourly collection includes news, rankings, standings, sports schedules, YouTube, movie releases, TV, actual box office and Boxoffice Pro forecasts.
 - MLS schedule/results source 5525, standings 9; Championship schedule/results 5326, standings 11; EPL schedule 5357, standings 12; NFL standings 10.
@@ -56,6 +56,21 @@ scheduler and runtime settings are preserved. See the consolidated [schedules/re
 [standings](docs/sports-tables.md#nhl-standings), [operations](docs/operations.md#nhl-operations)
 and [deployment history](reports/sports-history.md#nhl-deployment-2026-10-14) for contracts,
 validation and rollback.
+
+## NWSL league-wide schedule — October 16, 2026
+
+Source **4191** now collects the whole league, including Kansas City Current.
+Verified **24 upcoming fixtures across all 16 teams**, stable on repeated import;
+all three retained Current event IDs/first-seen/dates are preserved. The existing
+frontend NWSL schedule selection returned eight current-window games, seven not
+involving Current. Existing source ID, Enabled and legacy ProviderSchoolId=20907
+compatibility tag are retained; collection scope comes from the unfiltered URL.
+Hourly runtime settings and results synchronization are unchanged.
+
+Read [the league schedule/frontend contract](docs/nwsl-league-schedule.md) and
+[deployment evidence](reports/sports-history.md#nwsl-league-deployment-2026-10-16).
+The older Kansas City-only handoff is historical. No frontend files/image were
+changed; its separate in-progress work was preserved.
 
 ## Movie purchase links — deployed October 16, 2026
 

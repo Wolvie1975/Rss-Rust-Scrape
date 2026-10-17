@@ -1,4 +1,4 @@
-//! Kansas City Current schedule provider; shared ESPN parsing lives in espn_schedule.
+//! League-wide NWSL schedules with optional team filters; shared ESPN parsing lives in espn_schedule.
 pub use crate::espn_schedule::Fixture;
 use crate::espn_schedule::{self, League};
 use reqwest::blocking::Client;
@@ -175,5 +175,48 @@ mod fetch_tests {
                 .to_string(),
             "2026-12-04"
         );
+    }
+}
+
+#[cfg(test)]
+mod league_tests {
+    use super::*;
+    #[test]
+    fn league_snapshot_contains_all_sixteen_teams_and_preserves_filtered_identity() {
+        let root: Value = serde_json::from_str(include_str!(
+            "../tests/fixtures/nwsl/league-october-2026.json"
+        ))
+        .unwrap();
+        let all = espn_schedule::parse(&root, League::Nwsl, None).unwrap();
+        let teams = all
+            .iter()
+            .flat_map(|f| [f.team_id, f.opponent_id])
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(teams.len(), 16);
+        assert_eq!(all.len(), 24);
+        assert!(
+            all.iter()
+                .filter(|f| !f.neutral)
+                .all(|f| f.event.is_away == Some(false))
+        );
+        for id in teams {
+            let filtered =
+                espn_schedule::parse(&root, League::Nwsl, Some(&id.to_string())).unwrap();
+            assert!(!filtered.is_empty());
+            for f in filtered {
+                assert_eq!(f.team_id, id);
+                let original = all
+                    .iter()
+                    .find(|x| x.event.game_id == f.event.game_id)
+                    .unwrap();
+                assert_eq!(original.event.url, f.event.url);
+                assert_eq!(original.event.starts_at, f.event.starts_at);
+            }
+        }
+        let keys = all
+            .iter()
+            .map(|f| f.league.canonical_key(f.event.game_id.unwrap()))
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(keys.len(), all.len());
     }
 }

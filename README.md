@@ -24,3 +24,5 @@ Use it to recreate structure in an empty database; it is not an incremental prod
 The October 16 article identity tables/procedure are a separate additive migration
 after the schema snapshot. See [article URL identity](docs/article-url-identity.md#schema-and-migration)
 for migration order and runtime permissions.
+
+2026 NWSL schedules now cover all teams: [data and frontend notes](docs/nwsl-league-schedule.md).

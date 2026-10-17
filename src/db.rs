@@ -2147,6 +2147,9 @@ mod nwsl_tests {
     #[test]
     #[ignore = "requires MSSQL_CONNECTION_STRING and NWSL_TEST_DATABASE (isolated staging); fixture writes roll back"]
     fn schedule_reimports_reschedules_and_cancellation_preserve_rows() -> Result<()> {
+        if let Ok(profile) = std::env::var("NWSL_TEST_PROFILE") {
+            dotenvy::from_filename(profile)?;
+        }
         let _ = dotenvy::dotenv();
         let name = std::env::var("NWSL_TEST_DATABASE")?;
         if !name.starts_with("WebScraper_Nwsl_Validation") {
@@ -2162,8 +2165,14 @@ mod nwsl_tests {
             Ok::<_, Box<dyn std::error::Error>>(())
         })?;
         let result = (|| -> Result<()> {
+            let legacy=db.ensure_sports_events_type("https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/scoreboard?team=20907","Kansas City Current")?;
+            db.rt.block_on(async {db.client.execute("UPDATE dbo.SportsEventsType SET ProviderKey='espn-nwsl',ProviderSchoolId=20907,Enabled=0 WHERE ID=@P1",&[&legacy]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
             db.configure_nwsl()?;
-            let id=db.ensure_sports_events_type("https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/scoreboard?team=20907","Kansas City Current")?;
+            let id = db.ensure_sports_events_type(
+                "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/scoreboard",
+                "Kansas City Current",
+            )?;
+            assert_eq!(id, legacy);
             let mut fixtures = crate::nwsl::parse(&crate::nwsl::tests::sample(), "20907")?;
             for f in &mut fixtures {
                 f.completed = false;
@@ -2236,6 +2245,35 @@ mod nwsl_tests {
                 canceled.get::<chrono::NaiveDate, _>("EventDate"),
                 Some(fixtures[0].event.event_date)
             );
+            let root: serde_json::Value = serde_json::from_str(include_str!(
+                "../tests/fixtures/nwsl/league-october-2026.json"
+            ))?;
+            let mut all =
+                crate::espn_schedule::parse(&root, crate::espn_schedule::League::Nwsl, None)?;
+            for f in &mut all {
+                f.completed = false;
+                f.status = "STATUS_SCHEDULED".into();
+                f.event.event_date = Utc::now()
+                    .with_timezone(&chrono_tz::America::Chicago)
+                    .date_naive()
+                    + chrono::Duration::days(1);
+            }
+            db.save_espn_schedule(id, &all)?;
+            let expanded = read(&mut db)?;
+            assert_eq!(expanded.len(), 24);
+            for old in &before {
+                let now = expanded
+                    .iter()
+                    .find(|r| r.get::<i32, _>("GameId") == old.get::<i32, _>("GameId"))
+                    .unwrap();
+                assert_eq!(now.get::<i32, _>("ID"), old.get::<i32, _>("ID"));
+                assert_eq!(
+                    now.get::<chrono::NaiveDateTime, _>("FirstSeenAt"),
+                    old.get::<chrono::NaiveDateTime, _>("FirstSeenAt")
+                );
+            }
+            db.save_espn_schedule(id, &all)?;
+            assert_eq!(read(&mut db)?.len(), 24);
             Ok(())
         })();
         db.rt.block_on(async {

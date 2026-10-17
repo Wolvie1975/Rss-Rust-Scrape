@@ -113,9 +113,6 @@ pub(crate) fn fetch_from(
         .map(|(k, v)| (k.into_owned(), v.into_owned()))
         .collect();
     let filter = params.get("team").map(String::as_str);
-    if league == League::Nwsl && filter.is_some_and(|team| team != "20907") {
-        return Err("NWSL schedule provider supports Kansas City Current (team=20907)".into());
-    }
     if let Some(filter) = filter
         && filter
             .split(',')
@@ -194,8 +191,10 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
         let competitors = c["competitors"]
             .as_array()
             .ok_or("ESPN competition missing competitors")?;
+        // Explicit single-team NWSL feeds retain their team perspective. A
+        // league-wide (or multi-team) feed consistently uses the home side.
         let team = if league == League::Nwsl {
-            Some("20907")
+            filter.filter(|team| !team.contains(','))
         } else {
             None
         };
@@ -212,11 +211,7 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
             Some(team) => p["team"]["id"].as_str() == Some(team),
             None => p["homeAway"].as_str() == Some("home"),
         }) else {
-            if league == League::Nwsl {
-                continue;
-            } else {
-                return Err("league fixture missing home competitor".into());
-            }
+            return Err("league fixture missing home competitor".into());
         };
         if competitors.len() != 2 {
             return Err("ESPN fixture requires two competitors".into());

@@ -352,7 +352,7 @@ struct Cli {
     /// Refresh domestic weekend previews and future opening-weekend forecasts.
     #[arg(long)]
     boxoffice_forecasts: bool,
-    /// Register Kansas City Current schedule feed disabled; preserve existing settings.
+    /// Register league-wide NWSL schedule; promote the legacy Current source in place.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_nwsl: bool,
     /// Register verified Big 12 member feeds disabled, preserving existing feed settings.
@@ -600,9 +600,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
     if cli.configure_nwsl {
         db.as_mut().unwrap().configure_nwsl()?;
-        eprintln!(
-            "Kansas City Current schedule registered; enable it in SportsEventsType to import"
-        );
+        eprintln!("League-wide NWSL schedule registered; existing Enabled setting preserved");
         return Ok(());
     }
     if cli.configure_tv {
@@ -1404,7 +1402,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                                     } else if is_wnba {
                                         "WNBA"
                                     } else {
-                                        "Kansas City Current"
+                                        "NWSL"
                                     },
                                 )?,
                             };

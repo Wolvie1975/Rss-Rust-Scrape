@@ -4,6 +4,8 @@ Current fixtures use the existing SportsEvents model. NHL, MLS and Championship 
 
 ## Contents
 
+- [2026 league-wide NWSL schedule](nwsl-league-schedule.md)
+
 - [NHL schedules and final results](#nhl-schedule-results)
 - [Big 12 calendar ingestion](#big12-sports)
 - [MLS schedule, standings and results](#mls-schedule-results-frontend-handoff)
@@ -869,6 +871,12 @@ The live web app still needs its separate Schedule-selector deployment.
 <a id="kansas-city-current-schedule"></a>
 
 ## Kansas City Current schedule import / My-Newsfeed handoff
+
+**October 16 update:** NWSL schedule collection is now league-wide. The old
+Kansas City-only description below is historical. Read the [current league-wide
+contract and frontend compatibility notes](nwsl-league-schedule.md). Existing
+Current game/source IDs and the upcoming-only policy are preserved.
+
 
 `src/nwsl.rs` now wraps shared ESPN parsing in `src/espn_schedule.rs`, also used
 by WNBA. Kansas City filtering and event identity remain unchanged.
