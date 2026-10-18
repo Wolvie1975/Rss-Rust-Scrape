@@ -4,6 +4,9 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 
 ## Contents
 
+- [F1 production operation](#f1-operations)
+- [Top Headlines sources](#top-headlines-sources)
+
 - [Movie retailer links](#movie-retailer-links)
 
 - [News article URL identity](#article-url-identity)
@@ -13,6 +16,47 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 - [WebScraper SQL backup maintenance](#sql-backups)
 - [Scraper hardening and SQL credential split](#scraper-security-and-sql-credentials)
 - [Scraper performance instrumentation and optimizations](#scraper-performance)
+
+<a id="f1-operations"></a>
+
+## F1 production operation
+
+Current verified scraper release: `web-scraper:f1-20261018`, deployed October 18,
+2026. Enabled `F1Source` record 1 collects the calendar, Grand Prix/sprint
+classifications and driver/constructor championships through the existing hourly
+`--events-from-db` path. Deployment preserved the runtime environment, command,
+TLS mount, data volume, network, resource/security limits and restart policy.
+Deployed-container run 1206 succeeded; the frontend production reader could query
+all four F1 views. The next hourly slot was logged, but not awaited during verification.
+
+Follow [F1 operations](f1-operations.md) for additive migration order, source
+configuration, read-only checks, manual refresh, failure preservation and disablement.
+The baseline schema snapshot predates F1. Migration creates `F1Source`,
+`F1Snapshot` and four read views; runtime collection performs no DDL.
+[Deployment evidence and rollback](../reports/f1-production-20261018.md) identifies
+the protected host backup and retained previous container/image.
+
+<a id="top-headlines-sources"></a>
+
+## Top Headlines sources
+
+Six enabled production news sources are assigned to **Top Headlines**: NBC News
+8903, CBS News 8904, The New York Times 8905, The Guardian 8906, Al Jazeera 8907,
+and Sky News 8908. BBC News 4084 and NPR 7093 remain in General.
+These use the existing `Sources` / `SourceCategories` / `Pages` contract and the
+normal `--from-db` collector; no separate collector or scheduler arguments are
+required. Resolve category IDs from `Category_Name`, rather than hardcoding them.
+
+[`sql/top_headlines_seed.sql`](../sql/top_headlines_seed.sql) was applied to
+production. It creates the category if missing, inserts missing feeds enabled,
+and preserves existing source settings on repeated execution. It requires the
+migration profile; the runtime account cannot create categories. Source
+registration was verified, but first-collection success for each of the six feeds
+was not separately verified during registration.
+
+The [frontend handoff](top-headlines-frontend-integration.md) includes exact URLs,
+source IDs, query fields, empty states and acceptance checks. No frontend
+implementation status is inferred from source registration.
 
 <a id="movie-retailer-links"></a>
 

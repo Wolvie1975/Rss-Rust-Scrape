@@ -4,6 +4,8 @@ Historical evidence and the former long handoff are preserved here. Earlier tabl
 
 ## Contents
 
+- [F1 production deployment — October 18, 2026](#f1-operations-deployment-2026-10-18)
+
 - [Reviewed direct Fandango links — October 16, 2026](#movie-direct-links-deployment-2026-10-16)
 
 - [Movie retailer links deployment — October 16, 2026](#movie-commerce-deployment-2026-10-16)
@@ -18,6 +20,23 @@ Historical evidence and the former long handoff are preserved here. Earlier tabl
 - [Audit remediation — October 10, 2026 (Central)](#audit-remediation-2026-10-10)
 - [Rust scraper application audit — October 10, 2026 (America/Chicago)](#application-audit-2026-10-10)
 - [web_scraper — handoff notes](#previous-handoff)
+
+<a id="f1-operations-deployment-2026-10-18"></a>
+
+## F1 production deployment — October 18, 2026
+
+User-authorized deployment replaced the idle scraper with
+`web-scraper:f1-20261018`. Release build, strict Clippy, image dry-run, deployed
+health check, runtime F1 import 1206 and frontend database read verification passed.
+Both production containers were healthy. Environment, scheduler command, mounts,
+network, security/resource settings and restart policy were preserved.
+
+Full [deployment evidence and rollback](f1-production-20261018.md).
+The F1 schema and read contracts are separate additions after the baseline
+schema snapshot; [F1 operations](../docs/f1-operations.md) documents setup.
+The Top Headlines source registration is covered in
+[source operations](../docs/operations.md#top-headlines-sources) and its
+[frontend handoff](../docs/top-headlines-frontend-integration.md).
 
 <a id="movie-direct-links-deployment-2026-10-16"></a>
 

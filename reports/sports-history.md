@@ -4,6 +4,8 @@ Historical evidence, newest dates first. Counts, image tags and rollout details 
 
 ## Contents
 
+- [F1 production deployment — October 18, 2026](#f1-deployment-2026-10-18)
+
 - [Brewers–Dodgers finished-series schedule cleanup — October 16, 2026](#brewers-dodgers-cleanup-2026-10-16)
 
 - [NWSL all-team schedule expansion — October 16, 2026](#nwsl-league-deployment-2026-10-16)
@@ -29,6 +31,21 @@ Historical evidence, newest dates first. Counts, image tags and rollout details 
 - [Kansas City Current schedule verification — 2026-10-09](#kansas-city-current-schedule-2026-10-09)
 - [ESPN schedule cutoff — 2026-10-09](#espn-upcoming-only-2026-10-09)
 - [Big 12 expansion verification — October 9, 2026](#big12-expansion-2026-10-09)
+
+<a id="f1-deployment-2026-10-18"></a>
+
+## F1 production deployment — October 18, 2026
+
+Deployed `web-scraper:f1-20261018`; deployed-container run 1206 succeeded.
+Season 2026 verification: 23 races, 374 Grand Prix classifications, 132 sprint
+classifications, 23 drivers and 11 constructors through round 17. The frontend
+production reader could query all four views. Hourly settings were preserved;
+the next scheduled slot was logged but not awaited. The previous container/image
+and protected host backup are retained. No frontend rendering was implemented.
+
+Full [deployment evidence and rollback](f1-production-20261018.md),
+[frontend contract](../docs/f1-frontend-integration.md) and
+[operations](../docs/f1-operations.md).
 
 <a id="brewers-dodgers-cleanup-2026-10-16"></a>
 

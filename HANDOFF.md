@@ -4,11 +4,33 @@
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.
 
+## F1 feeds — October 18, 2026
+
+F1 source 1 in the new `F1Source` table is enabled in production. Initial runtime
+import verified 23 races, 374 Grand Prix classifications, 132 sprint
+classifications, 23 drivers and 11 constructors for season 2026, standings round
+17. Four SQL views expose schedule, race/sprint results and both championships.
+The updated collector includes F1 under `--events-from-db` and supports explicit
+`--f1-from-db` refresh. **Deployed as `web-scraper:f1-20261018` on October 18.** The existing hourly
+command and runtime settings are preserved. Deployed-container F1 run 1206
+succeeded; the frontend database reader can query all four views. No frontend
+application change was performed. See [operations and verification](docs/f1-operations.md)
+and the [frontend integration request](docs/f1-frontend-integration.md).
+
+## Top Headlines sources
+
+Six enabled production sources were added to the new **Top Headlines** category:
+NBC News 8903, CBS News 8904, The New York Times 8905, The Guardian 8906,
+Al Jazeera 8907 and Sky News 8908. BBC and NPR remain in General. Existing hourly
+news collection handles these sources. [Source operations](docs/operations.md#top-headlines-sources)
+and the [frontend handoff](docs/top-headlines-frontend-integration.md) describe
+registration and integration; source registration alone does not verify rendering.
+
 ## Latest documented production state
 
-Last verified deployment: `web-scraper:nwsl-league-20261016`; scraper and front-end were healthy at verification. This document is not a live status check.
+Last verified deployment: `web-scraper:f1-20261018`; scraper and front-end were healthy at verification. This document is not a live status check.
 
-- Hourly collection includes news, rankings, standings, sports schedules, YouTube, movie releases, TV, actual box office and Boxoffice Pro forecasts.
+- Hourly collection includes news, rankings, standings, sports schedules (including F1), YouTube, movie releases, TV, actual box office and Boxoffice Pro forecasts.
 - MLS schedule/results source 5525, standings 9; Championship schedule/results 5326, standings 11; EPL schedule 5357, standings 12; NFL standings 10.
 - MLS and Championship current-season results are independent of schedule pruning; playoff shootouts are stored separately from goals.
 - Latest actual box-office chart and domestic forecasts have poster URLs. Last checked: 10/10 chart films, 12/12 forecast films and 24/34 release films; unmatched films use placeholders.
@@ -89,7 +111,7 @@ The existing frontend is now confirmed to consume the view and render direct lin
 
 ## Development and deployment
 
-The validated [schema-only database snapshot](sql/schema/WebScraper.schema.sql) captures 31 tables and one view, without data or credentials. See the [operations guide](docs/operations.md#database-schema-snapshot) for scope and empty-database restore instructions.
+The validated [schema-only database snapshot](sql/schema/WebScraper.schema.sql) captures 31 tables and one view, without data or credentials. Article identity and F1 use separate additive migrations after this baseline. See the [operations guide](docs/operations.md#database-schema-snapshot) for scope and empty-database restore instructions.
 
 Use runtime credentials for ingestion and migration credentials for explicit setup. Never print or commit credentials. Preserve existing environment, network, scheduler, retention and rollback settings during deployments. Use appropriate tests and verify the deployed image and targeted live imports. The user commits and pushes Git changes themselves unless they explicitly request otherwise.
 

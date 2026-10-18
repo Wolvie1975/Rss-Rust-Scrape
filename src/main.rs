@@ -11,6 +11,7 @@ mod db;
 mod epl;
 mod espn_schedule;
 mod events;
+mod f1;
 mod feed;
 mod http;
 mod match_results;
@@ -343,6 +344,12 @@ struct Cli {
     /// Register NHL fixtures/results and division standings disabled.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_nhl: bool,
+    /// Configure F1 calendar, race/sprint results and championships disabled.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_f1: bool,
+    /// Refresh enabled F1 data only (also included by --events-from-db).
+    #[arg(long)]
+    f1_from_db: bool,
     /// Create the latest domestic weekend box-office chart table.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_boxoffice: bool,
@@ -488,6 +495,8 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         || cli.configure_boxoffice
         || cli.configure_mls
         || cli.configure_nhl
+        || cli.configure_f1
+        || cli.f1_from_db
         || cli.configure_epl
         || cli.configure_nwsl
         || cli.configure_tv
@@ -514,6 +523,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             || cli.configure_boxoffice
             || cli.configure_mls
             || cli.configure_nhl
+            || cli.configure_f1
             || cli.configure_epl
             || cli.configure_nwsl
             || cli.configure_tv
@@ -526,7 +536,9 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             std::env::var("MSSQL_CONNECTION_STRING")
         }
         .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
-        Some(if setup {
+        Some(if cli.configure_f1 {
+            db::Db::connect_named(&ado, &cli.database)?
+        } else if setup {
             db::Db::open_named(&ado, &cli.database)?
         } else {
             db::Db::connect_named(&ado, &cli.database)?
@@ -571,6 +583,11 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     if cli.configure_boxoffice {
         db.as_mut().unwrap().configure_boxoffice()?;
         eprintln!("Box-office chart table configured");
+        return Ok(());
+    }
+    if cli.configure_f1 {
+        db.as_mut().unwrap().configure_f1()?;
+        eprintln!("F1 schedule/results and driver/constructor championships configured disabled");
         return Ok(());
     }
     if cli.configure_nhl {
@@ -679,6 +696,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             && urls.is_empty()
             && cli.events_feed.is_empty()
             && !cli.events_from_db
+            && !cli.f1_from_db
             && !cli.boxoffice
             && !cli.boxoffice_forecasts
             && !cli.standings_from_db
@@ -693,6 +711,42 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             .user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)")
             .timeout(Duration::from_secs(15))
             .build()?;
+
+        if cli.f1_from_db || cli.events_from_db {
+            let _timer = metrics::Stage::new("f1");
+            let enabled = db.as_mut().unwrap().f1_enabled()?;
+            if enabled {
+                if !cli.dry_run {
+                    db.as_mut().unwrap().f1_status(None)?;
+                }
+                let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                    let f1_client = http::client_builder()
+                        .timeout(Duration::from_secs(30))
+                        .build()?;
+                    let snapshot = f1::fetch(&f1_client)?;
+                    eprintln!(
+                        "{}{}",
+                        snapshot.summary(),
+                        if cli.dry_run { " (dry run)" } else { "" }
+                    );
+                    if !cli.dry_run {
+                        db.as_mut().unwrap().save_f1(&snapshot)?;
+                    }
+                    Ok(())
+                })();
+                match result {
+                    Ok(()) => succeeded_sources += 1,
+                    Err(e) => {
+                        if !cli.dry_run {
+                            db.as_mut().unwrap().f1_status(Some(&e.to_string()))?;
+                        }
+                        failures.push(format!("F1: {e}"));
+                    }
+                }
+            } else if cli.f1_from_db {
+                failures.push("F1 source is disabled or not configured".to_string());
+            }
+        }
 
         if cli.rankings_from_db {
             let _stage_timer = metrics::Stage::new("rankings");
@@ -1829,6 +1883,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         && !cli.from_db
         && cli.events_feed.is_empty()
         && !cli.events_from_db
+        && !cli.f1_from_db
         && !cli.boxoffice
         && !cli.boxoffice_forecasts
         && !cli.standings_from_db

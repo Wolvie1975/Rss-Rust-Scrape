@@ -1259,6 +1259,79 @@ END CATCH
             &batch.results,
         )
     }
+    /// Explicit migration only; runtime does no DDL.
+    pub fn configure_f1(&mut self) -> Result<()> {
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .simple_query("BEGIN TRANSACTION")
+                    .await?
+                    .into_results()
+                    .await?;
+                let result = async {
+                    for sql in [
+                        include_str!("../sql/f1.sql"),
+                        include_str!("../sql/f1_schedule_view.sql"),
+                        include_str!("../sql/f1_results_view.sql"),
+                        include_str!("../sql/f1_drivers_view.sql"),
+                        include_str!("../sql/f1_constructors_view.sql"),
+                    ] {
+                        self.client.simple_query(sql).await?.into_results().await?;
+                    }
+                    Ok::<_, Box<dyn std::error::Error>>(())
+                }
+                .await;
+                if let Err(e) = result {
+                    self.client
+                        .simple_query("IF @@TRANCOUNT>0 ROLLBACK")
+                        .await?
+                        .into_results()
+                        .await?;
+                    return Err(e);
+                }
+                self.client
+                    .simple_query("COMMIT")
+                    .await?
+                    .into_results()
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+    pub fn f1_enabled(&mut self) -> Result<bool> {
+        self.rt.block_on(bounded(async {
+            let rows=self.client.query("IF OBJECT_ID('dbo.F1Source','U') IS NOT NULL SELECT Enabled FROM dbo.F1Source WHERE ID=1", &[]).await?.into_first_result().await?;
+            Ok(rows.first().and_then(|r|r.get::<bool,_>(0)).unwrap_or(false))
+        }, &self.poisoned))
+    }
+    pub fn f1_status(&mut self, error: Option<&str>) -> Result<()> {
+        let message = error.map(|s| utf16_prefix(s, 1000));
+        self.rt.block_on(bounded(async {
+            if let Some(message)=message {
+                self.client.execute("UPDATE dbo.F1Source SET LastError=@P1 WHERE ID=1", &[&message]).await?;
+            } else {
+                self.client.execute("UPDATE dbo.F1Source SET LastAttemptAt=SYSUTCDATETIME() WHERE ID=1 AND Enabled=1", &[]).await?;
+            }
+            Ok(())
+        }, &self.poisoned))
+    }
+    pub fn save_f1(&mut self, snapshot: &crate::f1::Snapshot) -> Result<()> {
+        crate::f1::validate(snapshot)?;
+        let payload = snapshot.payload();
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .execute(
+                        include_str!("../sql/f1_replace.sql"),
+                        &[&snapshot.season, &snapshot.standings_round, &payload],
+                    )
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
     pub fn configure_nhl(&mut self) -> Result<()> {
         self.rt.block_on(bounded(
             async {
@@ -3690,6 +3763,91 @@ mod movie_commerce_sql_tests {
                 .await?;
             Ok::<_, Box<dyn std::error::Error>>(())
         })?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod f1_sql_tests {
+    use super::*;
+    use serde_json::Value;
+    #[test]
+    #[ignore = "requires migration credentials, isolated F1_TEST_DATABASE and F1_TEST_PAYLOAD"]
+    fn f1_views_atomic_refresh_disable_and_regression() -> Result<()> {
+        let name = std::env::var("F1_TEST_DATABASE")?;
+        if !name.starts_with("F1_Test_") {
+            return Err("F1 test requires isolated F1_Test_ database".into());
+        }
+        let mut db = Db::open_named(&std::env::var("MSSQL_CONNECTION_STRING")?, &name)?;
+        db.configure_f1()?;
+        let payload: Value =
+            serde_json::from_str(&std::fs::read_to_string(std::env::var("F1_TEST_PAYLOAD")?)?)?;
+        let rows = |key: &str| payload[key].as_array().unwrap().clone();
+        let mut snapshot = crate::f1::Snapshot {
+            season: 2026,
+            standings_round: 17,
+            races: rows("races"),
+            results: rows("results"),
+            sprint: rows("sprint"),
+            drivers: rows("drivers"),
+            constructors: rows("constructors"),
+        };
+        assert!(!db.f1_enabled()?);
+        assert!(db.save_f1(&snapshot).is_err());
+        db.rt.block_on(async {
+            db.client
+                .simple_query("UPDATE dbo.F1Source SET Enabled=1 WHERE ID=1")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        db.configure_f1()?; // Repeat migration preserves Enabled and existing snapshots.
+        assert!(db.f1_enabled()?);
+        db.save_f1(&snapshot)?;
+        db.save_f1(&snapshot)?;
+        fn count(db: &mut Db, table: &str) -> Result<i32> {
+            Ok(db.rt.block_on(async {
+                db.client
+                    .query(format!("SELECT COUNT(*) FROM dbo.{table}"), &[])
+                    .await?
+                    .into_first_result()
+                    .await
+            })?[0]
+                .get::<i32, _>(0)
+                .unwrap())
+        }
+        assert_eq!(count(&mut db, "F1Schedule")?, snapshot.races.len() as i32);
+        assert_eq!(
+            count(&mut db, "F1Results")?,
+            (snapshot.results.len() + snapshot.sprint.len()) as i32
+        );
+        assert_eq!(
+            count(&mut db, "F1DriverStandings")?,
+            snapshot.drivers.len() as i32
+        );
+        assert_eq!(
+            count(&mut db, "F1ConstructorStandings")?,
+            snapshot.constructors.len() as i32
+        );
+        snapshot.standings_round = 16;
+        assert!(db.save_f1(&snapshot).is_err());
+        snapshot.standings_round = 17;
+        snapshot.races[0]["date"] = serde_json::json!("bad");
+        assert!(db.save_f1(&snapshot).is_err());
+        assert_eq!(count(&mut db, "F1Schedule")?, snapshot.races.len() as i32);
+        db.rt.block_on(async {
+            db.client
+                .simple_query("UPDATE dbo.F1Source SET Enabled=0 WHERE ID=1")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        assert_eq!(count(&mut db, "F1Schedule")?, 0);
+        assert_eq!(count(&mut db, "F1DriverStandings")?, 0);
+        assert!(db.save_f1(&snapshot).is_err());
+        assert_eq!(count(&mut db, "F1Snapshot")?, 1);
         Ok(())
     }
 }

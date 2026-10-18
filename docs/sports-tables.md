@@ -4,6 +4,8 @@ Use the shared standings read contract plus the league-specific sections below. 
 
 ## Contents
 
+- [F1 driver and constructor championships](#f1-standings)
+
 - [Big 12 soccer and men’s basketball column mappings](#big12-soccer-basketball-columns)
 - [NHL division standings — frontend handoff](#nhl-standings)
 - [My-Newsfeed frontend: sports standings](#my-newsfeed-standings-frontend)
@@ -11,6 +13,27 @@ Use the shared standings read contract plus the league-specific sections below. 
 - [NFL standings — frontend handoff](#my-newsfeed-nfl-standings)
 - [My-Newsfeed MLS standings](#my-newsfeed-mls-standings)
 - [My-Newsfeed: national Top 25 with Big 12 highlighted](#my-newsfeed-top25-rankings)
+
+<a id="f1-standings"></a>
+
+## F1 driver and constructor championships
+
+F1 is deployed as `web-scraper:f1-20261018`. Its enabled `F1Source` record 1
+is separate from `SportsStandingsSources`. Read `dbo.F1DriverStandings` and
+`dbo.F1ConstructorStandings`, ordered by numeric `Position`. Both views include
+`Season`, `StandingsRound`, decimal `Points`, `Wins` and UTC `FetchedAt`.
+Driver rows preserve the provider's constructor list in `ConstructorsJson`.
+
+October 18 deployment verification recorded 23 drivers and 11 constructors for
+season 2026 through round 17. Counts and round are dated observations, not
+constants for the UI. F1 refresh runs with `--events-from-db` together with the
+calendar and classifications, rather than the shared `--standings-from-db` path.
+Failed refreshes retain the previous entire F1 snapshot; disabling F1 hides its
+views. Do not model championship points as match wins/losses or recalculate ranks.
+
+Use the [frontend contract](f1-frontend-integration.md#standings) for queries and
+field mappings, [operations](f1-operations.md) for setup/refresh, and
+[deployment report](../reports/f1-production-20261018.md) for verification and rollback.
 
 <a id="big12-soccer-basketball-columns"></a>
 

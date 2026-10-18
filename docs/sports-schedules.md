@@ -4,6 +4,8 @@ Current fixtures use the existing SportsEvents model. NHL, MLS and Championship 
 
 ## Contents
 
+- [F1 calendar and race/sprint results](#f1-schedule-results)
+
 - [2026 league-wide NWSL schedule](nwsl-league-schedule.md)
 
 - [NHL schedules and final results](#nhl-schedule-results)
@@ -15,6 +17,28 @@ Current fixtures use the existing SportsEvents model. NHL, MLS and Championship 
 - [WNBA schedule import / My-Newsfeed handoff](#wnba-schedule)
 - [Kansas City Current schedule import / My-Newsfeed handoff](#kansas-city-current-schedule)
 - [Big 12 sports calendar expansion proposal](#big12-sports-expansion-plan)
+
+<a id="f1-schedule-results"></a>
+
+## F1 calendar and race/sprint results
+
+Deployed October 18, 2026 as `web-scraper:f1-20261018`. Enabled `F1Source`
+record 1 uses Jolpica and is refreshed by the existing hourly
+`--events-from-db` collector. F1 has dedicated race data rather than home/away
+fixtures: read `dbo.F1Schedule` and `dbo.F1Results`. Source ID 1 belongs to
+`F1Source`, not `SportsEventsType`.
+
+Deployment verification recorded 23 calendar races, classifications for 17
+Grands Prix (374 driver rows) and six sprints (132 driver rows), season 2026.
+The full current-season calendar and results are retained in one atomic snapshot,
+independently of shared past-schedule pruning. Session times can be absent;
+Race and Sprint classifications remain separate. These counts are dated evidence.
+
+Use the [frontend field/query contract](f1-frontend-integration.md) for sessions,
+timezones, classification status and empty states. Driver/constructor tables are
+covered in [F1 championships](sports-tables.md#f1-standings).
+[Operations](f1-operations.md) documents setup and manual refresh;
+[deployment evidence](../reports/f1-production-20261018.md) records validation and rollback.
 
 <a id="nhl-schedule-results"></a>
 
