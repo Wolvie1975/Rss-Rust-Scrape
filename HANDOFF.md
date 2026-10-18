@@ -17,6 +17,15 @@ succeeded; the frontend database reader can query all four views. No frontend
 application change was performed. See [operations and verification](docs/f1-operations.md)
 and the [frontend integration request](docs/f1-frontend-integration.md).
 
+## Big 12 news sources
+
+Five enabled sources are assigned to **Big 12 News**: official all-sports 8997,
+Heartland College Sports 8998, official football 8999, men's basketball 9000
+and baseball 9001. The dedicated women's basketball feed was omitted by request;
+the all-sports feed can still contain women's sports stories. Existing hourly
+news collection handles these sources without a rebuild/restart. See the
+[college hub frontend contract](docs/big12-news-frontend-integration.md).
+
 ## F1 news sources
 
 Four enabled sources are assigned to **F1 News**: BBC Sport 8965, Autosport 8966,

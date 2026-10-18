@@ -4,6 +4,8 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 
 ## Contents
 
+- [Big 12 news sources](#big12-news-sources)
+
 - [F1 production operation](#f1-operations)
 - [Top Headlines sources](#top-headlines-sources)
 
@@ -16,6 +18,28 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 - [WebScraper SQL backup maintenance](#sql-backups)
 - [Scraper hardening and SQL credential split](#scraper-security-and-sql-credentials)
 - [Scraper performance instrumentation and optimizations](#scraper-performance)
+
+<a id="big12-news-sources"></a>
+
+## Big 12 news sources
+
+Five enabled sources in **Big 12 News** supply the college sports hub: official
+all-sports 8997, Heartland 8998, football 8999, men's basketball 9000 and baseball
+9001. The dedicated women's basketball source was omitted by request. Conference-wide
+coverage can still include women's sports. Existing hourly `--from-db` collection
+handles these sources without rebuilding or restarting the scraper.
+
+The migration-profile script [`sql/big12_news_seed.sql`](../sql/big12_news_seed.sql)
+was applied to WebScraper on October 18, 2026. Repeated execution preserves
+existing source settings. A production dry-run and actual import passed: five
+source successes, no failures, 46 retained articles. Four duplicate cross-source
+URLs were skipped without changing ownership. Read-back verified enablement,
+refresh timestamps and no source errors; both production containers were healthy.
+
+See the [frontend integration contract](big12-news-frontend-integration.md) for
+URLs, source IDs, category queries, overlap handling and UI acceptance. Disable
+only these source IDs to stop their future collection; preserve other sources,
+article ownership, shared categories and the hourly configuration.
 
 <a id="f1-operations"></a>
 

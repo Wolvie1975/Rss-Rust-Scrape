@@ -2,6 +2,10 @@
 
 Use the shared standings read contract plus the league-specific sections below. NFL is grouped by conference and division; MLS uses conference groups; NHL uses divisions. National Top 25 polls retain only the current poll per source. Current production standings IDs: NFL 10, MLS 9, Championship 11, EPL 12, NHL 13. Dated import counts are snapshots, not guaranteed current values.
 
+The college sports hub can also use the **Big 12 News** article category;
+see its [news frontend contract](big12-news-frontend-integration.md). This is
+independent of the structured sports data described below.
+
 ## Contents
 
 - [F1 driver and constructor championships](#f1-standings)

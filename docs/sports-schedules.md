@@ -2,6 +2,10 @@
 
 Current fixtures use the existing SportsEvents model. NHL, MLS and Championship final results use SportsMatchResults, separately from schedule retention; shootout tallies are separate from match goals. MLS source 5525, Championship 5326 and EPL 5357 and NHL 5637 are enabled. Past/canceled schedules are removed. The provider design proposal at the end is historical; deployed implementation and current retention take precedence.
 
+The college sports hub can also use the **Big 12 News** article category;
+see its [news frontend contract](big12-news-frontend-integration.md). This is
+independent of the structured sports data described below.
+
 ## Contents
 
 - [F1 calendar and race/sprint results](#f1-schedule-results)

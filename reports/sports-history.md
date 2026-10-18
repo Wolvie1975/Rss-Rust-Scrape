@@ -4,6 +4,8 @@ Historical evidence, newest dates first. Counts, image tags and rollout details 
 
 ## Contents
 
+- [Big 12 news registration — October 18, 2026](#big12-news-2026-10-18)
+
 - [F1 production deployment — October 18, 2026](#f1-deployment-2026-10-18)
 
 - [Brewers–Dodgers finished-series schedule cleanup — October 16, 2026](#brewers-dodgers-cleanup-2026-10-16)
@@ -31,6 +33,19 @@ Historical evidence, newest dates first. Counts, image tags and rollout details 
 - [Kansas City Current schedule verification — 2026-10-09](#kansas-city-current-schedule-2026-10-09)
 - [ESPN schedule cutoff — 2026-10-09](#espn-upcoming-only-2026-10-09)
 - [Big 12 expansion verification — October 9, 2026](#big12-expansion-2026-10-09)
+
+<a id="big12-news-2026-10-18"></a>
+
+## Big 12 news registration — October 18, 2026
+
+Registered five enabled RSS sources in **Big 12 News**, excluding the dedicated
+women's basketball feed as requested. Production dry-run passed, followed by an
+import with five source successes, zero failures and 46 saved articles; four
+cross-source duplicate URLs were skipped by existing identity protection.
+Read-back verified updated timestamps, source enablement and no LastError.
+Both production containers were healthy. Existing hourly news collection handles
+the feeds; no rebuild/restart or structured Big 12 data changes were needed.
+[Source list and frontend contract](../docs/big12-news-frontend-integration.md).
 
 <a id="f1-deployment-2026-10-18"></a>
 
