@@ -7,6 +7,7 @@ Read [HANDOFF.md](HANDOFF.md) for the current documented deployment and working 
 | Fixtures, NHL, Big 12, MLS, Championship/Wrexham, EPL, MLB, WNBA, NWSL | [Sports schedules and results](docs/sports-schedules.md) |
 | Standings, NHL divisions, NFL divisions, MLS conferences, national Top 25 | [Sports standings and rankings](docs/sports-tables.md) |
 | Movie releases, actual box office, forecasts and posters | [Movies, box office and posters](docs/movies-and-box-office.md) |
+| Top Headlines news category | [Frontend integration request](docs/top-headlines-frontend-integration.md) |
 | Fandango ticket and Fandango digital links | [Purchase-link handoff](docs/movie-purchase-links.md), [frontend request](docs/movie-commerce-frontend-integration.md) |
 | TVmaze tracking, series and episodes | [TV series and episodes](docs/tv.md) |
 | Article URL identity, retention, SQL backups, security and performance | [Operations](docs/operations.md) |
