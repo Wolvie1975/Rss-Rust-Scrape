@@ -65,3 +65,23 @@ The additive F1 tables/views and last snapshot can remain. Other sports data,
 source configuration and existing scheduler settings should be preserved.
 
 No Git commits or pushes were performed.
+
+## F1 news configuration deployment
+
+Later on October 18, added four enabled RSS feeds in **F1 News** using
+`sql/f1_news_seed.sql`: BBC Sport 8965, Autosport 8966, Motorsport.com 8967,
+and The Guardian 8968. No matching F1 feed URLs were previously configured.
+The existing production image passed a four-source dry-run and an actual
+news import: 40 saved articles, four source successes, zero failures.
+Read-back confirmed ten rows per source, refreshed LastScrapedAt values and
+no source LastError. The frontend production database identity read all 40
+articles, and both production containers were healthy. Existing publisher/category
+assignments were preserved.
+
+Some optional article identity lookups received 403 or unusable BBC iPlayer
+metadata; original RSS entries were still ingested. No source bypass was added.
+No image rebuild or container/scheduler restart was needed for this registration;
+the hourly `--from-db` collector discovers the enabled rows automatically.
+The [news frontend handoff](../docs/f1-news-frontend-integration.md) supplies IDs,
+URLs, category query and UI acceptance checks. This does not implement the
+frontend's News tab.

@@ -36,6 +36,13 @@ Historical evidence, newest dates first. Counts, image tags and rollout details 
 
 ## F1 production deployment — October 18, 2026
 
+F1 news was subsequently added through four enabled RSS sources in **F1 News**
+(BBC Sport, Autosport, Motorsport.com and The Guardian). The running image
+imported 40 articles successfully; hourly news collection needs no restart.
+[News UI contract](../docs/f1-news-frontend-integration.md) and
+[registration evidence](../docs/f1-operations.md#f1-news-registration).
+
+
 Deployed `web-scraper:f1-20261018`; deployed-container run 1206 succeeded.
 Season 2026 verification: 23 races, 374 Grand Prix classifications, 132 sprint
 classifications, 23 drivers and 11 constructors through round 17. The frontend

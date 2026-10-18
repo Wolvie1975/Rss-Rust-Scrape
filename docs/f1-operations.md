@@ -150,3 +150,35 @@ Frontend rendering has not been implemented or verified here.
 
 Deployment evidence, configuration verification and rollback:
 [F1 deployment report](../reports/f1-production-20261018.md).
+
+## F1 news registration
+
+On October 18, 2026, four F1-specific RSS sources were added enabled under
+**F1 News**: BBC Sport 8965, Autosport 8966, Motorsport.com 8967, and The Guardian
+8968. This is a database configuration deployment using the already running
+`web-scraper:f1-20261018` image. No image rebuild, container replacement or
+scheduler argument change is required. The existing hourly `--from-db` collector
+reads these sources independently from Jolpica's `F1Source` configuration.
+
+Apply [`sql/f1_news_seed.sql`](../sql/f1_news_seed.sql) to the **WebScraper**
+database with migration credentials for a fresh registration. It creates the
+category if missing, inserts only missing URLs enabled, and preserves existing
+source settings on repeated execution. Registration has already been applied to
+production; do not run it from the frontend.
+
+The deployed image passed a read-only four-source dry-run (40 articles), followed
+by an actual import with four source successes and zero failures. A database
+read-back verified all four sources enabled in F1 News, ten articles each,
+LastScrapedAt updated and no recorded LastError. The frontend production
+database connection also read all four sources and their 40 articles successfully;
+both production containers were healthy. The collector retains RSS
+metadata when optional article identity enrichment is blocked: some Autosport
+and Motorsport.com article requests returned 403, and two BBC iPlayer entries
+had no usable article metadata. These did not prevent RSS ingestion. No access
+controls were bypassed and no canonical URL claims were invented.
+
+For rollback, disable only the four registered source IDs; existing news
+retention and article identity behavior remain applicable. Do not delete shared
+categories or reassign other BBC/Guardian sources.
+
+[Frontend news contract and queries](f1-news-frontend-integration.md).

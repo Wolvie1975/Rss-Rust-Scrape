@@ -5,6 +5,7 @@ Read [HANDOFF.md](HANDOFF.md) for the current documented deployment and working 
 | Topic | Guide |
 | --- | --- |
 | F1 schedule, Grand Prix/sprint results, drivers and constructors | [Frontend integration](docs/f1-frontend-integration.md), [operations](docs/f1-operations.md) |
+| F1 news | [News frontend integration](docs/f1-news-frontend-integration.md), [collection](docs/f1-operations.md#f1-news-registration) |
 | Fixtures, NHL, Big 12, MLS, Championship/Wrexham, EPL, MLB, WNBA, NWSL | [Sports schedules and results](docs/sports-schedules.md) |
 | Standings, NHL divisions, NFL divisions, MLS conferences, national Top 25 | [Sports standings and rankings](docs/sports-tables.md) |
 | Movie releases, actual box office, forecasts and posters | [Movies, box office and posters](docs/movies-and-box-office.md) |

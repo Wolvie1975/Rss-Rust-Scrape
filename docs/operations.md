@@ -21,6 +21,12 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 
 ## F1 production operation
 
+F1 news is also enabled: four RSS sources in **F1 News** are collected through
+normal hourly `--from-db` news ingestion. Initial production verification saved
+ten articles per source, with four successes and zero failures. No further image
+or scheduler change was required. See [news registration](f1-operations.md#f1-news-registration)
+and the [frontend News tab contract](f1-news-frontend-integration.md).
+
 Current verified scraper release: `web-scraper:f1-20261018`, deployed October 18,
 2026. Enabled `F1Source` record 1 collects the calendar, Grand Prix/sprint
 classifications and driver/constructor championships through the existing hourly

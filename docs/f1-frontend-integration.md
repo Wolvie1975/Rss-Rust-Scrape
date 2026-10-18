@@ -11,6 +11,14 @@ SQL views, rather than RSS article feeds. Browser clients should read through th
 frontend's existing server-side database/API layer, not call Jolpica directly.
 No HTTP endpoints for My-Newsfeed were created in the scraper repository.
 
+## F1 news
+
+An additional **News** tab can use the four production sources in the **F1 News**
+category: BBC Sport, Autosport, Motorsport.com and The Guardian. These are stored
+in the shared news tables, independently from the Jolpica sports views below.
+Use the [F1 News frontend contract](f1-news-frontend-integration.md) for source IDs,
+RSS URLs, queries, article cards and acceptance checks.
+
 ## Read contract
 
 Four production views expose one complete, most recently fetched season snapshot.

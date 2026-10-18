@@ -17,6 +17,14 @@ succeeded; the frontend database reader can query all four views. No frontend
 application change was performed. See [operations and verification](docs/f1-operations.md)
 and the [frontend integration request](docs/f1-frontend-integration.md).
 
+## F1 news sources
+
+Four enabled sources are assigned to **F1 News**: BBC Sport 8965, Autosport 8966,
+Motorsport.com 8967 and The Guardian 8968. The existing production news collector
+handles them without an image rebuild or scheduler restart. See the
+[news frontend contract](docs/f1-news-frontend-integration.md) and
+[registration/collection evidence](docs/f1-operations.md#f1-news-registration).
+
 ## Top Headlines sources
 
 Six enabled production sources were added to the new **Top Headlines** category:
