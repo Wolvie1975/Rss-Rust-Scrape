@@ -4,6 +4,13 @@
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.
 
+## Box Office news expansion — October 19, 2026
+
+Added Variety 9034, The Hollywood Reporter 9035 and IndieWire 9036 to the existing
+Box Office category alongside Deadline 7094. Existing hourly news collection
+handles the additional feeds without rebuilding or restarting the scraper.
+Current sources and frontend contract: [Box Office news](docs/movies-and-box-office.md#boxoffice-news).
+
 ## F1 feeds — October 18, 2026
 
 F1 source 1 in the new `F1Source` table is enabled in production. Initial runtime
@@ -51,7 +58,7 @@ Last verified deployment: `web-scraper:f1-20261018`; scraper and front-end were 
 - MLS schedule/results source 5525, standings 9; Championship schedule/results 5326, standings 11; EPL schedule 5357, standings 12; NFL standings 10.
 - MLS and Championship current-season results are independent of schedule pruning; playoff shootouts are stored separately from goals.
 - Latest actual box-office chart and domestic forecasts have poster URLs. Last checked: 10/10 chart films, 12/12 forecast films and 24/34 release films; unmatched films use placeholders.
-- Dedicated Deadline/Variety box-office story sources are disabled. Structured charts and forecasts replace them.
+- Box Office news has four enabled publishers: Deadline, Variety, The Hollywood Reporter and IndieWire; structured charts and forecasts remain separate.
 - Current retention and backup rules: [operations guide](docs/operations.md#data-retention). SQL remains in FULL recovery with managed log/full backups.
 - Initial performance changes deployed: ESPN batches of 100, stage/HTTP metrics, and filtering past movie releases before persistence. Further caching/concurrency work remains a candidate.
 - Front-end work for the newer movie/sports sections is documented in the topic guides; scraper deployment alone does not implement those views.

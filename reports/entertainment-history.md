@@ -1,8 +1,10 @@
 # Movie, box-office and TV history
 
-Historical evidence, newest dates first. The old box-office-news frontend instructions are preserved for provenance only; those sources are disabled and replaced by structured charts/forecasts. Use the movie and TV topic guides for current integration.
+Historical evidence, newest dates first. The old box-office-news frontend instructions are preserved for provenance only; the October 19, 2026 news expansion supersedes the earlier disabled-source state. News and structured charts/forecasts now coexist. Use the movie and TV topic guides for current integration.
 
 ## Contents
+
+- [Box Office news expansion — October 19, 2026](#boxoffice-news-2026-10-19)
 
 - [Poster enrichment across movie sections](#cinema-posters-deployment-2026-10-13)
 - [Boxoffice Pro domestic predictions](#boxoffice-forecasts-deployment-2026-10-13)
@@ -14,6 +16,21 @@ Historical evidence, newest dates first. The old box-office-news frontend instru
 - [Movie poster verification — October 9, 2026](#movie-posters-2026-10-09)
 - [U.S. movie release preview: October 5–11, 2026](#movie-preview-2026-10-05)
 - [My-Newsfeed box-office news](#my-newsfeed-boxoffice-news)
+
+<a id="boxoffice-news-2026-10-19"></a>
+
+## Box Office news expansion — October 19, 2026
+
+Added three enabled, dedicated box-office RSS sources to the existing category:
+Variety 9034, The Hollywood Reporter 9035 and IndieWire 9036. Deadline 7094 was
+already enabled and was preserved. The deployed production image passed a
+three-source dry-run with 30 articles and zero failures. A subsequent production
+import saved 30 articles, with three source successes and zero failures. Read-back
+confirmed ten articles per new source, refreshed timestamps and no LastError.
+Deadline retained its ten existing articles. Both production containers were healthy.
+Existing hourly news
+collection handles the additions without a rebuild or scheduler restart.
+[Current source inventory and frontend contract](../docs/movies-and-box-office.md#boxoffice-news).
 
 <a id="cinema-posters-deployment-2026-10-13"></a>
 

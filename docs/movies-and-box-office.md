@@ -1,8 +1,10 @@
 # Movies, box office and posters
 
-Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domestic previews and future-film predictions. These are separate structured tables, not news articles. Dedicated Deadline/Variety box-office news is retired; its original handoff is archived in the entertainment history. Poster fields are available across the movie sections. Current/future release and forecast dates only; the actual chart retains the latest valid weekend.
+Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domestic previews and future-film predictions. These are separate structured tables, not news articles. Box Office news is available alongside the structured charts through Deadline, Variety, The Hollywood Reporter and IndieWire. The older news handoff is archived in the entertainment history; the current contract is below. Poster fields are available across the movie sections. Current/future release and forecast dates only; the actual chart retains the latest valid weekend.
 
 ## Contents
+
+- [Box Office news sources](#boxoffice-news)
 
 - [Fandango tickets and Fandango at Home links](movie-purchase-links.md)
 - [Frontend integration request: movie purchase buttons](movie-commerce-frontend-integration.md)
@@ -14,6 +16,43 @@ Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domesti
 - [U.S. movie releases](#movie-releases)
 - [Movie poster enrichment](#movie-posters)
 
+<a id="boxoffice-news"></a>
+
+## Box Office news sources
+
+The production **Box Office** news category contains four enabled publishers:
+
+| Source ID | Publisher | RSS URL |
+| --- | --- | --- |
+| 7094 | Deadline | https://deadline.com/v/box-office/feed/ |
+| 9034 | Variety | https://variety.com/v/film/box-office/feed/ |
+| 9035 | The Hollywood Reporter | https://www.hollywoodreporter.com/t/box-office/feed/ |
+| 9036 | IndieWire | https://www.indiewire.com/c/box-office/feed/ |
+
+Variety, The Hollywood Reporter and IndieWire were added October 19, 2026;
+existing Deadline configuration was preserved. A production dry-run and actual
+import succeeded with three source successes and zero failures; read-back verified
+ten articles per new source, refreshed timestamps and no source errors. The deployed scraper's hourly
+`--from-db` collector reads the feeds without an image rebuild or restart.
+[`sql/boxoffice_news_expand.sql`](../sql/boxoffice_news_expand.sql) records this
+registration, inserts missing URLs enabled and preserves existing source settings.
+Apply only with migration credentials targeting WebScraper. The earlier
+`boxoffice_news_seed.sql` is a historical disabled-source seed, not the current
+production source inventory.
+
+Frontend news queries should join `Pages.SourceId` to `Sources.ID`, then
+`Sources.SourceCategoryId` to `SourceCategories.ID`, filtering `Enabled=1` and
+`Category_Name=N'Box Office'`. Discover publishers dynamically rather than using
+a fixed list of source IDs. Reuse existing article cards, source filtering,
+pagination, attribution and saved-article behavior. Use Pages.Url for the article
+link; Sources.Url is the RSS feed. Summaries, images and publication dates can
+be missing; retain standard escaping, date handling and fallbacks. These feeds
+provide article metadata, not publisher paywall access or numeric chart rows.
+
+This expands news coverage; `BoxOfficeWeekend` and Boxoffice Pro forecast
+collection remain independent. Source registration does not prove frontend
+rendering, which was not changed as part of this update.
+
 <a id="boxoffice-top-10-frontend-handoff"></a>
 
 ## Latest domestic weekend box-office top 10
@@ -21,8 +60,8 @@ Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domesti
 Source: https://www.the-numbers.com/weekend-box-office-chart
 
 The scraper stores the latest available three-day domestic weekend chart in
-`dbo.BoxOfficeWeekend`. This replaces the Deadline and Variety box-office news
-feeds. It is structured chart data, separate from `Pages` and the news RSS file.
+`dbo.BoxOfficeWeekend`. It is structured chart data, separate from the Box Office
+news articles in `Pages` and the news RSS file.
 The front-end needs a chart view; scraper deployment alone does not add that view.
 
 <a id="boxoffice-top-10-frontend-handoff--query-and-display"></a>
