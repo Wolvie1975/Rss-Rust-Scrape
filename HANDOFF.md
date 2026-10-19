@@ -4,6 +4,14 @@
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.
 
+## Indie video game news — October 19, 2026
+
+Added Indie Games Plus **9037**, The Indie Informer **9038**, and Indie Hive **9039**
+to **Video Games**. Production import **1242** succeeded with ten retained articles
+per source, enabled sources and no source errors. Existing hourly collection
+handles these feeds without a rebuild/restart. See [source operations](docs/operations.md#indie-video-game-news--october-19-2026)
+and [repeatable registration](sql/indie_videogames_news_expand.sql).
+
 ## Box Office news expansion — October 19, 2026
 
 Added Variety 9034, The Hollywood Reporter 9035 and IndieWire 9036 to the existing

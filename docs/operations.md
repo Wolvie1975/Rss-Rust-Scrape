@@ -4,6 +4,8 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 
 ## Contents
 
+- [Indie video game news](#indie-video-game-news--october-19-2026)
+
 - [Big 12 news sources](#big12-news-sources)
 
 - [F1 production operation](#f1-operations)
@@ -18,6 +20,37 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 - [WebScraper SQL backup maintenance](#sql-backups)
 - [Scraper hardening and SQL credential split](#scraper-security-and-sql-credentials)
 - [Scraper performance instrumentation and optimizations](#scraper-performance)
+
+## Indie video game news — October 19, 2026
+
+Three enabled indie-focused publishers were added to the existing **Video Games**
+category (ID 11), alongside GamingOnLinux, Pure Xbox and Eurogamer:
+
+| Publisher | Source ID | RSS feed |
+| --- | --- | --- |
+| Indie Games Plus | 9037 | https://indiegamesplus.com/feed/ |
+| The Indie Informer | 9038 | https://the-indie-in-former.com/feed/ |
+| Indie Hive | 9039 | https://indie-hive.com/feed/ |
+
+Repeatable registration: [`sql/indie_videogames_news_expand.sql`](../sql/indie_videogames_news_expand.sql).
+Apply with the migration profile, explicitly targeting **WebScraper**. Existing
+source settings are preserved on repeated execution. No rebuild, restart or
+scheduler changes were needed; normal hourly `--from-db` collection includes them.
+
+All three live RSS feeds parsed successfully. The collector dry-run reported
+three source successes and zero failures. Targeted production import run **1242**
+succeeded; database read-back verified **ten articles per source**, enabled sources
+and no `LastError`. The production exec exited zero and the scraper was healthy.
+These are dated observations, not ongoing health guarantees.
+
+The frontend uses the existing `Pages` / `Sources` / `SourceCategories` contract;
+resolve category membership dynamically and filter enabled sources. Preserve the
+ten-per-source retention, canonical verification and cross-source URL ownership
+rules. No frontend rendering change was implemented or verified.
+
+Indie Retro News also had an active feed but was not needed for this addition.
+The Indie Game Website feed was stale (latest entry December 2021), Indie Game
+Fans returned HTTP 500, and Indie Game Bundles mostly covered deals; none was added.
 
 <a id="big12-news-sources"></a>
 
