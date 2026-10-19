@@ -1,0 +1,151 @@
+{
+  "provenance": {
+    "summary": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/summary?event=401854026",
+    "scoreboard": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/scoreboard?dates=20261018&limit=1000",
+    "captured": "2026-10-19",
+    "core": [
+      "https://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.nwsl/events/401854026/competitions/401854026/competitors/15360/linescores?lang=en&region=us&limit=100",
+      "https://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.nwsl/events/401854026/competitions/401854026/competitors/15363/linescores?lang=en&region=us&limit=100"
+    ]
+  },
+  "game": {
+    "sport": "soccer",
+    "league": "usa.nwsl",
+    "eventId": "401854026",
+    "date": "20261018"
+  },
+  "format": {
+    "regulation": {
+      "periods": 2,
+      "displayName": "Half",
+      "slug": "half",
+      "clock": 2700.0
+    }
+  },
+  "summaryTeams": [
+    {
+      "id": "15360",
+      "team": {
+        "id": "15360",
+        "displayName": "Chicago Stars FC"
+      },
+      "homeAway": "home",
+      "score": "1",
+      "linescores": [
+        {
+          "displayValue": "0"
+        },
+        {
+          "displayValue": "1"
+        }
+      ]
+    },
+    {
+      "id": "15363",
+      "team": {
+        "id": "15363",
+        "displayName": "Seattle Reign FC"
+      },
+      "homeAway": "away",
+      "score": "3",
+      "linescores": [
+        {
+          "displayValue": "1"
+        },
+        {
+          "displayValue": "2"
+        }
+      ]
+    }
+  ],
+  "scoreboard": {
+    "events": [
+      {
+        "id": "401854026",
+        "season": {
+          "year": 2026,
+          "type": 14024,
+          "slug": "regular-season"
+        },
+        "competitions": [
+          {
+            "id": "401854026",
+            "status": {
+              "type": {
+                "id": "28",
+                "name": "STATUS_FULL_TIME",
+                "state": "post",
+                "completed": true,
+                "description": "Full Time",
+                "detail": "FT",
+                "shortDetail": "FT"
+              },
+              "period": 2
+            },
+            "competitors": [
+              {
+                "homeAway": "home",
+                "score": "1",
+                "team": {
+                  "id": "15360"
+                },
+                "linescores": [
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.nwsl/events/401854026/competitions/401854026/competitors/15360/linescores/38/1?lang=en&region=us",
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 1
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.nwsl/events/401854026/competitions/401854026/competitors/15360/linescores/38/2?lang=en&region=us",
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 2
+                  }
+                ]
+              },
+              {
+                "homeAway": "away",
+                "score": "3",
+                "team": {
+                  "id": "15363"
+                },
+                "linescores": [
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.nwsl/events/401854026/competitions/401854026/competitors/15363/linescores/38/1?lang=en&region=us",
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 1
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.nwsl/events/401854026/competitions/401854026/competitors/15363/linescores/38/2?lang=en&region=us",
+                    "value": 2.0,
+                    "displayValue": "2",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 2
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "periodCoreMetadata": true
+      }
+    ]
+  }
+}

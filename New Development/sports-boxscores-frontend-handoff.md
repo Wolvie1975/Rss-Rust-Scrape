@@ -8,6 +8,13 @@ Initial deployed backfill checked all **1,355** stored game identities:
 **395** retain the existing fallback. There were **zero collection errors**.
 These are dated counts; query per-game availability rather than hardcoding coverage.
 
+Period labels were subsequently repaired without changing JSON version 1.
+The existing `period` field now contains descriptive strings such as `1st inning`,
+`Q1`, `1st half`, `OT`, `ET1` and `SO` when provider metadata resolves them.
+See [period mappings, production repair and frontend examples](../reports/sports-period-labels-20261019.md).
+Scoring values, player statistics and result scores were preserved. Unknown labels
+can remain null; optional normalization metadata does not require UI changes.
+
 ## Requested behavior
 
 Offer a game's box score when the scraper has usable statistics. If no detail is

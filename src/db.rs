@@ -1370,12 +1370,73 @@ END CATCH
                             event_id: r.get::<&str, _>(2).ok_or("missing event ID")?.to_string(),
                             home_id: r.get::<&str, _>(3).ok_or("missing home ID")?.to_string(),
                             away_id: r.get::<&str, _>(4).ok_or("missing away ID")?.to_string(),
+                            date: r.get::<&str, _>(5).ok_or("missing game date")?.to_string(),
                         })
                     })
                     .collect()
             },
             &self.poisoned,
         ))
+    }
+    pub fn period_candidates(
+        &mut self,
+        limit: i32,
+    ) -> Result<Vec<(crate::sports_boxscores::Game, String)>> {
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(
+                        include_str!("../sql/sports_periods_candidates.sql"),
+                        &[&limit],
+                    )
+                    .await?
+                    .into_first_result()
+                    .await?;
+                rows.iter()
+                    .map(|r| {
+                        Ok((
+                            crate::sports_boxscores::Game {
+                                sport: r.get::<&str, _>(0).ok_or("missing sport")?.into(),
+                                league: r.get::<&str, _>(1).ok_or("missing league")?.into(),
+                                event_id: r.get::<&str, _>(2).ok_or("missing event")?.into(),
+                                home_id: r.get::<&str, _>(3).ok_or("missing home")?.into(),
+                                away_id: r.get::<&str, _>(4).ok_or("missing away")?.into(),
+                                date: r.get::<&str, _>(5).ok_or("missing date")?.into(),
+                            },
+                            r.get::<&str, _>(6).ok_or("missing cached payload")?.into(),
+                        ))
+                    })
+                    .collect()
+            },
+            &self.poisoned,
+        ))
+    }
+    pub fn update_periods(
+        &mut self,
+        g: &crate::sports_boxscores::Game,
+        old: &str,
+        new: &str,
+    ) -> Result<bool> {
+        self.rt.block_on(bounded(
+            async {
+                let result = self
+                    .client
+                    .execute(
+                        include_str!("../sql/sports_periods_update.sql"),
+                        &[&g.sport, &g.league, &g.event_id, &old, &new],
+                    )
+                    .await?;
+                Ok(result.total() == 1)
+            },
+            &self.poisoned,
+        ))
+    }
+    pub fn boxscore_available(&mut self, g: &crate::sports_boxscores::Game) -> Result<bool> {
+        self.rt.block_on(bounded(async {
+            let rows=self.client.query("SELECT CAST(CASE WHEN EXISTS(SELECT 1 FROM dbo.SportsBoxScoreCache WHERE Sport=@P1 AND League=@P2 AND EventId=@P3 AND Payload IS NOT NULL) THEN 1 ELSE 0 END AS BIT)", &[&g.sport,&g.league,&g.event_id]).await?.into_first_result().await?;
+            Ok(rows.first().and_then(|r|r.get::<bool,_>(0)).unwrap_or(false))
+        },&self.poisoned))
     }
     pub fn save_boxscore(
         &mut self,

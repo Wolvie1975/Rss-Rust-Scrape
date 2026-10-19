@@ -1,0 +1,233 @@
+{
+  "provenance": {
+    "summary": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=633850",
+    "scoreboard": "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20221218&limit=1000",
+    "captured": "2026-10-19",
+    "core": [
+      "https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/202/linescores?lang=en&region=us&limit=100",
+      "https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/478/linescores?lang=en&region=us&limit=100"
+    ]
+  },
+  "game": {
+    "sport": "soccer",
+    "league": "fifa.world",
+    "eventId": "633850",
+    "date": "20221218"
+  },
+  "format": {
+    "regulation": {
+      "periods": 2,
+      "displayName": "Half",
+      "slug": "half",
+      "clock": 2700.0
+    }
+  },
+  "summaryTeams": [
+    {
+      "id": "202",
+      "team": {
+        "id": "202",
+        "displayName": "Argentina"
+      },
+      "homeAway": "home",
+      "score": "3",
+      "linescores": [
+        {
+          "displayValue": "2"
+        },
+        {
+          "displayValue": "0"
+        },
+        {
+          "displayValue": "0"
+        },
+        {
+          "displayValue": "1"
+        },
+        {
+          "displayValue": "4"
+        }
+      ],
+      "shootoutScore": 4.0
+    },
+    {
+      "id": "478",
+      "team": {
+        "id": "478",
+        "displayName": "France"
+      },
+      "homeAway": "away",
+      "score": "3",
+      "linescores": [
+        {
+          "displayValue": "0"
+        },
+        {
+          "displayValue": "2"
+        },
+        {
+          "displayValue": "0"
+        },
+        {
+          "displayValue": "1"
+        },
+        {
+          "displayValue": "2"
+        }
+      ],
+      "shootoutScore": 2.0
+    }
+  ],
+  "scoreboard": {
+    "events": [
+      {
+        "id": "633850",
+        "season": {
+          "year": 2022,
+          "type": 10948,
+          "slug": "final"
+        },
+        "competitions": [
+          {
+            "id": "633850",
+            "status": {
+              "type": {
+                "id": "47",
+                "name": "STATUS_FINAL_PEN",
+                "state": "post",
+                "completed": true,
+                "description": "Final Score - After Penalties",
+                "detail": "FT-Pens",
+                "shortDetail": "FT-Pens"
+              },
+              "period": 5
+            },
+            "competitors": [
+              {
+                "homeAway": "home",
+                "score": "3",
+                "shootoutScore": 4,
+                "team": {
+                  "id": "202"
+                },
+                "linescores": [
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/202/linescores/38/1?lang=en&region=us",
+                    "value": 2.0,
+                    "displayValue": "2",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 1
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/202/linescores/38/2?lang=en&region=us",
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 2
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/202/linescores/38/3?lang=en&region=us",
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 3
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/202/linescores/38/4?lang=en&region=us",
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 4
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/202/linescores/38/5?lang=en&region=us",
+                    "value": 4.0,
+                    "displayValue": "4",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 5
+                  }
+                ]
+              },
+              {
+                "homeAway": "away",
+                "score": "3",
+                "shootoutScore": 2,
+                "team": {
+                  "id": "478"
+                },
+                "linescores": [
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/478/linescores/38/1?lang=en&region=us",
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 1
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/478/linescores/38/2?lang=en&region=us",
+                    "value": 2.0,
+                    "displayValue": "2",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 2
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/478/linescores/38/3?lang=en&region=us",
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 3
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/478/linescores/38/4?lang=en&region=us",
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 4
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/633850/competitions/633850/competitors/478/linescores/38/5?lang=en&region=us",
+                    "value": 2.0,
+                    "displayValue": "2",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 5
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "periodCoreMetadata": true
+      }
+    ]
+  }
+}

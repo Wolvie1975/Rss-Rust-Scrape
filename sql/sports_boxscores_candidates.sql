@@ -10,7 +10,8 @@ WITH Games AS (
 ), Ranked AS (
  SELECT *,ROW_NUMBER() OVER(PARTITION BY Sport,League,EventId ORDER BY StartsAtUtc DESC) rn FROM Games
 )
-SELECT TOP (@P1) g.Sport,g.League,g.EventId,g.HomeTeamId,g.AwayTeamId
+SELECT TOP (@P1) g.Sport,g.League,g.EventId,g.HomeTeamId,g.AwayTeamId,
+ CONVERT(VARCHAR(8),CONVERT(date,g.StartsAtUtc AT TIME ZONE 'UTC' AT TIME ZONE 'Eastern Standard Time'),112) GameDate
 FROM Ranked g LEFT JOIN dbo.SportsBoxScoreCache b
  ON b.Sport=g.Sport AND b.League=g.League AND b.EventId=g.EventId
 WHERE g.rn=1 AND (b.EventId IS NULL OR b.NextAttemptAt<=SYSUTCDATETIME())

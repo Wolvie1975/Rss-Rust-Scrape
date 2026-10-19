@@ -10,6 +10,7 @@ pub struct Game {
     pub event_id: String,
     pub home_id: String,
     pub away_id: String,
+    pub date: String,
 }
 #[derive(Debug)]
 pub struct Detail {
@@ -184,6 +185,17 @@ pub fn parse(root: &Value, game: &Game) -> Result<Detail> {
     })
 }
 
+// Period metadata is optional: new games keep usable stats even if it is unavailable.
+// Existing snapshots (including their labels) retain last-good behavior on a failure.
+fn period_result(mut detail: Detail, labeled: Result<String>, last_good: bool) -> Result<Detail> {
+    match labeled {
+        Ok(payload) => detail.payload = Some(payload),
+        Err(e) if last_good => return Err(e),
+        Err(_) => {}
+    }
+    Ok(detail)
+}
+
 pub fn collect(
     db: &mut crate::db::Db,
     dry: bool,
@@ -195,6 +207,7 @@ pub fn collect(
         .user_agent("My-Newsfeed/1.0")
         .build()?;
     let games = db.boxscore_candidates(limit)?;
+    let mut boards = crate::sports_periods::Boards::new()?;
     let started = Instant::now();
     let (mut available, mut unavailable, mut errors) = (0, 0, 0);
     for game in games {
@@ -210,7 +223,25 @@ pub fn collect(
                 game.sport, game.league, game.event_id
             );
             let body = crate::http::get_text(&client, &u)?;
-            parse(&serde_json::from_str(&body)?, &game)
+            let mut detail = parse(&serde_json::from_str(&body)?, &game)?;
+            if let Some(payload) = detail.payload.as_ref() {
+                let labeled = boards
+                    .get(&game)
+                    .and_then(|b| crate::sports_periods::apply(payload, b, &game));
+                let last_good = if labeled.is_err() {
+                    db.boxscore_available(&game)?
+                } else {
+                    false
+                };
+                if labeled.is_err() && !last_good {
+                    eprintln!(
+                        "period labels {}/{}/{}: metadata unavailable; retaining valid first-fetch statistics without inferred labels",
+                        game.sport, game.league, game.event_id
+                    );
+                }
+                detail = period_result(detail, labeled, last_good)?;
+            }
+            Ok(detail)
         })();
         match result {
             Ok(detail) => {
@@ -288,8 +319,27 @@ mod tests {
             event_id: v["header"]["id"].as_str().unwrap().into(),
             home_id: id("home"),
             away_id: id("away"),
+            date: "20261018".into(),
         };
         (v, g)
+    }
+    #[test]
+    fn missing_optional_period_metadata_preserves_first_stats_and_existing_snapshots() {
+        let (v, g) = fixture("nfl");
+        let detail = parse(&v, &g).unwrap();
+        let old = detail.payload.clone();
+        let url = detail.boxscore_url.clone();
+        let fallback = period_result(detail, Err("metadata fetch failed".into()), false).unwrap();
+        assert_eq!(fallback.payload, old);
+        assert_eq!(fallback.boxscore_url, url);
+        assert!(
+            period_result(
+                parse(&v, &g).unwrap(),
+                Err("metadata fetch failed".into()),
+                true
+            )
+            .is_err()
+        );
     }
     #[test]
     fn actual_sport_formats_preserve_team_player_and_nested_statistics() {

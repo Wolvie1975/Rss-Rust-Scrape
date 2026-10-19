@@ -26,6 +26,7 @@ mod nwsl;
 mod posters;
 mod rankings;
 mod sports_boxscores;
+mod sports_periods;
 mod standings;
 mod tvmaze;
 mod wnba;
@@ -354,6 +355,9 @@ struct Cli {
     /// Enrich stored finished games with optional ESPN box scores.
     #[arg(long)]
     boxscores_from_db: bool,
+    /// Backfill labels on existing box-score payloads without replacing statistics or values.
+    #[arg(long)]
+    repair_boxscore_periods: bool,
     /// Maximum optional box-score requests per run (also included by --events-from-db).
     #[arg(long, default_value_t=100, value_parser=clap::value_parser!(i32).range(1..=500))]
     boxscores_limit: i32,
@@ -506,6 +510,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         || cli.configure_mls
         || cli.configure_nhl
         || cli.configure_boxscores
+        || cli.repair_boxscore_periods
         || cli.boxscores_from_db
         || cli.configure_f1
         || cli.f1_from_db
@@ -714,6 +719,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             && urls.is_empty()
             && cli.events_feed.is_empty()
             && !cli.events_from_db
+            && !cli.repair_boxscore_periods
             && !cli.boxscores_from_db
             && !cli.f1_from_db
             && !cli.boxoffice
@@ -1759,6 +1765,21 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 Err(e) => failures.push(format!("box-office posters: {e}")),
             }
         }
+        if cli.repair_boxscore_periods {
+            let _timer = metrics::Stage::new("sports_periods");
+            let (ok, errors) = sports_periods::repair(
+                db.as_mut().unwrap(),
+                cli.dry_run,
+                cli.boxscores_limit,
+                run_id,
+            )?;
+            succeeded_sources += ok;
+            if errors > 0 {
+                failures.push(format!(
+                    "period repair: {errors} metadata/validation errors; cached values preserved"
+                ));
+            }
+        }
         if cli.boxscores_from_db || cli.events_from_db {
             let _timer = metrics::Stage::new("sports_boxscores");
             match sports_boxscores::collect(
@@ -1920,6 +1941,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         && !cli.from_db
         && cli.events_feed.is_empty()
         && !cli.events_from_db
+        && !cli.repair_boxscore_periods
         && !cli.boxscores_from_db
         && !cli.f1_from_db
         && !cli.boxoffice

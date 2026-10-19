@@ -4,6 +4,15 @@
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.
 
+## Box-score period labels — October 19, 2026
+
+Release **web-scraper:period-labels-20261019** repairs version-1 line-score period
+labels using explicit ESPN scoreboard/core identities. The historical repair
+preserves scoring values, statistics and result identities; normal enrichment now
+labels new snapshots too. See [deployment, preservation evidence and frontend
+examples](reports/sports-period-labels-20261019.md). The existing frontend already
+accepts string labels; no frontend deployment or schema migration is required.
+
 ## Men's college basketball news — October 19, 2026
 
 Added four enabled sources to **Men's College Basketball News**: ESPN **9353**,
@@ -99,7 +108,7 @@ registration and integration; source registration alone does not verify renderin
 
 ## Latest documented production state
 
-Last verified deployment: `web-scraper:boxscores-20261019`; scraper and front-end were healthy at verification. This document is not a live status check.
+Last verified deployment: `web-scraper:period-labels-20261019`; scraper and front-end were healthy at verification. This document is not a live status check.
 
 - Hourly collection includes news, rankings, standings, sports schedules (including F1), YouTube, movie releases, TV, actual box office and Boxoffice Pro forecasts.
 - MLS schedule/results source 5525, standings 9; Championship schedule/results 5326, standings 11; EPL schedule 5357, standings 12; NFL standings 10.

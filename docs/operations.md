@@ -25,6 +25,15 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 - [Scraper hardening and SQL credential split](#scraper-security-and-sql-credentials)
 - [Scraper performance instrumentation and optimizations](#scraper-performance)
 
+## Box-score period labels
+
+Release `web-scraper:period-labels-20261019` labels innings, quarters, halves,
+overtime and explicitly identified shootouts in the existing version-1 cache.
+`--repair-boxscore-periods` performs bounded historical label-only repair;
+`--dry-run` previews it. Normal optional enrichment labels new snapshots through
+the existing hourly schedule. No schema or frontend deployment is required.
+[Mapping evidence, preservation checks and rollback](../reports/sports-period-labels-20261019.md).
+
 ## Men's college basketball news
 
 Four enabled sources supply **Men's College Basketball News**: national ESPN,

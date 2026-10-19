@@ -4,6 +4,7 @@ Read [HANDOFF.md](HANDOFF.md) for the current documented deployment and working 
 
 | Topic | Guide |
 | --- | --- |
+| Box-score period labels, historical repair and frontend examples | [Deployment and frontend return handoff](reports/sports-period-labels-20261019.md) |
 | Optional game box scores and team/player statistics | [Frontend handoff](<New Development/sports-boxscores-frontend-handoff.md>), [deployment and operations](reports/sports-boxscores-20261019.md) |
 | F1 schedule, Grand Prix/sprint results, drivers and constructors | [Frontend integration](docs/f1-frontend-integration.md), [operations](docs/f1-operations.md) |
 | Men's college basketball news — national and Big 12 | [Sources and frontend contract](docs/mens-college-basketball-news.md) |
