@@ -1332,6 +1332,82 @@ END CATCH
             &self.poisoned,
         ))
     }
+    pub fn configure_boxscores(&mut self) -> Result<()> {
+        self.rt.block_on(bounded(
+            async {
+                for sql in [
+                    include_str!("../sql/sports_boxscores.sql"),
+                    include_str!("../sql/sports_boxscores_view.sql"),
+                    include_str!("../sql/sports_boxscores_permissions.sql"),
+                ] {
+                    self.client.simple_query(sql).await?.into_results().await?;
+                }
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+    pub fn boxscore_candidates(
+        &mut self,
+        limit: i32,
+    ) -> Result<Vec<crate::sports_boxscores::Game>> {
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(
+                        include_str!("../sql/sports_boxscores_candidates.sql"),
+                        &[&limit],
+                    )
+                    .await?
+                    .into_first_result()
+                    .await?;
+                rows.iter()
+                    .map(|r| {
+                        Ok(crate::sports_boxscores::Game {
+                            sport: r.get::<&str, _>(0).ok_or("missing sport")?.to_string(),
+                            league: r.get::<&str, _>(1).ok_or("missing league")?.to_string(),
+                            event_id: r.get::<&str, _>(2).ok_or("missing event ID")?.to_string(),
+                            home_id: r.get::<&str, _>(3).ok_or("missing home ID")?.to_string(),
+                            away_id: r.get::<&str, _>(4).ok_or("missing away ID")?.to_string(),
+                        })
+                    })
+                    .collect()
+            },
+            &self.poisoned,
+        ))
+    }
+    pub fn save_boxscore(
+        &mut self,
+        game: &crate::sports_boxscores::Game,
+        detail: Option<&crate::sports_boxscores::Detail>,
+        error: Option<&str>,
+    ) -> Result<()> {
+        let payload = detail.and_then(|d| d.payload.as_deref());
+        let summary = detail.and_then(|d| d.summary_url.as_deref());
+        let box_url = detail.and_then(|d| d.boxscore_url.as_deref());
+        let error = error.map(|e| utf16_prefix(e, 1000));
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .execute(
+                        include_str!("../sql/sports_boxscores_upsert.sql"),
+                        &[
+                            &game.sport,
+                            &game.league,
+                            &game.event_id,
+                            &payload,
+                            &summary,
+                            &box_url,
+                            &error,
+                        ],
+                    )
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
     pub fn configure_nhl(&mut self) -> Result<()> {
         self.rt.block_on(bounded(
             async {

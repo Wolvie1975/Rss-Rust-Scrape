@@ -1,0 +1,1339 @@
+{
+  "header": {
+    "id": "401873007",
+    "links": [
+      {
+        "rel": [
+          "summary",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/nfl/game/_/gameId/401873007/cowboys-packers",
+        "text": "Gamecast",
+        "shortText": "Summary",
+        "isExternal": false,
+        "isPremium": false
+      },
+      {
+        "rel": [
+          "recap",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/nfl/recap?gameId=401873007",
+        "text": "Recap",
+        "shortText": "Recap",
+        "isExternal": false,
+        "isPremium": false
+      },
+      {
+        "rel": [
+          "boxscore",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/nfl/boxscore/_/gameId/401873007",
+        "text": "Box Score",
+        "shortText": "Box Score",
+        "isExternal": false,
+        "isPremium": false
+      },
+      {
+        "rel": [
+          "pbp",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/nfl/playbyplay/_/gameId/401873007",
+        "text": "Play-by-Play",
+        "shortText": "Play-by-Play",
+        "isExternal": false,
+        "isPremium": false
+      },
+      {
+        "rel": [
+          "teamstats",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/nfl/matchup?gameId=401873007",
+        "text": "Team Stats",
+        "shortText": "Team Stats",
+        "isExternal": false,
+        "isPremium": false
+      },
+      {
+        "rel": [
+          "videos",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/nfl/video?gameId=401873007",
+        "text": "Videos",
+        "shortText": "Videos",
+        "isExternal": false,
+        "isPremium": false
+      }
+    ],
+    "competitions": [
+      {
+        "id": "401873007",
+        "status": {
+          "type": {
+            "id": "3",
+            "name": "STATUS_FINAL",
+            "state": "post",
+            "completed": true,
+            "description": "Final",
+            "detail": "Final",
+            "shortDetail": "Final"
+          },
+          "isTBDFlex": false
+        },
+        "competitors": [
+          {
+            "id": "9",
+            "homeAway": "home",
+            "team": {
+              "id": "9",
+              "displayName": "Green Bay Packers"
+            },
+            "score": "23",
+            "linescores": [
+              {
+                "displayValue": "7"
+              },
+              {
+                "displayValue": "10"
+              },
+              {
+                "displayValue": "3"
+              },
+              {
+                "displayValue": "3"
+              }
+            ]
+          },
+          {
+            "id": "6",
+            "homeAway": "away",
+            "team": {
+              "id": "6",
+              "displayName": "Dallas Cowboys"
+            },
+            "score": "13",
+            "linescores": [
+              {
+                "displayValue": "0"
+              },
+              {
+                "displayValue": "0"
+              },
+              {
+                "displayValue": "7"
+              },
+              {
+                "displayValue": "6"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "boxscore": {
+    "teams": [
+      {
+        "team": {
+          "id": "6"
+        },
+        "statistics": [
+          {
+            "name": "firstDowns",
+            "displayValue": "24",
+            "value": 24.0,
+            "label": "1st Downs"
+          },
+          {
+            "name": "firstDownsPassing",
+            "displayValue": "16",
+            "value": 16.0,
+            "label": "Passing 1st downs"
+          },
+          {
+            "name": "firstDownsRushing",
+            "displayValue": "4",
+            "value": 4.0,
+            "label": "Rushing 1st downs"
+          },
+          {
+            "name": "firstDownsPenalty",
+            "displayValue": "4",
+            "value": 4.0,
+            "label": "1st downs from penalties"
+          },
+          {
+            "name": "thirdDownEff",
+            "displayValue": "5-13",
+            "value": 0.3846153846,
+            "label": "3rd down efficiency"
+          }
+        ]
+      },
+      {
+        "team": {
+          "id": "9"
+        },
+        "statistics": [
+          {
+            "name": "firstDowns",
+            "displayValue": "20",
+            "value": 20.0,
+            "label": "1st Downs"
+          },
+          {
+            "name": "firstDownsPassing",
+            "displayValue": "13",
+            "value": 13.0,
+            "label": "Passing 1st downs"
+          },
+          {
+            "name": "firstDownsRushing",
+            "displayValue": "4",
+            "value": 4.0,
+            "label": "Rushing 1st downs"
+          },
+          {
+            "name": "firstDownsPenalty",
+            "displayValue": "3",
+            "value": 3.0,
+            "label": "1st downs from penalties"
+          },
+          {
+            "name": "thirdDownEff",
+            "displayValue": "11-18",
+            "value": 0.6111111111,
+            "label": "3rd down efficiency"
+          }
+        ]
+      }
+    ],
+    "players": [
+      {
+        "team": {
+          "id": "6"
+        },
+        "statistics": [
+          {
+            "name": "passing",
+            "text": "Dallas Passing",
+            "keys": [
+              "completions/passingAttempts",
+              "passingYards",
+              "yardsPerPassAttempt",
+              "passingTouchdowns",
+              "interceptions",
+              "sacks-sackYardsLost",
+              "adjQBR",
+              "QBRating"
+            ],
+            "labels": [
+              "C/ATT",
+              "YDS",
+              "AVG",
+              "TD",
+              "INT",
+              "SACKS",
+              "QBR",
+              "RTG"
+            ],
+            "descriptions": [
+              "Completions/Attempts",
+              "Yards",
+              "Yards Per Pass Attempt",
+              "Touchdowns",
+              "Interceptions",
+              "Sacks",
+              "Adjusted QBR",
+              "Passer Rating"
+            ],
+            "totals": [
+              "34/54",
+              "255",
+              "4.8",
+              "1",
+              "2",
+              "1-3",
+              "--",
+              "65.2"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "2577417",
+                  "displayName": "Dak Prescott"
+                },
+                "stats": [
+                  "34/54",
+                  "258",
+                  "4.8",
+                  "1",
+                  "2",
+                  "1-3",
+                  "60.6",
+                  "65.2"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "rushing",
+            "text": "Dallas Rushing",
+            "keys": [
+              "rushingAttempts",
+              "rushingYards",
+              "yardsPerRushAttempt",
+              "rushingTouchdowns",
+              "longRushing"
+            ],
+            "labels": [
+              "CAR",
+              "YDS",
+              "AVG",
+              "TD",
+              "LONG"
+            ],
+            "descriptions": [
+              "Rushing Attempts",
+              "Yards",
+              "Yards Per Rushing Attempt",
+              "Touchdowns",
+              "Longest Run"
+            ],
+            "totals": [
+              "15",
+              "48",
+              "3.2",
+              "1",
+              "8"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4361579",
+                  "displayName": "Javonte Williams"
+                },
+                "stats": [
+                  "11",
+                  "41",
+                  "3.7",
+                  "1",
+                  "8"
+                ],
+                "starter": null
+              },
+              {
+                "athlete": {
+                  "id": "2577417",
+                  "displayName": "Dak Prescott"
+                },
+                "stats": [
+                  "2",
+                  "7",
+                  "3.5",
+                  "0",
+                  "7"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "receiving",
+            "text": "Dallas Receiving",
+            "keys": [
+              "receptions",
+              "receivingYards",
+              "yardsPerReception",
+              "receivingTouchdowns",
+              "longReception",
+              "receivingTargets"
+            ],
+            "labels": [
+              "REC",
+              "YDS",
+              "AVG",
+              "TD",
+              "LONG",
+              "TGTS"
+            ],
+            "descriptions": [
+              "Receptions",
+              "Yards",
+              "Yards Per Reception",
+              "Touchdowns",
+              "Longest Reception",
+              "Receiving Targets"
+            ],
+            "totals": [
+              "34",
+              "258",
+              "7.6",
+              "1",
+              "21",
+              "54"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4426354",
+                  "displayName": "George Pickens"
+                },
+                "stats": [
+                  "6",
+                  "73",
+                  "12.2",
+                  "0",
+                  "21",
+                  "11"
+                ],
+                "starter": null
+              },
+              {
+                "athlete": {
+                  "id": "4241389",
+                  "displayName": "CeeDee Lamb"
+                },
+                "stats": [
+                  "9",
+                  "70",
+                  "7.8",
+                  "0",
+                  "17",
+                  "18"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "fumbles",
+            "text": "Dallas Fumbles",
+            "keys": [
+              "fumbles",
+              "fumblesLost",
+              "fumblesRecovered"
+            ],
+            "labels": [
+              "FUM",
+              "LOST",
+              "REC"
+            ],
+            "descriptions": [
+              "Fumbles",
+              "Fumbles Lost",
+              "Fumbles Recovered"
+            ],
+            "totals": [
+              "1",
+              "0",
+              "1"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4426663",
+                  "displayName": "Cooper Beebe"
+                },
+                "stats": [
+                  "1",
+                  "0",
+                  "0"
+                ],
+                "starter": null
+              },
+              {
+                "athlete": {
+                  "id": "4242355",
+                  "displayName": "Jake Ferguson"
+                },
+                "stats": [
+                  "0",
+                  "0",
+                  "1"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "defensive",
+            "text": "Dallas Defense",
+            "keys": [
+              "totalTackles",
+              "soloTackles",
+              "sacks",
+              "tacklesForLoss",
+              "passesDefended",
+              "QBHits",
+              "defensiveTouchdowns"
+            ],
+            "labels": [
+              "TOT",
+              "SOLO",
+              "SACKS",
+              "TFL",
+              "PD",
+              "QB HTS",
+              "TD"
+            ],
+            "descriptions": [
+              "Tackles",
+              "Solo Tackles",
+              "Sacks",
+              "Tackles For Loss",
+              "Passes Defended",
+              "Quarterback Hits",
+              "Touchdowns"
+            ],
+            "totals": [
+              "62",
+              "40",
+              "3",
+              "7",
+              "8",
+              "8",
+              "0"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4870706",
+                  "displayName": "Caleb Downs"
+                },
+                "stats": [
+                  "12",
+                  "6",
+                  "0",
+                  "0",
+                  "0",
+                  "1",
+                  "0"
+                ],
+                "starter": null
+              },
+              {
+                "athlete": {
+                  "id": "4241921",
+                  "displayName": "Markquese Bell"
+                },
+                "stats": [
+                  "5",
+                  "4",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "0"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "interceptions",
+            "text": "Dallas Interceptions",
+            "keys": [
+              "interceptions",
+              "interceptionYards",
+              "interceptionTouchdowns"
+            ],
+            "labels": [
+              "INT",
+              "YDS",
+              "TD"
+            ],
+            "descriptions": [
+              "Interceptions",
+              "Yards",
+              "Touchdowns"
+            ],
+            "totals": [
+              "1",
+              "0",
+              "0"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4428914",
+                  "displayName": "Dee Winters"
+                },
+                "stats": [
+                  "1",
+                  "0",
+                  "0"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "kickReturns",
+            "text": "Dallas Kick Returns",
+            "keys": [
+              "kickReturns",
+              "kickReturnYards",
+              "yardsPerKickReturn",
+              "longKickReturn",
+              "kickReturnTouchdowns"
+            ],
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "LONG",
+              "TD"
+            ],
+            "descriptions": [
+              "Kick Returns",
+              "Yards",
+              "Yards Per Kick Return",
+              "Longest Kick Return",
+              "Touchdowns"
+            ],
+            "totals": [
+              "6",
+              "147",
+              "24.5",
+              "30",
+              "0"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4429676",
+                  "displayName": "Tyler Goodson"
+                },
+                "stats": [
+                  "5",
+                  "122",
+                  "24.4",
+                  "30",
+                  "0"
+                ],
+                "starter": null
+              },
+              {
+                "athlete": {
+                  "id": "3676833",
+                  "displayName": "KaVontae Turpin"
+                },
+                "stats": [
+                  "1",
+                  "25",
+                  "25.0",
+                  "25",
+                  "0"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "puntReturns",
+            "text": "Dallas Punt Returns",
+            "keys": [
+              "puntReturns",
+              "puntReturnYards",
+              "yardsPerPuntReturn",
+              "longPuntReturn",
+              "puntReturnTouchdowns"
+            ],
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "LONG",
+              "TD"
+            ],
+            "descriptions": [
+              "Punt Returns",
+              "Yards",
+              "Yards Per Punt Return",
+              "Longest Punt Return",
+              "Touchdowns"
+            ],
+            "totals": [
+              "3",
+              "18",
+              "6.0",
+              "16",
+              "0"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4426485",
+                  "displayName": "Jonathan Mingo"
+                },
+                "stats": [
+                  "3",
+                  "18",
+                  "6.0",
+                  "16",
+                  "0"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "kicking",
+            "text": "Dallas Kicking",
+            "keys": [
+              "fieldGoalsMade/fieldGoalAttempts",
+              "fieldGoalPct",
+              "longFieldGoalMade",
+              "extraPointsMade/extraPointAttempts",
+              "totalKickingPoints"
+            ],
+            "labels": [
+              "FG",
+              "PCT",
+              "LONG",
+              "XP",
+              "PTS"
+            ],
+            "descriptions": [
+              "Field Goals Made/Attempts",
+              "Field Goal Percentage",
+              "Longest Field Goal Made",
+              "Extra Points Made/Attempts",
+              "Kicking Points"
+            ],
+            "totals": [
+              "0/0",
+              "0.0",
+              "0",
+              "1/1",
+              "1"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "3953687",
+                  "displayName": "Brandon Aubrey"
+                },
+                "stats": [
+                  "0/0",
+                  "0.0",
+                  "0",
+                  "1/1",
+                  "1"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "punting",
+            "text": "Dallas Punting",
+            "keys": [
+              "punts",
+              "puntYards",
+              "grossAvgPuntYards",
+              "touchbacks",
+              "puntsInside20",
+              "longPunt"
+            ],
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "TB",
+              "In 20",
+              "LONG"
+            ],
+            "descriptions": [
+              "Punts",
+              "Yards",
+              "Average Punt Yards",
+              "Touchbacks",
+              "Punts Inside 20",
+              "Longest Punt"
+            ],
+            "totals": [
+              "3",
+              "135",
+              "45.0",
+              "0",
+              "2",
+              "53"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "14950",
+                  "displayName": "Bryan Anger"
+                },
+                "stats": [
+                  "3",
+                  "135",
+                  "45.0",
+                  "0",
+                  "2",
+                  "53"
+                ],
+                "starter": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "team": {
+          "id": "9"
+        },
+        "statistics": [
+          {
+            "name": "passing",
+            "text": "Green Bay Passing",
+            "keys": [
+              "completions/passingAttempts",
+              "passingYards",
+              "yardsPerPassAttempt",
+              "passingTouchdowns",
+              "interceptions",
+              "sacks-sackYardsLost",
+              "adjQBR",
+              "QBRating"
+            ],
+            "labels": [
+              "C/ATT",
+              "YDS",
+              "AVG",
+              "TD",
+              "INT",
+              "SACKS",
+              "QBR",
+              "RTG"
+            ],
+            "descriptions": [
+              "Completions/Attempts",
+              "Yards",
+              "Yards Per Pass Attempt",
+              "Touchdowns",
+              "Interceptions",
+              "Sacks",
+              "Adjusted QBR",
+              "Passer Rating"
+            ],
+            "totals": [
+              "23/41",
+              "261",
+              "6.7",
+              "1",
+              "1",
+              "3-15",
+              "--",
+              "74.8"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4036378",
+                  "displayName": "Jordan Love"
+                },
+                "stats": [
+                  "23/41",
+                  "276",
+                  "6.7",
+                  "1",
+                  "1",
+                  "3-15",
+                  "56.3",
+                  "74.8"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "rushing",
+            "text": "Green Bay Rushing",
+            "keys": [
+              "rushingAttempts",
+              "rushingYards",
+              "yardsPerRushAttempt",
+              "rushingTouchdowns",
+              "longRushing"
+            ],
+            "labels": [
+              "CAR",
+              "YDS",
+              "AVG",
+              "TD",
+              "LONG"
+            ],
+            "descriptions": [
+              "Rushing Attempts",
+              "Yards",
+              "Yards Per Rushing Attempt",
+              "Touchdowns",
+              "Longest Run"
+            ],
+            "totals": [
+              "26",
+              "57",
+              "2.2",
+              "1",
+              "13"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4249836",
+                  "displayName": "Pierre Strong Jr."
+                },
+                "stats": [
+                  "11",
+                  "28",
+                  "2.5",
+                  "0",
+                  "6"
+                ],
+                "starter": null
+              },
+              {
+                "athlete": {
+                  "id": "4036378",
+                  "displayName": "Jordan Love"
+                },
+                "stats": [
+                  "4",
+                  "12",
+                  "3.0",
+                  "1",
+                  "13"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "receiving",
+            "text": "Green Bay Receiving",
+            "keys": [
+              "receptions",
+              "receivingYards",
+              "yardsPerReception",
+              "receivingTouchdowns",
+              "longReception",
+              "receivingTargets"
+            ],
+            "labels": [
+              "REC",
+              "YDS",
+              "AVG",
+              "TD",
+              "LONG",
+              "TGTS"
+            ],
+            "descriptions": [
+              "Receptions",
+              "Yards",
+              "Yards Per Reception",
+              "Touchdowns",
+              "Longest Reception",
+              "Receiving Targets"
+            ],
+            "totals": [
+              "23",
+              "276",
+              "12.0",
+              "1",
+              "37",
+              "40"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4701936",
+                  "displayName": "Matthew Golden"
+                },
+                "stats": [
+                  "6",
+                  "104",
+                  "17.3",
+                  "1",
+                  "37",
+                  "13"
+                ],
+                "starter": null
+              },
+              {
+                "athlete": {
+                  "id": "4248528",
+                  "displayName": "Christian Watson"
+                },
+                "stats": [
+                  "3",
+                  "64",
+                  "21.3",
+                  "0",
+                  "28",
+                  "8"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "fumbles",
+            "text": "Green Bay Fumbles",
+            "keys": [
+              "fumbles",
+              "fumblesLost",
+              "fumblesRecovered"
+            ],
+            "labels": [
+              "FUM",
+              "LOST",
+              "REC"
+            ],
+            "descriptions": [
+              "Fumbles",
+              "Fumbles Lost",
+              "Fumbles Recovered"
+            ],
+            "totals": [],
+            "athletes": []
+          },
+          {
+            "name": "defensive",
+            "text": "Green Bay Defense",
+            "keys": [
+              "totalTackles",
+              "soloTackles",
+              "sacks",
+              "tacklesForLoss",
+              "passesDefended",
+              "QBHits",
+              "defensiveTouchdowns"
+            ],
+            "labels": [
+              "TOT",
+              "SOLO",
+              "SACKS",
+              "TFL",
+              "PD",
+              "QB HTS",
+              "TD"
+            ],
+            "descriptions": [
+              "Tackles",
+              "Solo Tackles",
+              "Sacks",
+              "Tackles For Loss",
+              "Passes Defended",
+              "Quarterback Hits",
+              "Touchdowns"
+            ],
+            "totals": [
+              "64",
+              "49",
+              "1",
+              "3",
+              "8",
+              "7",
+              "0"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4259493",
+                  "displayName": "Keisean Nixon"
+                },
+                "stats": [
+                  "8",
+                  "8",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "0"
+                ],
+                "starter": null
+              },
+              {
+                "athlete": {
+                  "id": "4428863",
+                  "displayName": "Evan Williams"
+                },
+                "stats": [
+                  "6",
+                  "5",
+                  "0",
+                  "0",
+                  "1",
+                  "1",
+                  "0"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "interceptions",
+            "text": "Green Bay Interceptions",
+            "keys": [
+              "interceptions",
+              "interceptionYards",
+              "interceptionTouchdowns"
+            ],
+            "labels": [
+              "INT",
+              "YDS",
+              "TD"
+            ],
+            "descriptions": [
+              "Interceptions",
+              "Yards",
+              "Touchdowns"
+            ],
+            "totals": [
+              "2",
+              "22",
+              "0"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4428863",
+                  "displayName": "Evan Williams"
+                },
+                "stats": [
+                  "1",
+                  "17",
+                  "0"
+                ],
+                "starter": null
+              },
+              {
+                "athlete": {
+                  "id": "5076652",
+                  "displayName": "Brandon Cisse"
+                },
+                "stats": [
+                  "1",
+                  "5",
+                  "0"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "kickReturns",
+            "text": "Green Bay Kick Returns",
+            "keys": [
+              "kickReturns",
+              "kickReturnYards",
+              "yardsPerKickReturn",
+              "longKickReturn",
+              "kickReturnTouchdowns"
+            ],
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "LONG",
+              "TD"
+            ],
+            "descriptions": [
+              "Kick Returns",
+              "Yards",
+              "Yards Per Kick Return",
+              "Longest Kick Return",
+              "Touchdowns"
+            ],
+            "totals": [
+              "2",
+              "51",
+              "25.5",
+              "27",
+              "0"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4635009",
+                  "displayName": "J. Michael Sturdivant"
+                },
+                "stats": [
+                  "2",
+                  "51",
+                  "25.5",
+                  "27",
+                  "0"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "puntReturns",
+            "text": "Green Bay Punt Returns",
+            "keys": [
+              "puntReturns",
+              "puntReturnYards",
+              "yardsPerPuntReturn",
+              "longPuntReturn",
+              "puntReturnTouchdowns"
+            ],
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "LONG",
+              "TD"
+            ],
+            "descriptions": [
+              "Punt Returns",
+              "Yards",
+              "Yards Per Punt Return",
+              "Longest Punt Return",
+              "Touchdowns"
+            ],
+            "totals": [
+              "1",
+              "16",
+              "16.0",
+              "16",
+              "0"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4578436",
+                  "displayName": "Coleman Owen"
+                },
+                "stats": [
+                  "1",
+                  "16",
+                  "16.0",
+                  "16",
+                  "0"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "kicking",
+            "text": "Green Bay Kicking",
+            "keys": [
+              "fieldGoalsMade/fieldGoalAttempts",
+              "fieldGoalPct",
+              "longFieldGoalMade",
+              "extraPointsMade/extraPointAttempts",
+              "totalKickingPoints"
+            ],
+            "labels": [
+              "FG",
+              "PCT",
+              "LONG",
+              "XP",
+              "PTS"
+            ],
+            "descriptions": [
+              "Field Goals Made/Attempts",
+              "Field Goal Percentage",
+              "Longest Field Goal Made",
+              "Extra Points Made/Attempts",
+              "Kicking Points"
+            ],
+            "totals": [
+              "3/3",
+              "100.0",
+              "44",
+              "2/2",
+              "11"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4869461",
+                  "displayName": "Trey Smack"
+                },
+                "stats": [
+                  "3/3",
+                  "100.0",
+                  "44",
+                  "2/2",
+                  "11"
+                ],
+                "starter": null
+              }
+            ]
+          },
+          {
+            "name": "punting",
+            "text": "Green Bay Punting",
+            "keys": [
+              "punts",
+              "puntYards",
+              "grossAvgPuntYards",
+              "touchbacks",
+              "puntsInside20",
+              "longPunt"
+            ],
+            "labels": [
+              "NO",
+              "YDS",
+              "AVG",
+              "TB",
+              "In 20",
+              "LONG"
+            ],
+            "descriptions": [
+              "Punts",
+              "Yards",
+              "Average Punt Yards",
+              "Touchbacks",
+              "Punts Inside 20",
+              "Longest Punt"
+            ],
+            "totals": [
+              "3",
+              "151",
+              "50.3",
+              "0",
+              "0",
+              "55"
+            ],
+            "athletes": [
+              {
+                "athlete": {
+                  "id": "4248789",
+                  "displayName": "Daniel Whelan"
+                },
+                "stats": [
+                  "3",
+                  "151",
+                  "50.3",
+                  "0",
+                  "0",
+                  "55"
+                ],
+                "starter": null
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

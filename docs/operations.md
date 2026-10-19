@@ -4,6 +4,10 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 
 ## Contents
 
+- [Optional sports box scores](#optional-sports-box-scores)
+
+- [Kansas City local news](#kansas-city-local-news)
+
 - [Indie video game news](#indie-video-game-news--october-19-2026)
 
 - [Big 12 news sources](#big12-news-sources)
@@ -20,6 +24,37 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 - [WebScraper SQL backup maintenance](#sql-backups)
 - [Scraper hardening and SQL credential split](#scraper-security-and-sql-credentials)
 - [Scraper performance instrumentation and optimizations](#scraper-performance)
+
+## Database review and statistics maintenance
+
+[October 19 review](../reports/database-review-20261019.md): CHECKDB passed;
+38 stale optimizer statistics were refreshed across 13 tables. Retention and
+orphan checks found no application-data cleanup candidates. See the report for
+storage, backup-history verification limits and the frontend login hardening
+follow-up. [Targeted statistics maintenance](../sql/maintenance_refresh_stale_statistics.sql)
+defaults to preview mode; no new maintenance schedule was installed.
+
+## Optional sports box scores
+
+Release `web-scraper:boxscores-20261019` adds bounded, cached ESPN game detail
+through the existing hourly `--events-from-db` path. Explicit refresh:
+`web_scraper --boxscores-from-db`; preview adds `--dry-run`. Migration setup is
+`--configure-boxscores` with migration credentials and explicit WebScraper targeting;
+runtime does no DDL. The collector writes only its new optional statistics cache,
+never result scores. Missing detail leaves existing fallbacks intact and failed
+refreshes retain last-good snapshots. See [limits, deployment evidence and
+rollback](../reports/sports-boxscores-20261019.md) and [the frontend handoff](<../New Development/sports-boxscores-frontend-handoff.md>).
+
+## Kansas City local news
+
+Five enabled publishers populate **Kansas City News**: KSHB 9172, Flatland 9173,
+The Pitch Food & Drink 9174, KCUR's Kansas City topic 9175 and The Beacon's Kansas
+City category 9176. Production run 1244 collected 45 articles; live `/local`
+returned all 45 across four cursor pages. No restart or deployment was needed.
+See [feed URLs, scope, safe first collection and verification](kansas-city-news.md).
+The [repeatable seed](../sql/kansas_city_news_seed.sql) deliberately registers
+missing sources disabled; populate and verify before enabling to avoid an empty
+frontend category switch.
 
 ## Indie video game news — October 19, 2026
 

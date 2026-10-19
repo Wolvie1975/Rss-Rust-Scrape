@@ -4,6 +4,35 @@
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.
 
+## Database review — October 19, 2026
+
+Integrity check passed. Refreshed **38 stale optimizer statistics across 13 tables**;
+no expired-policy records or genuine orphan data required deletion. Both services
+remained healthy. [Review and follow-ups](reports/database-review-20261019.md)
+records storage/backups, three deliberately unlinked future sports observations,
+and the frontend database login's existing sysadmin privileges. No credentials,
+retention settings, source data or application deployment were changed.
+
+## Optional sports box scores — October 19, 2026
+
+Deployed **web-scraper:boxscores-20261019**. The existing hourly
+`--events-from-db` path now enriches stored completed games from both results
+models with optional ESPN team/player statistics. `dbo.SportsBoxScores` exposes
+availability, normalized JSON and validated provider links. Unavailable detail
+preserves the existing result fallback; failed refreshes preserve last-good stats.
+Initial backfill checked 1,355 games: 960 with statistics, 395 with no detail,
+zero errors. The separate frontend still needs the UI described in [the frontend handoff](<New Development/sports-boxscores-frontend-handoff.md>).
+See [deployment, backfill evidence and rollback](reports/sports-boxscores-20261019.md).
+
+## Kansas City local news — October 19, 2026
+
+Added five enabled sources to **Kansas City News**: KSHB **9172**, Flatland **9173**,
+The Pitch Food & Drink **9174**, KCUR **9175** and The Beacon **9176**. Production
+run **1244** collected **45 articles** with no failures. Live `/local` switched to
+dedicated content; four cursor pages returned all 45 unique stories. No image,
+scheduler or frontend deployment/restart was required. See [source scope and
+verification](docs/kansas-city-news.md) and [disabled-first seed](sql/kansas_city_news_seed.sql).
+
 ## Indie video game news — October 19, 2026
 
 Added Indie Games Plus **9037**, The Indie Informer **9038**, and Indie Hive **9039**
@@ -60,7 +89,7 @@ registration and integration; source registration alone does not verify renderin
 
 ## Latest documented production state
 
-Last verified deployment: `web-scraper:f1-20261018`; scraper and front-end were healthy at verification. This document is not a live status check.
+Last verified deployment: `web-scraper:boxscores-20261019`; scraper and front-end were healthy at verification. This document is not a live status check.
 
 - Hourly collection includes news, rankings, standings, sports schedules (including F1), YouTube, movie releases, TV, actual box office and Boxoffice Pro forecasts.
 - MLS schedule/results source 5525, standings 9; Championship schedule/results 5326, standings 11; EPL schedule 5357, standings 12; NFL standings 10.

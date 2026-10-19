@@ -6,6 +6,11 @@ The college sports hub can also use the **Big 12 News** article category;
 see its [news frontend contract](big12-news-frontend-integration.md). This is
 independent of the structured sports data described below.
 
+Optional ESPN game details now enrich both stored results models independently
+of final scores. Read `dbo.SportsBoxScores` with a LEFT JOIN and keep existing
+fallbacks when details are unavailable. See [the frontend contract](<../New Development/sports-boxscores-frontend-handoff.md>)
+and [deployment/collection evidence](../reports/sports-boxscores-20261019.md).
+
 ## Contents
 
 - [F1 calendar and race/sprint results](#f1-schedule-results)

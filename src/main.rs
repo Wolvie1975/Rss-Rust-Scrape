@@ -25,6 +25,7 @@ mod nhl;
 mod nwsl;
 mod posters;
 mod rankings;
+mod sports_boxscores;
 mod standings;
 mod tvmaze;
 mod wnba;
@@ -347,6 +348,15 @@ struct Cli {
     /// Configure F1 calendar, race/sprint results and championships disabled.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_f1: bool,
+    /// Apply the additive optional game box-score schema with migration credentials.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_boxscores: bool,
+    /// Enrich stored finished games with optional ESPN box scores.
+    #[arg(long)]
+    boxscores_from_db: bool,
+    /// Maximum optional box-score requests per run (also included by --events-from-db).
+    #[arg(long, default_value_t=100, value_parser=clap::value_parser!(i32).range(1..=500))]
+    boxscores_limit: i32,
     /// Refresh enabled F1 data only (also included by --events-from-db).
     #[arg(long)]
     f1_from_db: bool,
@@ -495,6 +505,8 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         || cli.configure_boxoffice
         || cli.configure_mls
         || cli.configure_nhl
+        || cli.configure_boxscores
+        || cli.boxscores_from_db
         || cli.configure_f1
         || cli.f1_from_db
         || cli.configure_epl
@@ -513,7 +525,8 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         || !cli.youtube_feed.is_empty()
         || cli.youtube_from_db;
     let mut db = if use_db {
-        let setup = cli.configure_rankings
+        let setup = cli.configure_boxscores
+            || cli.configure_rankings
             || cli.configure_movieinsider
             || cli.configure_standings
             || cli.initialize_db
@@ -536,7 +549,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             std::env::var("MSSQL_CONNECTION_STRING")
         }
         .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
-        Some(if cli.configure_f1 {
+        Some(if cli.configure_f1 || cli.configure_boxscores {
             db::Db::connect_named(&ado, &cli.database)?
         } else if setup {
             db::Db::open_named(&ado, &cli.database)?
@@ -583,6 +596,11 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     if cli.configure_boxoffice {
         db.as_mut().unwrap().configure_boxoffice()?;
         eprintln!("Box-office chart table configured");
+        return Ok(());
+    }
+    if cli.configure_boxscores {
+        db.as_mut().unwrap().configure_boxscores()?;
+        eprintln!("configured optional sports box-score cache and read view");
         return Ok(());
     }
     if cli.configure_f1 {
@@ -696,6 +714,7 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             && urls.is_empty()
             && cli.events_feed.is_empty()
             && !cli.events_from_db
+            && !cli.boxscores_from_db
             && !cli.f1_from_db
             && !cli.boxoffice
             && !cli.boxoffice_forecasts
@@ -1740,6 +1759,24 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 Err(e) => failures.push(format!("box-office posters: {e}")),
             }
         }
+        if cli.boxscores_from_db || cli.events_from_db {
+            let _timer = metrics::Stage::new("sports_boxscores");
+            match sports_boxscores::collect(
+                db.as_mut().unwrap(),
+                cli.dry_run,
+                cli.boxscores_limit,
+                run_id,
+            ) {
+                Ok((ok, errors)) => {
+                    succeeded_sources += ok;
+                    if errors > 0 {
+                        failures.push(format!("optional box scores: {errors} fetch/validation errors; existing results preserved"));
+                    }
+                }
+                Err(e) => failures.push(format!("optional box scores: {e}")),
+            }
+        }
+
         let items: Vec<_> = pages
             .into_iter()
             .map(|meta| {
@@ -1883,6 +1920,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         && !cli.from_db
         && cli.events_feed.is_empty()
         && !cli.events_from_db
+        && !cli.boxscores_from_db
         && !cli.f1_from_db
         && !cli.boxoffice
         && !cli.boxoffice_forecasts

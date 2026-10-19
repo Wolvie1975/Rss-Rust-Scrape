@@ -4,6 +4,7 @@ Read [HANDOFF.md](HANDOFF.md) for the current documented deployment and working 
 
 | Topic | Guide |
 | --- | --- |
+| Optional game box scores and team/player statistics | [Frontend handoff](<New Development/sports-boxscores-frontend-handoff.md>), [deployment and operations](reports/sports-boxscores-20261019.md) |
 | F1 schedule, Grand Prix/sprint results, drivers and constructors | [Frontend integration](docs/f1-frontend-integration.md), [operations](docs/f1-operations.md) |
 | Big 12 college sports news | [News frontend integration](docs/big12-news-frontend-integration.md) |
 | F1 news | [News frontend integration](docs/f1-news-frontend-integration.md), [collection](docs/f1-operations.md#f1-news-registration) |
@@ -35,3 +36,7 @@ setup; see [F1 setup and enablement](docs/f1-operations.md#setup-and-enablement)
 The deployed F1 collector and frontend read contract are documented above.
 
 2026 NWSL schedules now cover all teams: [data and frontend notes](docs/nwsl-league-schedule.md).
+
+The optional game-statistics cache and read view require the separate additive
+`--configure-boxscores` setup with migration credentials after shared results
+tables exist. [Setup, deployment and rollback](reports/sports-boxscores-20261019.md).

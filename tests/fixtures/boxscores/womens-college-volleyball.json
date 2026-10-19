@@ -1,0 +1,93 @@
+{
+  "header": {
+    "id": "401887108",
+    "competitions": [
+      {
+        "id": "401887108",
+        "status": {
+          "type": {
+            "id": "3",
+            "name": "STATUS_FINAL",
+            "state": "post",
+            "completed": true,
+            "description": "Final",
+            "detail": "Final",
+            "shortDetail": "Final"
+          }
+        },
+        "competitors": [
+          {
+            "id": "2628",
+            "homeAway": "home",
+            "team": {
+              "id": "2628",
+              "displayName": "TCU Horned Frogs"
+            },
+            "score": "0",
+            "linescores": [
+              {
+                "displayValue": "22"
+              },
+              {
+                "displayValue": "22"
+              },
+              {
+                "displayValue": "25"
+              }
+            ]
+          },
+          {
+            "id": "239",
+            "homeAway": "away",
+            "team": {
+              "id": "239",
+              "displayName": "Baylor Bears"
+            },
+            "score": "3",
+            "linescores": [
+              {
+                "displayValue": "25"
+              },
+              {
+                "displayValue": "25"
+              },
+              {
+                "displayValue": "27"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "boxscore": {
+    "teams": [
+      {
+        "team": {
+          "id": "239"
+        },
+        "statistics": []
+      },
+      {
+        "team": {
+          "id": "2628"
+        },
+        "statistics": []
+      }
+    ],
+    "players": [
+      {
+        "team": {
+          "id": "239"
+        },
+        "statistics": []
+      },
+      {
+        "team": {
+          "id": "2628"
+        },
+        "statistics": []
+      }
+    ]
+  }
+}
