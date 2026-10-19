@@ -117,6 +117,10 @@ event `401856600` and synthetic overtime cases; that event is **not a production
 acceptance route**. Soccer World Cup event `633850` is likewise fixture-only and
 covers extra time and penalties; this work did not register a new league.
 
+A full championship team/player extraction sample is now available in the
+[men's college basketball frontend handoff](mens-college-basketball-boxscore-frontend-handoff.md),
+with a version-1 JSON payload for development before the season starts.
+
 ## Acceptance checks
 
 - The NHL example opens after the visibility fix and displays its cached labels.

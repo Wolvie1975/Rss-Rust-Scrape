@@ -1,0 +1,884 @@
+{
+  "version": 1,
+  "sport": "basketball",
+  "league": "mens-college-basketball",
+  "eventId": "401856600",
+  "hasTeamStats": true,
+  "hasPlayerStats": true,
+  "teams": [
+    {
+      "id": "130",
+      "name": "Michigan Wolverines",
+      "homeAway": "home",
+      "score": "69",
+      "lineScores": [
+        {
+          "period": "1st half",
+          "displayValue": "33"
+        },
+        {
+          "period": "2nd half",
+          "displayValue": "36"
+        }
+      ],
+      "statistics": [
+        {
+          "group": null,
+          "key": "fieldGoalsMade-fieldGoalsAttempted",
+          "label": "FG",
+          "value": "21-55"
+        },
+        {
+          "group": null,
+          "key": "fieldGoalPct",
+          "label": "Field Goal %",
+          "value": "38"
+        },
+        {
+          "group": null,
+          "key": "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+          "label": "3PT",
+          "value": "2-15"
+        },
+        {
+          "group": null,
+          "key": "threePointFieldGoalPct",
+          "label": "Three Point %",
+          "value": "13"
+        },
+        {
+          "group": null,
+          "key": "freeThrowsMade-freeThrowsAttempted",
+          "label": "FT",
+          "value": "25-28"
+        },
+        {
+          "group": null,
+          "key": "freeThrowPct",
+          "label": "Free Throw %",
+          "value": "89"
+        },
+        {
+          "group": null,
+          "key": "totalRebounds",
+          "label": "Rebounds",
+          "value": "39"
+        },
+        {
+          "group": null,
+          "key": "offensiveRebounds",
+          "label": "Offensive Rebounds",
+          "value": "12"
+        },
+        {
+          "group": null,
+          "key": "defensiveRebounds",
+          "label": "Defensive Rebounds",
+          "value": "27"
+        },
+        {
+          "group": null,
+          "key": "assists",
+          "label": "Assists",
+          "value": "7"
+        },
+        {
+          "group": null,
+          "key": "steals",
+          "label": "Steals",
+          "value": "6"
+        },
+        {
+          "group": null,
+          "key": "blocks",
+          "label": "Blocks",
+          "value": "6"
+        },
+        {
+          "group": null,
+          "key": "turnovers",
+          "label": "Turnovers",
+          "value": "10"
+        },
+        {
+          "group": null,
+          "key": "teamTurnovers",
+          "label": "Team Turnovers",
+          "value": "0"
+        },
+        {
+          "group": null,
+          "key": "totalTurnovers",
+          "label": "Total Turnovers",
+          "value": "10"
+        },
+        {
+          "group": null,
+          "key": "technicalFouls",
+          "label": "Technical Fouls",
+          "value": "0"
+        },
+        {
+          "group": null,
+          "key": "totalTechnicalFouls",
+          "label": "Total Technical Fouls",
+          "value": "0"
+        },
+        {
+          "group": null,
+          "key": "flagrantFouls",
+          "label": "Flagrant Fouls",
+          "value": "0"
+        },
+        {
+          "group": null,
+          "key": "turnoverPoints",
+          "label": "Points Off Turnovers",
+          "value": "4"
+        },
+        {
+          "group": null,
+          "key": "fastBreakPoints",
+          "label": "Fast Break Points",
+          "value": "2"
+        },
+        {
+          "group": null,
+          "key": "pointsInPaint",
+          "label": "Points in Paint",
+          "value": "36"
+        },
+        {
+          "group": null,
+          "key": "fouls",
+          "label": "Fouls",
+          "value": "13"
+        },
+        {
+          "group": null,
+          "key": "largestLead",
+          "label": "Largest Lead",
+          "value": "11"
+        },
+        {
+          "group": null,
+          "key": "leadChanges",
+          "label": "Lead Changes",
+          "value": "6"
+        },
+        {
+          "group": null,
+          "key": "leadPercentage",
+          "label": "Percent Led",
+          "value": "75"
+        }
+      ]
+    },
+    {
+      "id": "41",
+      "name": "UConn Huskies",
+      "homeAway": "away",
+      "score": "63",
+      "lineScores": [
+        {
+          "period": "1st half",
+          "displayValue": "29"
+        },
+        {
+          "period": "2nd half",
+          "displayValue": "34"
+        }
+      ],
+      "statistics": [
+        {
+          "group": null,
+          "key": "fieldGoalsMade-fieldGoalsAttempted",
+          "label": "FG",
+          "value": "21-68"
+        },
+        {
+          "group": null,
+          "key": "fieldGoalPct",
+          "label": "Field Goal %",
+          "value": "31"
+        },
+        {
+          "group": null,
+          "key": "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+          "label": "3PT",
+          "value": "9-33"
+        },
+        {
+          "group": null,
+          "key": "threePointFieldGoalPct",
+          "label": "Three Point %",
+          "value": "27"
+        },
+        {
+          "group": null,
+          "key": "freeThrowsMade-freeThrowsAttempted",
+          "label": "FT",
+          "value": "12-16"
+        },
+        {
+          "group": null,
+          "key": "freeThrowPct",
+          "label": "Free Throw %",
+          "value": "75"
+        },
+        {
+          "group": null,
+          "key": "totalRebounds",
+          "label": "Rebounds",
+          "value": "46"
+        },
+        {
+          "group": null,
+          "key": "offensiveRebounds",
+          "label": "Offensive Rebounds",
+          "value": "22"
+        },
+        {
+          "group": null,
+          "key": "defensiveRebounds",
+          "label": "Defensive Rebounds",
+          "value": "24"
+        },
+        {
+          "group": null,
+          "key": "assists",
+          "label": "Assists",
+          "value": "9"
+        },
+        {
+          "group": null,
+          "key": "steals",
+          "label": "Steals",
+          "value": "4"
+        },
+        {
+          "group": null,
+          "key": "blocks",
+          "label": "Blocks",
+          "value": "2"
+        },
+        {
+          "group": null,
+          "key": "turnovers",
+          "label": "Turnovers",
+          "value": "11"
+        },
+        {
+          "group": null,
+          "key": "teamTurnovers",
+          "label": "Team Turnovers",
+          "value": "1"
+        },
+        {
+          "group": null,
+          "key": "totalTurnovers",
+          "label": "Total Turnovers",
+          "value": "11"
+        },
+        {
+          "group": null,
+          "key": "technicalFouls",
+          "label": "Technical Fouls",
+          "value": "0"
+        },
+        {
+          "group": null,
+          "key": "totalTechnicalFouls",
+          "label": "Total Technical Fouls",
+          "value": "0"
+        },
+        {
+          "group": null,
+          "key": "flagrantFouls",
+          "label": "Flagrant Fouls",
+          "value": "1"
+        },
+        {
+          "group": null,
+          "key": "turnoverPoints",
+          "label": "Points Off Turnovers",
+          "value": "8"
+        },
+        {
+          "group": null,
+          "key": "fastBreakPoints",
+          "label": "Fast Break Points",
+          "value": "4"
+        },
+        {
+          "group": null,
+          "key": "pointsInPaint",
+          "label": "Points in Paint",
+          "value": "22"
+        },
+        {
+          "group": null,
+          "key": "fouls",
+          "label": "Fouls",
+          "value": "22"
+        },
+        {
+          "group": null,
+          "key": "largestLead",
+          "label": "Largest Lead",
+          "value": "3"
+        },
+        {
+          "group": null,
+          "key": "leadChanges",
+          "label": "Lead Changes",
+          "value": "6"
+        },
+        {
+          "group": null,
+          "key": "leadPercentage",
+          "label": "Percent Led",
+          "value": "15"
+        }
+      ]
+    }
+  ],
+  "playerGroups": [
+    {
+      "teamId": "41",
+      "name": null,
+      "columns": [
+        {
+          "key": "minutes",
+          "label": "MIN",
+          "description": "Minutes"
+        },
+        {
+          "key": "points",
+          "label": "PTS",
+          "description": "Points"
+        },
+        {
+          "key": "fieldGoalsMade-fieldGoalsAttempted",
+          "label": "FG",
+          "description": "Field Goals Made/Attempted"
+        },
+        {
+          "key": "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+          "label": "3PT",
+          "description": "3-Point Field Goals Made/Attempted"
+        },
+        {
+          "key": "freeThrowsMade-freeThrowsAttempted",
+          "label": "FT",
+          "description": "Free Throws Made/Attempted"
+        },
+        {
+          "key": "rebounds",
+          "label": "REB",
+          "description": "Rebounds"
+        },
+        {
+          "key": "assists",
+          "label": "AST",
+          "description": "Assists"
+        },
+        {
+          "key": "turnovers",
+          "label": "TO",
+          "description": "Turnovers"
+        },
+        {
+          "key": "steals",
+          "label": "STL",
+          "description": "Steals"
+        },
+        {
+          "key": "blocks",
+          "label": "BLK",
+          "description": "Blocks"
+        },
+        {
+          "key": "offensiveRebounds",
+          "label": "OREB",
+          "description": "Offensive Rebounds"
+        },
+        {
+          "key": "defensiveRebounds",
+          "label": "DREB",
+          "description": "Defensive Rebounds"
+        },
+        {
+          "key": "fouls",
+          "label": "PF",
+          "description": "Personal Fouls"
+        }
+      ],
+      "athletes": [
+        {
+          "id": "4917149",
+          "name": "Alex Karaban",
+          "position": "F",
+          "starter": true,
+          "stats": [
+            "40",
+            "17",
+            "5-14",
+            "3-10",
+            "4-6",
+            "11",
+            "2",
+            "1",
+            "2",
+            "0",
+            "3",
+            "8",
+            "1"
+          ]
+        },
+        {
+          "id": "5105809",
+          "name": "Tarris Reed Jr.",
+          "position": "C",
+          "starter": true,
+          "stats": [
+            "34",
+            "13",
+            "4-12",
+            "0-1",
+            "5-6",
+            "14",
+            "0",
+            "3",
+            "1",
+            "0",
+            "7",
+            "7",
+            "3"
+          ]
+        },
+        {
+          "id": "5196916",
+          "name": "Braylon Mullins",
+          "position": "G",
+          "starter": true,
+          "stats": [
+            "36",
+            "11",
+            "4-17",
+            "3-10",
+            "0-0",
+            "7",
+            "2",
+            "1",
+            "0",
+            "1",
+            "3",
+            "4",
+            "2"
+          ]
+        },
+        {
+          "id": "5054083",
+          "name": "Silas Demary Jr.",
+          "position": "G",
+          "starter": true,
+          "stats": [
+            "21",
+            "2",
+            "1-4",
+            "0-1",
+            "0-0",
+            "2",
+            "2",
+            "1",
+            "0",
+            "1",
+            "2",
+            "0",
+            "5"
+          ]
+        },
+        {
+          "id": "4895737",
+          "name": "Solo Ball",
+          "position": "G",
+          "starter": true,
+          "stats": [
+            "16",
+            "11",
+            "4-10",
+            "3-7",
+            "0-0",
+            "0",
+            "0",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "4"
+          ]
+        },
+        {
+          "id": "4895753",
+          "name": "Jayden Ross",
+          "position": "F",
+          "starter": false,
+          "stats": [
+            "19",
+            "3",
+            "0-2",
+            "0-1",
+            "3-4",
+            "4",
+            "0",
+            "1",
+            "0",
+            "0",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "id": "4685647",
+          "name": "Jaylin Stewart",
+          "position": "F",
+          "starter": false,
+          "stats": [
+            "9",
+            "0",
+            "0-3",
+            "0-1",
+            "0-0",
+            "2",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "1",
+            "3"
+          ]
+        },
+        {
+          "id": "5152763",
+          "name": "Eric Reibe",
+          "position": "C",
+          "starter": false,
+          "stats": [
+            "5",
+            "0",
+            "0-0",
+            "0-0",
+            "0-0",
+            "0",
+            "0",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        },
+        {
+          "id": "4683861",
+          "name": "Malachi Smith",
+          "position": "G",
+          "starter": false,
+          "stats": [
+            "20",
+            "6",
+            "3-6",
+            "0-2",
+            "0-0",
+            "3",
+            "3",
+            "1",
+            "1",
+            "0",
+            "2",
+            "1",
+            "2"
+          ]
+        }
+      ],
+      "totals": [
+        null,
+        "63",
+        "21-68",
+        "9-33",
+        "12-16",
+        "46",
+        "9",
+        "11",
+        "4",
+        "2",
+        "22",
+        "24",
+        "22"
+      ]
+    },
+    {
+      "teamId": "130",
+      "name": null,
+      "columns": [
+        {
+          "key": "minutes",
+          "label": "MIN",
+          "description": "Minutes"
+        },
+        {
+          "key": "points",
+          "label": "PTS",
+          "description": "Points"
+        },
+        {
+          "key": "fieldGoalsMade-fieldGoalsAttempted",
+          "label": "FG",
+          "description": "Field Goals Made/Attempted"
+        },
+        {
+          "key": "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+          "label": "3PT",
+          "description": "3-Point Field Goals Made/Attempted"
+        },
+        {
+          "key": "freeThrowsMade-freeThrowsAttempted",
+          "label": "FT",
+          "description": "Free Throws Made/Attempted"
+        },
+        {
+          "key": "rebounds",
+          "label": "REB",
+          "description": "Rebounds"
+        },
+        {
+          "key": "assists",
+          "label": "AST",
+          "description": "Assists"
+        },
+        {
+          "key": "turnovers",
+          "label": "TO",
+          "description": "Turnovers"
+        },
+        {
+          "key": "steals",
+          "label": "STL",
+          "description": "Steals"
+        },
+        {
+          "key": "blocks",
+          "label": "BLK",
+          "description": "Blocks"
+        },
+        {
+          "key": "offensiveRebounds",
+          "label": "OREB",
+          "description": "Offensive Rebounds"
+        },
+        {
+          "key": "defensiveRebounds",
+          "label": "DREB",
+          "description": "Defensive Rebounds"
+        },
+        {
+          "key": "fouls",
+          "label": "PF",
+          "description": "Personal Fouls"
+        }
+      ],
+      "athletes": [
+        {
+          "id": "5175737",
+          "name": "Yaxel Lendeborg",
+          "position": "F",
+          "starter": true,
+          "stats": [
+            "36",
+            "13",
+            "4-13",
+            "0-5",
+            "5-5",
+            "2",
+            "1",
+            "1",
+            "0",
+            "1",
+            "1",
+            "1",
+            "3"
+          ]
+        },
+        {
+          "id": "4873153",
+          "name": "Morez Johnson Jr.",
+          "position": "F",
+          "starter": true,
+          "stats": [
+            "28",
+            "12",
+            "5-7",
+            "0-0",
+            "2-2",
+            "10",
+            "0",
+            "3",
+            "1",
+            "2",
+            "5",
+            "5",
+            "4"
+          ]
+        },
+        {
+          "id": "5174983",
+          "name": "Aday Mara",
+          "position": "C",
+          "starter": true,
+          "stats": [
+            "30",
+            "8",
+            "4-7",
+            "0-0",
+            "0-0",
+            "4",
+            "1",
+            "2",
+            "1",
+            "1",
+            "0",
+            "4",
+            "1"
+          ]
+        },
+        {
+          "id": "4869764",
+          "name": "Elliot Cadeau",
+          "position": "G",
+          "starter": true,
+          "stats": [
+            "30",
+            "19",
+            "5-11",
+            "1-4",
+            "8-9",
+            "3",
+            "2",
+            "1",
+            "2",
+            "0",
+            "0",
+            "3",
+            "3"
+          ]
+        },
+        {
+          "id": "4433138",
+          "name": "Nimari Burnett",
+          "position": "G",
+          "starter": true,
+          "stats": [
+            "16",
+            "4",
+            "0-3",
+            "0-2",
+            "4-4",
+            "4",
+            "0",
+            "1",
+            "2",
+            "0",
+            "1",
+            "3",
+            "0"
+          ]
+        },
+        {
+          "id": "4684596",
+          "name": "Will Tschetter",
+          "position": "F",
+          "starter": false,
+          "stats": [
+            "6",
+            "0",
+            "0-1",
+            "0-0",
+            "0-0",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "1",
+            "0"
+          ]
+        },
+        {
+          "id": "5105836",
+          "name": "Roddy Gayle Jr.",
+          "position": "G",
+          "starter": false,
+          "stats": [
+            "25",
+            "4",
+            "1-4",
+            "0-0",
+            "2-4",
+            "4",
+            "2",
+            "2",
+            "0",
+            "2",
+            "3",
+            "1",
+            "2"
+          ]
+        },
+        {
+          "id": "5041954",
+          "name": "Trey McKenney",
+          "position": "G",
+          "starter": false,
+          "stats": [
+            "29",
+            "9",
+            "2-9",
+            "1-4",
+            "4-4",
+            "8",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "8",
+            "0"
+          ]
+        }
+      ],
+      "totals": [
+        null,
+        "69",
+        "21-55",
+        "2-15",
+        "25-28",
+        "39",
+        "7",
+        "10",
+        "6",
+        "6",
+        "12",
+        "27",
+        "13"
+      ]
+    }
+  ],
+  "periodLabelsVersion": 1,
+  "periodLabelSource": "espn-scoreboard",
+  "periodLabelStatus": "complete"
+}

@@ -1,0 +1,1148 @@
+{
+  "provenance": {
+    "summary": "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event=401856600",
+    "captured": "2026-10-19",
+    "note": "Reduced factual championship box score; no recap prose. DNP rows retained as source evidence."
+  },
+  "header": {
+    "id": "401856600",
+    "links": [
+      {
+        "rel": [
+          "summary",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/mens-college-basketball/game/_/gameId/401856600/uconn-michigan"
+      },
+      {
+        "rel": [
+          "boxscore",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/mens-college-basketball/boxscore/_/gameId/401856600"
+      }
+    ],
+    "competitions": [
+      {
+        "id": "401856600",
+        "status": {
+          "type": {
+            "id": "3",
+            "name": "STATUS_FINAL",
+            "state": "post",
+            "completed": true,
+            "description": "Final",
+            "detail": "Final",
+            "shortDetail": "Final"
+          }
+        },
+        "competitors": [
+          {
+            "homeAway": "home",
+            "score": "69",
+            "linescores": [
+              {
+                "displayValue": "33"
+              },
+              {
+                "displayValue": "36"
+              }
+            ],
+            "team": {
+              "id": "130",
+              "displayName": "Michigan Wolverines"
+            }
+          },
+          {
+            "homeAway": "away",
+            "score": "63",
+            "linescores": [
+              {
+                "displayValue": "29"
+              },
+              {
+                "displayValue": "34"
+              }
+            ],
+            "team": {
+              "id": "41",
+              "displayName": "UConn Huskies"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "boxscore": {
+    "teams": [
+      {
+        "team": {
+          "id": "41",
+          "displayName": "UConn Huskies"
+        },
+        "statistics": [
+          {
+            "name": "fieldGoalsMade-fieldGoalsAttempted",
+            "displayValue": "21-68",
+            "label": "FG"
+          },
+          {
+            "name": "fieldGoalPct",
+            "displayValue": "31",
+            "abbreviation": "FG%",
+            "label": "Field Goal %"
+          },
+          {
+            "name": "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+            "displayValue": "9-33",
+            "label": "3PT"
+          },
+          {
+            "name": "threePointFieldGoalPct",
+            "displayValue": "27",
+            "abbreviation": "3P%",
+            "label": "Three Point %"
+          },
+          {
+            "name": "freeThrowsMade-freeThrowsAttempted",
+            "displayValue": "12-16",
+            "label": "FT"
+          },
+          {
+            "name": "freeThrowPct",
+            "displayValue": "75",
+            "abbreviation": "FT%",
+            "label": "Free Throw %"
+          },
+          {
+            "name": "totalRebounds",
+            "displayValue": "46",
+            "abbreviation": "REB",
+            "label": "Rebounds"
+          },
+          {
+            "name": "offensiveRebounds",
+            "displayValue": "22",
+            "abbreviation": "OR",
+            "label": "Offensive Rebounds"
+          },
+          {
+            "name": "defensiveRebounds",
+            "displayValue": "24",
+            "abbreviation": "DR",
+            "label": "Defensive Rebounds"
+          },
+          {
+            "name": "assists",
+            "displayValue": "9",
+            "abbreviation": "AST",
+            "label": "Assists"
+          },
+          {
+            "name": "steals",
+            "displayValue": "4",
+            "abbreviation": "STL",
+            "label": "Steals"
+          },
+          {
+            "name": "blocks",
+            "displayValue": "2",
+            "abbreviation": "BLK",
+            "label": "Blocks"
+          },
+          {
+            "name": "turnovers",
+            "displayValue": "11",
+            "abbreviation": "TO",
+            "label": "Turnovers"
+          },
+          {
+            "name": "teamTurnovers",
+            "displayValue": "1",
+            "abbreviation": "TTO",
+            "label": "Team Turnovers"
+          },
+          {
+            "name": "totalTurnovers",
+            "displayValue": "11",
+            "abbreviation": "ToTO",
+            "label": "Total Turnovers"
+          },
+          {
+            "name": "technicalFouls",
+            "displayValue": "0",
+            "abbreviation": "TECH",
+            "label": "Technical Fouls"
+          },
+          {
+            "name": "totalTechnicalFouls",
+            "displayValue": "0",
+            "abbreviation": "TECH",
+            "label": "Total Technical Fouls"
+          },
+          {
+            "name": "flagrantFouls",
+            "displayValue": "1",
+            "abbreviation": "FLAG",
+            "label": "Flagrant Fouls"
+          },
+          {
+            "name": "turnoverPoints",
+            "displayValue": "8",
+            "abbreviation": "PTS OFF TO",
+            "label": "Points Off Turnovers"
+          },
+          {
+            "name": "fastBreakPoints",
+            "displayValue": "4",
+            "abbreviation": "FBPs",
+            "label": "Fast Break Points"
+          },
+          {
+            "name": "pointsInPaint",
+            "displayValue": "22",
+            "abbreviation": "PIP",
+            "label": "Points in Paint"
+          },
+          {
+            "name": "fouls",
+            "displayValue": "22",
+            "abbreviation": "PF",
+            "label": "Fouls"
+          },
+          {
+            "name": "largestLead",
+            "displayValue": "3",
+            "abbreviation": "LL",
+            "label": "Largest Lead"
+          },
+          {
+            "name": "leadChanges",
+            "displayValue": "6",
+            "abbreviation": "LC",
+            "label": "Lead Changes"
+          },
+          {
+            "name": "leadPercentage",
+            "displayValue": "15",
+            "abbreviation": "LPCT",
+            "label": "Percent Led"
+          }
+        ]
+      },
+      {
+        "team": {
+          "id": "130",
+          "displayName": "Michigan Wolverines"
+        },
+        "statistics": [
+          {
+            "name": "fieldGoalsMade-fieldGoalsAttempted",
+            "displayValue": "21-55",
+            "label": "FG"
+          },
+          {
+            "name": "fieldGoalPct",
+            "displayValue": "38",
+            "abbreviation": "FG%",
+            "label": "Field Goal %"
+          },
+          {
+            "name": "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+            "displayValue": "2-15",
+            "label": "3PT"
+          },
+          {
+            "name": "threePointFieldGoalPct",
+            "displayValue": "13",
+            "abbreviation": "3P%",
+            "label": "Three Point %"
+          },
+          {
+            "name": "freeThrowsMade-freeThrowsAttempted",
+            "displayValue": "25-28",
+            "label": "FT"
+          },
+          {
+            "name": "freeThrowPct",
+            "displayValue": "89",
+            "abbreviation": "FT%",
+            "label": "Free Throw %"
+          },
+          {
+            "name": "totalRebounds",
+            "displayValue": "39",
+            "abbreviation": "REB",
+            "label": "Rebounds"
+          },
+          {
+            "name": "offensiveRebounds",
+            "displayValue": "12",
+            "abbreviation": "OR",
+            "label": "Offensive Rebounds"
+          },
+          {
+            "name": "defensiveRebounds",
+            "displayValue": "27",
+            "abbreviation": "DR",
+            "label": "Defensive Rebounds"
+          },
+          {
+            "name": "assists",
+            "displayValue": "7",
+            "abbreviation": "AST",
+            "label": "Assists"
+          },
+          {
+            "name": "steals",
+            "displayValue": "6",
+            "abbreviation": "STL",
+            "label": "Steals"
+          },
+          {
+            "name": "blocks",
+            "displayValue": "6",
+            "abbreviation": "BLK",
+            "label": "Blocks"
+          },
+          {
+            "name": "turnovers",
+            "displayValue": "10",
+            "abbreviation": "TO",
+            "label": "Turnovers"
+          },
+          {
+            "name": "teamTurnovers",
+            "displayValue": "0",
+            "abbreviation": "TTO",
+            "label": "Team Turnovers"
+          },
+          {
+            "name": "totalTurnovers",
+            "displayValue": "10",
+            "abbreviation": "ToTO",
+            "label": "Total Turnovers"
+          },
+          {
+            "name": "technicalFouls",
+            "displayValue": "0",
+            "abbreviation": "TECH",
+            "label": "Technical Fouls"
+          },
+          {
+            "name": "totalTechnicalFouls",
+            "displayValue": "0",
+            "abbreviation": "TECH",
+            "label": "Total Technical Fouls"
+          },
+          {
+            "name": "flagrantFouls",
+            "displayValue": "0",
+            "abbreviation": "FLAG",
+            "label": "Flagrant Fouls"
+          },
+          {
+            "name": "turnoverPoints",
+            "displayValue": "4",
+            "abbreviation": "PTS OFF TO",
+            "label": "Points Off Turnovers"
+          },
+          {
+            "name": "fastBreakPoints",
+            "displayValue": "2",
+            "abbreviation": "FBPs",
+            "label": "Fast Break Points"
+          },
+          {
+            "name": "pointsInPaint",
+            "displayValue": "36",
+            "abbreviation": "PIP",
+            "label": "Points in Paint"
+          },
+          {
+            "name": "fouls",
+            "displayValue": "13",
+            "abbreviation": "PF",
+            "label": "Fouls"
+          },
+          {
+            "name": "largestLead",
+            "displayValue": "11",
+            "abbreviation": "LL",
+            "label": "Largest Lead"
+          },
+          {
+            "name": "leadChanges",
+            "displayValue": "6",
+            "abbreviation": "LC",
+            "label": "Lead Changes"
+          },
+          {
+            "name": "leadPercentage",
+            "displayValue": "75",
+            "abbreviation": "LPCT",
+            "label": "Percent Led"
+          }
+        ]
+      }
+    ],
+    "players": [
+      {
+        "team": {
+          "id": "41",
+          "displayName": "UConn Huskies"
+        },
+        "statistics": [
+          {
+            "labels": [
+              "MIN",
+              "PTS",
+              "FG",
+              "3PT",
+              "FT",
+              "REB",
+              "AST",
+              "TO",
+              "STL",
+              "BLK",
+              "OREB",
+              "DREB",
+              "PF"
+            ],
+            "keys": [
+              "minutes",
+              "points",
+              "fieldGoalsMade-fieldGoalsAttempted",
+              "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+              "freeThrowsMade-freeThrowsAttempted",
+              "rebounds",
+              "assists",
+              "turnovers",
+              "steals",
+              "blocks",
+              "offensiveRebounds",
+              "defensiveRebounds",
+              "fouls"
+            ],
+            "descriptions": [
+              "Minutes",
+              "Points",
+              "Field Goals Made/Attempted",
+              "3-Point Field Goals Made/Attempted",
+              "Free Throws Made/Attempted",
+              "Rebounds",
+              "Assists",
+              "Turnovers",
+              "Steals",
+              "Blocks",
+              "Offensive Rebounds",
+              "Defensive Rebounds",
+              "Personal Fouls"
+            ],
+            "totals": [
+              "",
+              "63",
+              "21-68",
+              "9-33",
+              "12-16",
+              "46",
+              "9",
+              "11",
+              "4",
+              "2",
+              "22",
+              "24",
+              "22"
+            ],
+            "athletes": [
+              {
+                "starter": true,
+                "stats": [
+                  "40",
+                  "17",
+                  "5-14",
+                  "3-10",
+                  "4-6",
+                  "11",
+                  "2",
+                  "1",
+                  "2",
+                  "0",
+                  "3",
+                  "8",
+                  "1"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "4917149",
+                  "displayName": "Alex Karaban",
+                  "position": {
+                    "abbreviation": "F"
+                  }
+                }
+              },
+              {
+                "starter": true,
+                "stats": [
+                  "34",
+                  "13",
+                  "4-12",
+                  "0-1",
+                  "5-6",
+                  "14",
+                  "0",
+                  "3",
+                  "1",
+                  "0",
+                  "7",
+                  "7",
+                  "3"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "5105809",
+                  "displayName": "Tarris Reed Jr.",
+                  "position": {
+                    "abbreviation": "C"
+                  }
+                }
+              },
+              {
+                "starter": true,
+                "stats": [
+                  "36",
+                  "11",
+                  "4-17",
+                  "3-10",
+                  "0-0",
+                  "7",
+                  "2",
+                  "1",
+                  "0",
+                  "1",
+                  "3",
+                  "4",
+                  "2"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "5196916",
+                  "displayName": "Braylon Mullins",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": true,
+                "stats": [
+                  "21",
+                  "2",
+                  "1-4",
+                  "0-1",
+                  "0-0",
+                  "2",
+                  "2",
+                  "1",
+                  "0",
+                  "1",
+                  "2",
+                  "0",
+                  "5"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "5054083",
+                  "displayName": "Silas Demary Jr.",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": true,
+                "stats": [
+                  "16",
+                  "11",
+                  "4-10",
+                  "3-7",
+                  "0-0",
+                  "0",
+                  "0",
+                  "1",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "4"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "4895737",
+                  "displayName": "Solo Ball",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [
+                  "19",
+                  "3",
+                  "0-2",
+                  "0-1",
+                  "3-4",
+                  "4",
+                  "0",
+                  "1",
+                  "0",
+                  "0",
+                  "2",
+                  "2",
+                  "2"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "4895753",
+                  "displayName": "Jayden Ross",
+                  "position": {
+                    "abbreviation": "F"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [
+                  "9",
+                  "0",
+                  "0-3",
+                  "0-1",
+                  "0-0",
+                  "2",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "1",
+                  "1",
+                  "3"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "4685647",
+                  "displayName": "Jaylin Stewart",
+                  "position": {
+                    "abbreviation": "F"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [
+                  "5",
+                  "0",
+                  "0-0",
+                  "0-0",
+                  "0-0",
+                  "0",
+                  "0",
+                  "1",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "0"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "5152763",
+                  "displayName": "Eric Reibe",
+                  "position": {
+                    "abbreviation": "C"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [
+                  "20",
+                  "6",
+                  "3-6",
+                  "0-2",
+                  "0-0",
+                  "3",
+                  "3",
+                  "1",
+                  "1",
+                  "0",
+                  "2",
+                  "1",
+                  "2"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "4683861",
+                  "displayName": "Malachi Smith",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5142624",
+                  "displayName": "Jacob Ross",
+                  "position": {
+                    "abbreviation": "F"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "4703011",
+                  "displayName": "Dwayne Koroma",
+                  "position": {
+                    "abbreviation": "F"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5312036",
+                  "displayName": "Rrezon Elezaj",
+                  "position": {
+                    "abbreviation": "C"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5307570",
+                  "displayName": "Uros Paunovic",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5248294",
+                  "displayName": "Jacob Furphy",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5241657",
+                  "displayName": "Alec Millender",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "team": {
+          "id": "130",
+          "displayName": "Michigan Wolverines"
+        },
+        "statistics": [
+          {
+            "labels": [
+              "MIN",
+              "PTS",
+              "FG",
+              "3PT",
+              "FT",
+              "REB",
+              "AST",
+              "TO",
+              "STL",
+              "BLK",
+              "OREB",
+              "DREB",
+              "PF"
+            ],
+            "keys": [
+              "minutes",
+              "points",
+              "fieldGoalsMade-fieldGoalsAttempted",
+              "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+              "freeThrowsMade-freeThrowsAttempted",
+              "rebounds",
+              "assists",
+              "turnovers",
+              "steals",
+              "blocks",
+              "offensiveRebounds",
+              "defensiveRebounds",
+              "fouls"
+            ],
+            "descriptions": [
+              "Minutes",
+              "Points",
+              "Field Goals Made/Attempted",
+              "3-Point Field Goals Made/Attempted",
+              "Free Throws Made/Attempted",
+              "Rebounds",
+              "Assists",
+              "Turnovers",
+              "Steals",
+              "Blocks",
+              "Offensive Rebounds",
+              "Defensive Rebounds",
+              "Personal Fouls"
+            ],
+            "totals": [
+              "",
+              "69",
+              "21-55",
+              "2-15",
+              "25-28",
+              "39",
+              "7",
+              "10",
+              "6",
+              "6",
+              "12",
+              "27",
+              "13"
+            ],
+            "athletes": [
+              {
+                "starter": true,
+                "stats": [
+                  "36",
+                  "13",
+                  "4-13",
+                  "0-5",
+                  "5-5",
+                  "2",
+                  "1",
+                  "1",
+                  "0",
+                  "1",
+                  "1",
+                  "1",
+                  "3"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "5175737",
+                  "displayName": "Yaxel Lendeborg",
+                  "position": {
+                    "abbreviation": "F"
+                  }
+                }
+              },
+              {
+                "starter": true,
+                "stats": [
+                  "28",
+                  "12",
+                  "5-7",
+                  "0-0",
+                  "2-2",
+                  "10",
+                  "0",
+                  "3",
+                  "1",
+                  "2",
+                  "5",
+                  "5",
+                  "4"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "4873153",
+                  "displayName": "Morez Johnson Jr.",
+                  "position": {
+                    "abbreviation": "F"
+                  }
+                }
+              },
+              {
+                "starter": true,
+                "stats": [
+                  "30",
+                  "8",
+                  "4-7",
+                  "0-0",
+                  "0-0",
+                  "4",
+                  "1",
+                  "2",
+                  "1",
+                  "1",
+                  "0",
+                  "4",
+                  "1"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "5174983",
+                  "displayName": "Aday Mara",
+                  "position": {
+                    "abbreviation": "C"
+                  }
+                }
+              },
+              {
+                "starter": true,
+                "stats": [
+                  "30",
+                  "19",
+                  "5-11",
+                  "1-4",
+                  "8-9",
+                  "3",
+                  "2",
+                  "1",
+                  "2",
+                  "0",
+                  "0",
+                  "3",
+                  "3"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "4869764",
+                  "displayName": "Elliot Cadeau",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": true,
+                "stats": [
+                  "16",
+                  "4",
+                  "0-3",
+                  "0-2",
+                  "4-4",
+                  "4",
+                  "0",
+                  "1",
+                  "2",
+                  "0",
+                  "1",
+                  "3",
+                  "0"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "4433138",
+                  "displayName": "Nimari Burnett",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [
+                  "6",
+                  "0",
+                  "0-1",
+                  "0-0",
+                  "0-0",
+                  "1",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "1",
+                  "0"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "4684596",
+                  "displayName": "Will Tschetter",
+                  "position": {
+                    "abbreviation": "F"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [
+                  "25",
+                  "4",
+                  "1-4",
+                  "0-0",
+                  "2-4",
+                  "4",
+                  "2",
+                  "2",
+                  "0",
+                  "2",
+                  "3",
+                  "1",
+                  "2"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "5105836",
+                  "displayName": "Roddy Gayle Jr.",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [
+                  "29",
+                  "9",
+                  "2-9",
+                  "1-4",
+                  "4-4",
+                  "8",
+                  "1",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "8",
+                  "0"
+                ],
+                "didNotPlay": false,
+                "athlete": {
+                  "id": "5041954",
+                  "displayName": "Trey McKenney",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5244505",
+                  "displayName": "Oscar Goodman",
+                  "position": {
+                    "abbreviation": "F"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5174787",
+                  "displayName": "Harrison Hochberg",
+                  "position": {
+                    "abbreviation": "F"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5311988",
+                  "displayName": "Malick Kordel",
+                  "position": {
+                    "abbreviation": "C"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5311987",
+                  "displayName": "Ricky Liburd",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5239559",
+                  "displayName": "Howard Eisley Jr.",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5214641",
+                  "displayName": "L.J. Cason",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5174808",
+                  "displayName": "Winters Grady",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              },
+              {
+                "starter": false,
+                "stats": [],
+                "didNotPlay": true,
+                "athlete": {
+                  "id": "5106648",
+                  "displayName": "Charlie May",
+                  "position": {
+                    "abbreviation": "G"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -324,6 +324,51 @@ mod tests {
         (v, g)
     }
     #[test]
+    fn championship_basketball_matches_complete_frontend_example() {
+        let source: Value = serde_json::from_str(include_str!(
+            "../tests/fixtures/boxscores/mens-college-basketball.json"
+        ))
+        .unwrap();
+        let g = Game {
+            sport: "basketball".into(),
+            league: "mens-college-basketball".into(),
+            event_id: "401856600".into(),
+            home_id: "130".into(),
+            away_id: "41".into(),
+            date: "20260406".into(),
+        };
+        let detail = parse(&source, &g).unwrap();
+        assert_eq!(
+            detail.boxscore_url.as_deref(),
+            Some("https://www.espn.com/mens-college-basketball/boxscore/_/gameId/401856600")
+        );
+        let periods: Value = serde_json::from_str(include_str!(
+            "../tests/fixtures/periods/mens-college-basketball.json"
+        ))
+        .unwrap();
+        let labeled = crate::sports_periods::apply(
+            detail.payload.as_deref().unwrap(),
+            &periods["scoreboard"],
+            &g,
+        )
+        .unwrap();
+        let actual: Value = serde_json::from_str(&labeled).unwrap();
+        let expected: Value = serde_json::from_str(include_str!(
+            "../New Development/mens-college-basketball-boxscore-example.json"
+        ))
+        .unwrap();
+        assert_eq!(actual, expected);
+        assert_eq!(array(&actual["playerGroups"][0]["athletes"]).len(), 9);
+        assert_eq!(array(&actual["playerGroups"][1]["athletes"]).len(), 8);
+        assert_eq!(actual["playerGroups"][0]["totals"][0], Value::Null);
+        // DNP source rows carry no statistics; never manufacture zero-filled players.
+        assert!(
+            array(&source["boxscore"]["players"][0]["statistics"][0]["athletes"])
+                .iter()
+                .any(|a| a["didNotPlay"] == true && array(&a["stats"]).is_empty())
+        );
+    }
+    #[test]
     fn missing_optional_period_metadata_preserves_first_stats_and_existing_snapshots() {
         let (v, g) = fixture("nfl");
         let detail = parse(&v, &g).unwrap();
