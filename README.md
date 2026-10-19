@@ -6,6 +6,7 @@ Read [HANDOFF.md](HANDOFF.md) for the current documented deployment and working 
 | --- | --- |
 | Optional game box scores and team/player statistics | [Frontend handoff](<New Development/sports-boxscores-frontend-handoff.md>), [deployment and operations](reports/sports-boxscores-20261019.md) |
 | F1 schedule, Grand Prix/sprint results, drivers and constructors | [Frontend integration](docs/f1-frontend-integration.md), [operations](docs/f1-operations.md) |
+| Men's college basketball news — national and Big 12 | [Sources and frontend contract](docs/mens-college-basketball-news.md) |
 | Big 12 college sports news | [News frontend integration](docs/big12-news-frontend-integration.md) |
 | F1 news | [News frontend integration](docs/f1-news-frontend-integration.md), [collection](docs/f1-operations.md#f1-news-registration) |
 | Fixtures, NHL, Big 12, MLS, Championship/Wrexham, EPL, MLB, WNBA, NWSL | [Sports schedules and results](docs/sports-schedules.md) |

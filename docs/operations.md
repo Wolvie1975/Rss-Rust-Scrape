@@ -25,6 +25,14 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 - [Scraper hardening and SQL credential split](#scraper-security-and-sql-credentials)
 - [Scraper performance instrumentation and optimizations](#scraper-performance)
 
+## Men's college basketball news
+
+Four enabled sources supply **Men's College Basketball News**: national ESPN,
+CBS Sports and ZAGSBLOG, plus Heartland's Big 12 basketball feed. Initial production
+import saved 37 articles with no failures and preserved existing URL ownership.
+Live category rendering/pagination passed. No rebuild/restart was required.
+[Source IDs, URLs and registration workflow](mens-college-basketball-news.md).
+
 ## Database review and statistics maintenance
 
 [October 19 review](../reports/database-review-20261019.md): CHECKDB passed;

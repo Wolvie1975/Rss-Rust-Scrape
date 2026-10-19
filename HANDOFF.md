@@ -4,6 +4,16 @@
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.
 
+## Men's college basketball news — October 19, 2026
+
+Added four enabled sources to **Men's College Basketball News**: ESPN **9353**,
+CBS Sports **9354**, ZAGSBLOG **9355**, and Heartland Big 12 Basketball **9356**.
+Production run **1254** saved **37 articles** with zero failures; three existing
+cross-source URLs were skipped without reassignment. Live category pagination
+returned all 37 articles from the four publishers. No rebuild/restart was required.
+See [feeds, verification and frontend contract](docs/mens-college-basketball-news.md)
+and [disabled-first registration](sql/mens_college_basketball_news_seed.sql).
+
 ## Database review — October 19, 2026
 
 Integrity check passed. Refreshed **38 stale optimizer statistics across 13 tables**;
