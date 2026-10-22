@@ -951,6 +951,8 @@ source as a default; invalid/disabled selection falls back to a valid source.
 
 ### Table layout and movement
 
+Requested frontend enhancement: [poll context, Previous rank and Big 12 summary](rankings-context-frontend-handoff.md).
+
 Heading: selected sport, PollName, SeasonLabel, poll date, and supplied Period /
 SeasonPhase if available. Below it show “Last checked/refreshed”, source link and
 any availability message.
