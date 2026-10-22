@@ -1142,6 +1142,8 @@ END CATCH
                     .simple_query(concat!(
                         include_str!("../sql/boxoffice.sql"),
                         "\n",
+                        include_str!("../sql/boxoffice_status.sql"),
+                        "\n",
                         include_str!("../sql/boxoffice_forecasts.sql"),
                         "\n",
                         include_str!("../sql/cinema_posters.sql")

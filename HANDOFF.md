@@ -4,6 +4,15 @@
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.
 
+## Weekend result status — October 21, 2026 CDT
+
+Deployed **web-scraper:boxoffice-status-20261022** (UTC tag). The additive status
+columns and transactional refresh safeguards are live; the hourly command is preserved.
+The provider explicitly marks some weekend grosses as estimates. Unmarked grosses
+remain unknown because no live actuals signal was verified. Status applies to weekend
+gross only. See [frontend contract and provider limits](docs/box-office-result-status.md)
+and [deployment verification and rollback](reports/boxoffice-status-20261022.md).
+
 ## Box-score period labels — October 19, 2026
 
 Release **web-scraper:period-labels-20261019** repairs version-1 line-score period
@@ -108,7 +117,7 @@ registration and integration; source registration alone does not verify renderin
 
 ## Latest documented production state
 
-Last verified deployment: `web-scraper:period-labels-20261019`; scraper and front-end were healthy at verification. This document is not a live status check.
+Last verified deployment: `web-scraper:boxoffice-status-20261022`; scraper and front-end were healthy at verification. This document is not a live status check.
 
 - Hourly collection includes news, rankings, standings, sports schedules (including F1), YouTube, movie releases, TV, actual box office and Boxoffice Pro forecasts.
 - MLS schedule/results source 5525, standings 9; Championship schedule/results 5326, standings 11; EPL schedule 5357, standings 12; NFL standings 10.
