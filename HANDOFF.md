@@ -17,6 +17,15 @@ Other movie providers and the hourly command remain intact. See
 [deployment, data checks and rollback](reports/theatrical-no-disc-20261022.md).
 Disable source 5 before rolling back to an older image that ignores the disc policy.
 
+## Box Office merged into Entertainment — October 22, 2026
+
+Moved all four Box Office news sources and 40 existing articles into Entertainment
+(ID 10), alongside Nerdist. Verified five enabled sources and 50 articles; empty
+Box Office category 5615 removed. Repeatable migration applied twice successfully.
+Registration scripts now target Entertainment; charts and forecasts are unchanged.
+No rebuild/restart required. See [current news contract](docs/movies-and-box-office.md#boxoffice-news)
+and [migration](sql/boxoffice_into_entertainment.sql).
+
 ## News categories and Guardian World — October 22, 2026
 
 Renamed category **2627** from General News to **More News**: NPR 7093,

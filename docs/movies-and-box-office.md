@@ -22,7 +22,7 @@ Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domesti
 
 ## Box Office news sources
 
-The production **Box Office** news category contains four enabled publishers:
+Box-office news is part of **Entertainment** (category ID 10) as of October 22, 2026. Its four enabled publishers are:
 
 | Source ID | Publisher | RSS URL |
 | --- | --- | --- |
@@ -42,9 +42,11 @@ Apply only with migration credentials targeting WebScraper. The earlier
 `boxoffice_news_seed.sql` is a historical disabled-source seed, not the current
 production source inventory.
 
+The repeatable [category merge](../sql/boxoffice_into_entertainment.sql) moved all four sources and their 40 existing articles into Entertainment, alongside Nerdist (ten articles). The empty Box Office category (5615) was removed. The merge applied twice successfully; read-back verified five enabled sources and 50 articles. Source IDs, labels and article ownership were preserved. Registration scripts now target Entertainment. Structured charts and forecasts are unchanged. Frontend rendering was not verified.
+
 Frontend news queries should join `Pages.SourceId` to `Sources.ID`, then
 `Sources.SourceCategoryId` to `SourceCategories.ID`, filtering `Enabled=1` and
-`Category_Name=N'Box Office'`. Discover publishers dynamically rather than using
+`Category_Name=N'Entertainment'`. Discover publishers dynamically rather than using
 a fixed list of source IDs. Reuse existing article cards, source filtering,
 pagination, attribution and saved-article behavior. Use Pages.Url for the article
 link; Sources.Url is the RSS feed. Summaries, images and publication dates can
