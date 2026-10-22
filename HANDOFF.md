@@ -4,6 +4,15 @@
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.
 
+## STLtoday news — October 22, 2026
+
+Added enabled source **9401**, **St. Louis Post-Dispatch — STLtoday**, under
+**General**. The verified general RSS feed mixes local and national coverage.
+Targeted Rust dry-run and first import succeeded; database read-back verified ten
+articles with dates/images and no source error. Existing hourly collection needs
+no rebuild or restart. See [source details](docs/stltoday-news.md) and
+[disabled-first registration](sql/stltoday_news_seed.sql).
+
 ## Weekend result status — October 21, 2026 CDT
 
 Deployed **web-scraper:boxoffice-status-20261022** (UTC tag). The additive status
