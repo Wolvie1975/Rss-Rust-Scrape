@@ -1,3 +1,5 @@
+> Current category: **More News** (same category ID 2627), renamed October 22. See [category cleanup](news-category-cleanup.md). Initial registration evidence below is historical.
+
 # STLtoday news
 
 Added October 22, 2026 (America/Chicago). Production source **9401**, labelled

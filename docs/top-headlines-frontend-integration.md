@@ -1,3 +1,5 @@
+> Current October 22 category/feed changes: see [news category cleanup](news-category-cleanup.md). Older membership observations below are historical.
+
 # Frontend integration: Top Headlines
 
 Prepared for the separate My-Newsfeed frontend. The production WebScraper database
@@ -28,7 +30,7 @@ are production reference values, not a list to hardcode into category filtering.
 | 8903 | NBC News | https://feeds.nbcnews.com/nbcnews/public/news |
 | 8904 | CBS News | https://www.cbsnews.com/latest/rss/main |
 | 8905 | The New York Times | https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml |
-| 8906 | The Guardian | https://www.theguardian.com/international/rss |
+| 8906 | The Guardian | https://www.theguardian.com/world/rss |
 | 8907 | Al Jazeera | https://www.aljazeera.com/xml/rss/all.xml |
 | 8908 | Sky News | https://feeds.skynews.com/feeds/rss/home.xml |
 

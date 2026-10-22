@@ -4,6 +4,18 @@
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.
 
+## News categories and Guardian World — October 22, 2026
+
+Renamed category **2627** from General News to **More News**: NPR 7093,
+CBS News 8904 and St. Louis Post-Dispatch 9401. Moved Awful Announcing 7895
+from TV/Film to Sports and Polygon 1 / IGN 1768 from Entertainment to Video Games.
+Guardian 8906 stays in Top Headlines and now uses `https://www.theguardian.com/world/rss`.
+Verified World-feed dry-run/import: 45 parsed, ten retained with images, zero
+failures. Existing category/source IDs and enablement retained; standard retention
+replaced the Guardian's prior ten articles. No restart required. See
+[implementation and frontend contract](docs/news-category-cleanup.md) and
+[repeatable migration](sql/news_category_cleanup_20261022.sql).
+
 ## STLtoday news — October 22, 2026
 
 Added enabled source **9401**, **St. Louis Post-Dispatch — STLtoday**, under

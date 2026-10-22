@@ -10,7 +10,7 @@ BEGIN TRY
   (N'https://feeds.nbcnews.com/nbcnews/public/news',N'NBC News'),
   (N'https://www.cbsnews.com/latest/rss/main',N'CBS News'),
   (N'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml',N'The New York Times'),
-  (N'https://www.theguardian.com/international/rss',N'The Guardian'),
+  (N'https://www.theguardian.com/world/rss',N'The Guardian'),
   (N'https://www.aljazeera.com/xml/rss/all.xml',N'Al Jazeera'),
   (N'https://feeds.skynews.com/feeds/rss/home.xml',N'Sky News')
  ) s(Url,Label)
