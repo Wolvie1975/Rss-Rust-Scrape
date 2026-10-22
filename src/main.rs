@@ -1672,7 +1672,9 @@ fn run_once(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                     day - chrono::Duration::days(day.weekday().num_days_from_monday().into());
                 let tracked = db.as_mut().unwrap().tracked_movie_urls()?;
                 let enabled = db.as_mut().unwrap().enabled_movie_sources()?;
-                let mut report = movies::ingest(start, &tracked, &enabled)?;
+                let disc_disabled = db.as_mut().unwrap().disc_disabled_movie_sources()?;
+                let mut report =
+                    movies::ingest_with_disc_policy(start, &tracked, &enabled, &disc_disabled)?;
                 let skipped = movies::retain_current_releases(&mut report, day);
                 eprintln!("metrics: movies past_releases_skipped={skipped}");
                 let rows = movies::release_rows(&report)?;

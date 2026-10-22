@@ -525,22 +525,39 @@ pub fn preview(start: NaiveDate) -> Result<Value, Box<dyn std::error::Error>> {
             "whentostream".into(),
             "movieinsider".into(),
         ],
+        &[],
     )
 }
 
+#[allow(dead_code)] // Standalone preview without persisted source policy.
 /// Refresh tracked movies as well as discovering this week's new releases.
 pub fn ingest(
     start: NaiveDate,
     tracked: &[String],
     enabled: &[String],
 ) -> Result<Value, Box<dyn std::error::Error>> {
-    collect(start, tracked, enabled)
+    collect(start, tracked, enabled, &[])
+}
+
+/// Provider-wide enablement and physical-disc eligibility are independent.
+pub fn ingest_with_disc_policy(
+    start: NaiveDate,
+    tracked: &[String],
+    enabled: &[String],
+    disc_disabled: &[String],
+) -> Result<Value, Box<dyn std::error::Error>> {
+    collect(start, tracked, enabled, disc_disabled)
+}
+
+fn release_allowed(row: &Value, disc_disabled: &[String]) -> bool {
+    row["release_type"] != "disc" || !disc_disabled.iter().any(|s| row["source"] == s.as_str())
 }
 
 fn collect(
     start: NaiveDate,
     tracked: &[String],
     enabled: &[String],
+    disc_disabled: &[String],
 ) -> Result<Value, Box<dyn std::error::Error>> {
     let client = crate::http::client_builder()
         .user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)")
@@ -583,6 +600,9 @@ fn collect(
         }
     }
     for (url, category) in calendars {
+        if category == "disc" && disc_disabled.iter().any(|s| s == "dvdsreleasedates") {
+            continue;
+        }
         let source = if category == "subscription" {
             "whentostream"
         } else {
@@ -691,6 +711,9 @@ fn collect(
                                 r
                             })
                             .filter(|r| {
+                                if !release_allowed(r, disc_disabled) {
+                                    return false;
+                                }
                                 if tracked.contains(&url) {
                                     return true;
                                 }
@@ -839,6 +862,47 @@ pub fn release_rows(report: &Value) -> Result<Vec<MovieRelease>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn physical_formats_are_blocked_without_blocking_other_channels() {
+        let mut html = String::from(
+            "<h1><span itemprop='name'>Film</span></h1><span itemprop='datePublished' content='2026-10-23'></span>",
+        );
+        for format in [
+            "DVD",
+            "Blu-ray",
+            "4K UHD",
+            "4K UHD + Blu-ray + Digital",
+            "Digital HD",
+        ] {
+            html.push_str(&format!("<div class='disccellinfo'><b>{format}</b><span class='bold'>October 23, 2026</span></div>"));
+        }
+        let rows = dvd_details(&html, "https://www.dvdsreleasedates.com/movies/1/film").unwrap();
+        assert_eq!(
+            rows.iter().filter(|r| r["release_type"] == "disc").count(),
+            4
+        );
+        let disabled = vec!["dvdsreleasedates".to_owned()];
+        let kept: Vec<_> = rows
+            .iter()
+            .filter(|r| release_allowed(r, &disabled))
+            .collect();
+        assert_eq!(kept.len(), 2);
+        assert_eq!(kept[0]["release_type"], "theatrical");
+        assert_eq!(kept[1]["release_type"], "digital");
+        assert!(rows.iter().all(|r| release_allowed(r, &[])));
+        for kind in [
+            "digital",
+            "digital_purchase",
+            "digital_rental",
+            "subscription",
+        ] {
+            assert!(release_allowed(
+                &json!({"source":"whentostream","release_type":kind}),
+                &disabled
+            ));
+        }
+    }
+
     #[test]
     fn movie_titles_with_season_are_kept() {
         assert!(!tv_title("Season of the Witch"));

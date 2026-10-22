@@ -5,3 +5,4 @@ scraper.log
 .env.*
 certs/
 .deployment-backups/
+/New Development/

@@ -1,5 +1,7 @@
 # Movies, box office and posters
 
+Current theatrical policy (October 22): DVDs Release Dates is enabled for theatrical/digital coverage with physical discs excluded. See [configuration and frontend contract](theatrical-without-discs.md) and [deployment verification](../reports/theatrical-no-disc-20261022.md).
+
 Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domestic previews and future-film predictions. These are separate structured tables, not news articles. Box Office news is available alongside the structured charts through Deadline, Variety, The Hollywood Reporter and IndieWire. The older news handoff is archived in the entertainment history; the current contract is below. Poster fields are available across the movie sections. Current/future release and forecast dates only; the actual chart retains the latest valid weekend.
 
 ## Contents

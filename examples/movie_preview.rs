@@ -21,6 +21,9 @@ struct Args {
     /// Restrict preview to selected sources (repeat for multiple sources).
     #[arg(long,value_parser=["dvdsreleasedates","whentostream","movieinsider"])]
     source: Vec<String>,
+    /// Exclude physical discs while preserving theatrical and digital releases.
+    #[arg(long)]
+    exclude_discs: bool,
     /// Save a JSON report, including failures and exclusions.
     #[arg(long)]
     output: Option<PathBuf>,
@@ -33,7 +36,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .date_naive()
     });
     let start = day - Duration::days(day.weekday().num_days_from_monday().into());
-    let report = if args.source.is_empty() {
+    let report = if args.exclude_discs {
+        let enabled = if args.source.is_empty() {
+            vec![
+                "dvdsreleasedates".into(),
+                "whentostream".into(),
+                "movieinsider".into(),
+            ]
+        } else {
+            args.source.clone()
+        };
+        movies::ingest_with_disc_policy(start, &[], &enabled, &["dvdsreleasedates".into()])?
+    } else if args.source.is_empty() {
         movies::preview(start)?
     } else {
         movies::ingest(start, &[], &args.source)?

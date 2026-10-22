@@ -513,9 +513,30 @@ AND ISNULL(m.OriginalYear,0)=ISNULL(@P4,0) AND ISNULL(m.ImdbId,'')=ISNULL(@P5,''
         ))
     }
 
+    pub fn disc_disabled_movie_sources(&mut self) -> Result<Vec<String>> {
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(
+                        "SELECT SourceKey FROM dbo.MovieReleaseSources WHERE CollectDisc=0",
+                        &[],
+                    )
+                    .await?
+                    .into_first_result()
+                    .await?;
+                Ok(rows
+                    .iter()
+                    .filter_map(|r| r.get::<&str, _>(0).map(str::to_owned))
+                    .collect())
+            },
+            &self.poisoned,
+        ))
+    }
+
     pub fn tracked_movie_urls(&mut self) -> Result<Vec<String>> {
         self.rt.block_on(bounded(async {
-            let rows = self.client.query("SELECT DISTINCT l.Url FROM dbo.MovieSourceLinks l JOIN dbo.MovieReleaseSources s ON s.ID=l.MovieReleaseSourceId WHERE s.Enabled=1", &[]).await?.into_first_result().await?;
+            let rows = self.client.query("SELECT DISTINCT l.Url FROM dbo.MovieSourceLinks l JOIN dbo.MovieReleaseSources s ON s.ID=l.MovieReleaseSourceId WHERE s.Enabled=1 AND EXISTS(SELECT 1 FROM dbo.MovieReleases r WHERE r.MovieSourceLinkId=l.ID AND r.ReleaseStatus='scheduled' AND (s.CollectDisc=1 OR r.ReleaseType<>'disc'))", &[]).await?.into_first_result().await?;
             Ok(rows.iter().filter_map(|r| r.get::<&str,_>(0).map(str::to_owned)).collect())
         },&self.poisoned))
     }
@@ -1940,9 +1961,87 @@ mod movie_tests {
 
     #[test]
     #[ignore = "requires MSSQL_CONNECTION_STRING; fixtures roll back"]
+    fn movie_disc_policy_blocks_writes_and_preserves_other_channels() -> Result<()> {
+        let _ = dotenvy::dotenv();
+        let mut db = Db::connect_named(&std::env::var("MSSQL_CONNECTION_STRING")?, DB_NAME)?;
+        db.rt.block_on(async {
+            db.client
+                .simple_query("BEGIN TRANSACTION")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        let result = (|| -> Result<()> {
+            let source = "disc-policy-fixture";
+            db.rt.block_on(db.client.execute("INSERT dbo.MovieReleaseSources(SourceKey,Name,Url,Enabled,CollectDisc) VALUES(@P1,N'Disc policy fixture',N'https://example.invalid/',1,0)", &[&source]))?;
+            let report = serde_json::json!({"issues":[]});
+            let mut row = crate::movies::MovieRelease {
+                source: source.into(),
+                external_id: "fixture".into(),
+                title: "Policy fixture".into(),
+                imdb_id: None,
+                key: "disc:format:dvd".into(),
+                kind: "disc".into(),
+                date: chrono::NaiveDate::from_ymd_opt(2026, 10, 23).unwrap(),
+                url: "https://example.invalid/film".into(),
+                format: Some("DVD".into()),
+                platform: None,
+            };
+            db.rt.block_on(db.client.execute("UPDATE dbo.MovieReleaseSources SET CollectDisc=1 WHERE SourceKey=@P1", &[&source]))?;
+            assert_eq!(db.save_movie_releases(std::slice::from_ref(&row), &report)?, 1);
+            db.rt.block_on(db.client.execute("UPDATE dbo.MovieReleaseSources SET CollectDisc=0 WHERE SourceKey=@P1", &[&source]))?;
+            assert!(!db.tracked_movie_urls()?.contains(&row.url));
+            db.rt.block_on(db.client.execute("UPDATE r SET ReleaseStatus='withdrawn' FROM dbo.MovieReleases r JOIN dbo.MovieSourceLinks l ON l.ID=r.MovieSourceLinkId JOIN dbo.MovieReleaseSources s ON s.ID=l.MovieReleaseSourceId WHERE s.SourceKey=@P1 AND r.ReleaseType='disc'", &[&source]))?;
+            assert_eq!(
+                db.save_movie_releases(std::slice::from_ref(&row), &report)?,
+                0
+            );
+            for kind in [
+                "theatrical",
+                "digital",
+                "digital_purchase",
+                "digital_rental",
+                "subscription",
+            ] {
+                row.kind = kind.into();
+                row.key = format!("{kind}:first");
+                row.platform = (kind == "subscription").then(|| "Fixture service".into());
+                assert_eq!(
+                    db.save_movie_releases(std::slice::from_ref(&row), &report)?,
+                    1
+                );
+                assert_eq!(
+                    db.save_movie_releases(std::slice::from_ref(&row), &report)?,
+                    1
+                );
+            }
+            db.rt.block_on(db.client.execute(
+                "UPDATE dbo.MovieReleaseSources SET Enabled=0 WHERE SourceKey=@P1",
+                &[&source],
+            ))?;
+            assert_eq!(
+                db.save_movie_releases(std::slice::from_ref(&row), &report)?,
+                0
+            );
+            Ok(())
+        })();
+        db.rt.block_on(async {
+            db.client
+                .simple_query("IF @@TRANCOUNT>0 ROLLBACK TRANSACTION")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
+        })?;
+        result
+    }
+
+    #[test]
+    #[ignore = "requires MSSQL_CONNECTION_STRING; fixtures roll back"]
     fn movie_upserts_are_repeatable_and_reschedule_in_place() -> Result<()> {
         let _ = dotenvy::dotenv();
-        let mut db = Db::open(&std::env::var("MSSQL_CONNECTION_STRING")?)?;
+        let mut db = Db::connect_named(&std::env::var("MSSQL_CONNECTION_STRING")?, DB_NAME)?;
         db.rt.block_on(async {
             db.client
                 .simple_query("BEGIN TRANSACTION")
@@ -1954,7 +2053,7 @@ mod movie_tests {
             let report = serde_json::json!({"issues": []});
             db.save_movie_releases(&[], &report)?;
             db.rt.block_on(db.client.execute(
-                "UPDATE dbo.MovieReleaseSources SET Enabled=1 WHERE SourceKey='dvdsreleasedates'",
+                "UPDATE dbo.MovieReleaseSources SET Enabled=1,CollectDisc=1 WHERE SourceKey='dvdsreleasedates'",
                 &[],
             ))?;
             let mut row = crate::movies::MovieRelease {

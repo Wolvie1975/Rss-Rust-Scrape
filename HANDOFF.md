@@ -4,6 +4,19 @@
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.
 
+## Theatrical coverage without discs — deployed October 22, 2026
+
+Image **web-scraper:theatrical-no-disc-20261022** is deployed and healthy.
+DVDs Release Dates source **5** is enabled with new **CollectDisc=0**: theatrical
+and digital collection restored, physical-disc discovery/writes blocked, 24 retained
+disc rows withdrawn. All six October 23 theatrical dates were confirmed against
+live detail pages; repeated production imports saved 17 non-disc releases with
+zero issues and stable IDs. Movies shows six films and Home five on phone/desktop.
+Other movie providers and the hourly command remain intact. See
+[configuration and frontend contract](docs/theatrical-without-discs.md) and
+[deployment, data checks and rollback](reports/theatrical-no-disc-20261022.md).
+Disable source 5 before rolling back to an older image that ignores the disc policy.
+
 ## News categories and Guardian World — October 22, 2026
 
 Renamed category **2627** from General News to **More News**: NPR 7093,
