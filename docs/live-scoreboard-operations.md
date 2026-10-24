@@ -108,17 +108,24 @@ it is not a claim that upstream requests succeeded or every event is fresh.
 
 ## Scope, dates and retention
 
-Default request window: three provider days back and seven forward, plus one extra
-forward day for the Eastern-provider/Central-display boundary. Active delayed/live/
-suspended games are also rechecked outside that window until 30-day retention
-expires. Flags: --lookback-days 1–7, --lookahead-days 1–14, --retention-days 8–90;
-retention must exceed lookback. Day-only/TBD values do not get fabricated instants.
+Default request window: one provider day back and seven forward, plus one extra
+forward day for the Eastern-provider/Central-display boundary. Retention keeps
+**today, the previous Central calendar day, and future games**. Even older live,
+delayed or suspended games expire; they are not retained indefinitely. Import rows
+older than the cutoff are discarded before persistence. Cleanup runs atomically
+against only scoreboard associations, games and request tracking.
 
-Rows expire after 30 days by scoreboard date. Initial population only backfills
-three days; a 30-day historical navigation promise would be incorrect at launch.
-No missing response implies cancellation or deletion. Source disablement hides
-its retained associations immediately; another enabled association can keep the
-same game visible. Event identity is (Provider, Sport, League, EventId).
+Flags: --lookback-days 1–7 (default 1), --lookahead-days 1–14 (default 7),
+--retention-days 1–90 (default 1 previous day). Retention must be at least lookback.
+The cutoff uses America/Chicago in both application and SQL, including UTC-midnight
+and daylight saving boundaries. Day-only/TBD values do not get fabricated instants.
+Frontend date navigation should start at yesterday, not an older historical range.
+
+Missing events in a response still do not imply cancellation or deletion; the
+calendar retention rule is independent. Disabling a source hides its associations
+immediately without an ad hoc history delete. Other enabled associations can keep
+the same game visible until normal retention expires. Existing schedules, web
+results, match results and cached box scores retain their separate policies.
 
 Only verified ESPN coverage is collected. The Big 12 calendar has other sports
 with no established live provider here. Its IDs are not ESPN IDs, and there is no

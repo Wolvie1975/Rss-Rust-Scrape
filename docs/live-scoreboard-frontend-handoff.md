@@ -4,13 +4,15 @@ Implemented and deployed October 23, 2026 (America/Chicago). Verified at approxi
 10:18 p.m. CDT (October 24, 03:18 UTC). This replaces proposed backend details in
 `New Development/live-scoreboard-scraper-handoff.md` with the deployed contract.
 
+Current retention update: scoreboard history is limited to the previous Central
+calendar day. Today and future games remain available; see navigation below.
+
 ## Ready for frontend implementation
 
-The new independent **web-scoreboard** service, image **web-scoreboard:20261023**,
+The new independent **web-scoreboard** service, image **web-scoreboard:previous-day-20261023**,
 collects persisted scoreboard samples. Query **dbo.SportsScoreboard** for games and
 **dbo.SportsScoreboardCoverage** for enabled coverage. No browser request should
-trigger upstream collection. The homepage card and Scoreboard page have not been
-implemented or deployed by this scraper change.
+trigger upstream collection. Frontend implementation and rollout are managed separately from this scraper task.
 
 Initial population plus the corrected football import produced **257 distinct
 games**, **20 enabled coverage sources**, and **13 sport/league combinations**.
@@ -240,9 +242,12 @@ and WasRescheduled. TBD/date-only events use their explicit date or provider day
 and a NULL start; never present a guessed kickoff. Indexed date/status paths and
 indexed association checks support these reads without browser-triggered imports.
 
-Supported launch navigation is **three days back through seven days ahead**.
-Retention is 30 days, with older history accumulating over time; initial backfill
-is only three days. Do not promise a complete 30-day archive at launch. A day with
+Current navigation is **yesterday through seven days ahead**, using America/Chicago
+calendar days. Retention keeps today, the previous day and future games; older
+scoreboard rows are removed. This is a calendar-day policy, not a rolling 24-hour
+window. Even older active/paused games expire at that boundary. The collector
+requests only one previous provider day, and filters older Central dates before
+persisting them. Existing schedule/results/box-score history is independent. A day with
 no games is different from unavailable data; consult coverage freshness and show
 that distinction. Request-level empty/partial outcomes are available on existing
 game rows; an empty date has no fabricated game row.

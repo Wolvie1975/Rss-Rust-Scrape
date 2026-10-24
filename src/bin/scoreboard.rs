@@ -28,11 +28,11 @@ struct Args {
     health_check: bool,
     #[arg(long,default_value_t=10,value_parser=clap::value_parser!(u32).range(10..=15))]
     live_minutes: u32,
-    #[arg(long,default_value_t=3,value_parser=clap::value_parser!(u32).range(1..=7))]
+    #[arg(long,default_value_t=1,value_parser=clap::value_parser!(u32).range(1..=7))]
     lookback_days: u32,
     #[arg(long,default_value_t=7,value_parser=clap::value_parser!(u32).range(1..=14))]
     lookahead_days: u32,
-    #[arg(long,default_value_t=30,value_parser=clap::value_parser!(u32).range(8..=90))]
+    #[arg(long,default_value_t=1,value_parser=clap::value_parser!(u32).range(1..=90))]
     retention_days: u32,
 }
 struct Db {
@@ -187,7 +187,7 @@ fn run(args: &Args) -> Result<()> {
             .map(|n| today + Duration::days(n))
             .collect::<BTreeSet<_>>();
         // Keep carried-over live/delayed/suspended games discoverable beyond the ordinary window.
-        for r in db.query("SELECT DISTINCT CONVERT(VARCHAR(10),ProviderDate,23) Day FROM dbo.SportsScoreboardGames WHERE Sport=@P1 AND League=@P2 AND Status IN('live','delayed','suspended') AND ScoreboardDate>=DATEADD(day,-@P3,CONVERT(date,SYSUTCDATETIME()));",&[&sport,&league,&(args.retention_days as i32)])?{
+        for r in db.query("SELECT DISTINCT CONVERT(VARCHAR(10),ProviderDate,23) Day FROM dbo.SportsScoreboardGames WHERE Sport=@P1 AND League=@P2 AND Status IN('live','delayed','suspended') AND ScoreboardDate>=DATEADD(day,-@P3,CONVERT(date,SYSUTCDATETIME() AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time'));",&[&sport,&league,&(args.retention_days as i32)])?{
             days.insert(NaiveDate::parse_from_str(r.get::<&str,_>(0).unwrap(),"%Y-%m-%d")?);
         }
         // Current day first, then nearby dates; initial backfill does not delay today's games.
@@ -247,7 +247,14 @@ fn run(args: &Args) -> Result<()> {
             })();
             let source_ids = json!(coverage.iter().map(|s| s.id).collect::<Vec<_>>()).to_string();
             match fetched {
-                Ok(parsed) => {
+                Ok(mut parsed) => {
+                    let cutoff =
+                        scoreboard::retention_cutoff(Utc::now(), args.retention_days).to_string();
+                    parsed.rows.retain(|r| {
+                        r["scoreboardDate"]
+                            .as_str()
+                            .is_some_and(|day| day >= cutoff.as_str())
+                    });
                     let payload = json!(parsed.rows).to_string();
                     db.query(
                         include_str!("../../sql/scoreboard_upsert.sql"),
@@ -299,7 +306,10 @@ fn run(args: &Args) -> Result<()> {
         }
     }
     if !args.dry_run {
-        db.query("DELETE es FROM dbo.SportsScoreboardEventSources es JOIN dbo.SportsScoreboardGames g ON g.ID=es.GameId WHERE g.ScoreboardDate<DATEADD(day,-@P1,CONVERT(date,SYSUTCDATETIME())); DELETE dbo.SportsScoreboardGames WHERE ScoreboardDate<DATEADD(day,-@P1,CONVERT(date,SYSUTCDATETIME())); DELETE dbo.SportsScoreboardRequests WHERE ProviderDate<DATEADD(day,-@P1,CONVERT(date,SYSUTCDATETIME()));",&[&(args.retention_days as i32)])?;
+        db.query(
+            include_str!("../../sql/scoreboard_retention.sql"),
+            &[&(args.retention_days as i32)],
+        )?;
     }
     println!("scoreboard run: {count} requests, {failures} failed/partial");
     if failures > 0 {
@@ -310,8 +320,8 @@ fn run(args: &Args) -> Result<()> {
 fn main() -> Result<()> {
     dotenvy::dotenv().ok();
     let args = Args::parse();
-    if args.retention_days <= args.lookback_days {
-        return Err("retention must exceed lookback".into());
+    if args.retention_days < args.lookback_days {
+        return Err("retention must be at least lookback".into());
     }
     loop {
         match run(&args) {

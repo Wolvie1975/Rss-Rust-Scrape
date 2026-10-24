@@ -42,7 +42,7 @@ services:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}
     entrypoint: ["scoreboard"]
-    command: ["--watch", "--live-minutes", "10", "--lookback-days", "3", "--lookahead-days", "7", "--retention-days", "30"]
+    command: ["--watch", "--live-minutes", "10", "--lookback-days", "1", "--lookahead-days", "7", "--retention-days", "1"]
     healthcheck:
       test: ["CMD", "scoreboard", "--health-check"]
       interval: 5m

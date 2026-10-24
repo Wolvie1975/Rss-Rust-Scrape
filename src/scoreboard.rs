@@ -12,6 +12,10 @@ pub struct Coverage {
     pub teams: BTreeSet<String>,
     pub season: Option<i32>,
 }
+pub fn retention_cutoff(now: DateTime<Utc>, previous_days: u32) -> NaiveDate {
+    now.with_timezone(&chrono_tz::America::Chicago).date_naive()
+        - chrono::Duration::days(i64::from(previous_days))
+}
 pub fn supported(sport: &str, league: &str) -> bool {
     matches!(
         (sport, league),
@@ -387,6 +391,20 @@ mod tests {
             &coverage(sport, league),
         )
         .unwrap()
+    }
+    #[test]
+    fn retention_uses_previous_central_calendar_day_at_utc_midnight_and_dst() {
+        for (now, wanted) in [
+            ("2026-10-24T03:00:00Z", "2026-10-22"),
+            ("2026-10-24T05:00:00Z", "2026-10-23"),
+            ("2026-11-01T06:30:00Z", "2026-10-31"),
+            ("2026-11-01T07:30:00Z", "2026-10-31"),
+        ] {
+            assert_eq!(
+                retention_cutoff(now.parse().unwrap(), 1).to_string(),
+                wanted
+            );
+        }
     }
     #[test]
     fn provider_groups_are_specific_to_each_sport() {

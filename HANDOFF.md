@@ -1,5 +1,13 @@
 # Scraper handoff
 
+## Scoreboard history limited to yesterday — October 23, 2026 CDT
+
+Scoreboard retention now keeps today, the previous America/Chicago calendar day,
+and future fixtures. Default lookback/retention are one day. Older imports are
+filtered and cleanup touches only scoreboard storage. Frontend date navigation
+should start at yesterday. See [current operations](docs/live-scoreboard-operations.md)
+and [verification](reports/scoreboard-previous-day-20261023.md).
+
 ## Persisted scoreboard — deployed October 23, 2026 CDT
 
 New **web-scoreboard:20261023** service is healthy and separately scheduled from
