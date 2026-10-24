@@ -98,7 +98,12 @@ pub fn parse(body: &str, today: NaiveDate) -> Result<Chart> {
         // Status applies only to the weekend gross. An unmarked number is not evidence of actuals.
         let gross_cell = cells[3];
         let estimated = gross_cell.value().classes().any(|c| c == "chart_estimate");
-        let label = gross_cell.value().attr("title").unwrap_or("").trim().to_ascii_lowercase();
+        let label = gross_cell
+            .value()
+            .attr("title")
+            .unwrap_or("")
+            .trim()
+            .to_ascii_lowercase();
         let actual = matches!(label.as_str(), "actual" | "actuals");
         let status = match (estimated, actual) {
             (true, false) => "estimated",
@@ -147,7 +152,11 @@ mod tests {
     }
     #[test]
     fn live_estimate_marker_is_row_scoped() {
-        let c = parse(include_str!("../tests/fixtures/boxoffice/provider-20261022.html"), NaiveDate::from_ymd_opt(2026, 10, 22).unwrap()).unwrap();
+        let c = parse(
+            include_str!("../tests/fixtures/boxoffice/provider-20261022.html"),
+            NaiveDate::from_ymd_opt(2026, 10, 22).unwrap(),
+        )
+        .unwrap();
         assert_eq!(c.rows[8]["resultStatus"], "estimated");
         assert_eq!(c.rows[0]["resultStatus"], "unknown");
         assert!(c.rows.iter().all(|r| r["statusAsOfUtc"].is_null()));
@@ -161,7 +170,11 @@ mod tests {
         assert_eq!(c.rows[0]["resultStatus"], "final");
         assert_eq!(c.rows[1]["resultStatus"], "unknown");
         let conflict = actual.replace("title='Actuals'", "title='Actuals' class='chart_estimate'");
-        assert_eq!(parse(&conflict, NaiveDate::from_ymd_opt(2026, 10, 13).unwrap()).unwrap().rows[0]["resultStatus"], "unknown");
+        assert_eq!(
+            parse(&conflict, NaiveDate::from_ymd_opt(2026, 10, 13).unwrap())
+                .unwrap()
+                .rows[0]["resultStatus"],
+            "unknown"
+        );
     }
-
 }

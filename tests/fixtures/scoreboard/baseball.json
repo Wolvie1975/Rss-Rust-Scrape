@@ -1,0 +1,239 @@
+{
+  "leagues": [
+    {
+      "slug": "mlb"
+    }
+  ],
+  "events": [
+    {
+      "id": "401908042",
+      "date": "2026-10-24T00:00Z",
+      "season": {
+        "year": 2026,
+        "type": 3,
+        "slug": "post-season"
+      },
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0:00",
+        "period": 8,
+        "type": {
+          "id": "2",
+          "name": "STATUS_IN_PROGRESS",
+          "state": "in",
+          "completed": false,
+          "description": "In Progress",
+          "detail": "Bottom 8th",
+          "shortDetail": "Bot 8th"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "gamecast",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/mlb/game/_/gameId/401908042",
+          "text": "Gamecast",
+          "shortText": "Gamecast",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "live",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/mlb/game/_/gameId/401908042",
+          "text": "Gamecast",
+          "shortText": "Gamecast",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "boxscore",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/mlb/boxscore/_/gameId/401908042",
+          "text": "Box Score",
+          "shortText": "Box Score",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "pbp",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/mlb/playbyplay/_/gameId/401908042",
+          "text": "Play-by-Play",
+          "shortText": "Play-by-Play",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "competitions": [
+        {
+          "id": "401908042",
+          "date": "2026-10-24T00:00Z",
+          "timeValid": true,
+          "neutralSite": false,
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0:00",
+            "period": 8,
+            "type": {
+              "id": "2",
+              "name": "STATUS_IN_PROGRESS",
+              "state": "in",
+              "completed": false,
+              "description": "In Progress",
+              "detail": "Bottom 8th",
+              "shortDetail": "Bot 8th"
+            }
+          },
+          "venue": {
+            "id": "4242",
+            "fullName": "American Family Field",
+            "address": {
+              "city": "Milwaukee",
+              "state": "Wisconsin"
+            },
+            "indoor": true
+          },
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "Fox"
+              ]
+            }
+          ],
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "3",
+              "linescores": [
+                {
+                  "value": 2.0,
+                  "displayValue": "2",
+                  "period": 1
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 2
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 3
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 4
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 5
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 6
+                },
+                {
+                  "value": 1.0,
+                  "displayValue": "1",
+                  "period": 7
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 8
+                }
+              ],
+              "team": {
+                "id": "8",
+                "displayName": "Milwaukee Brewers",
+                "name": "Brewers",
+                "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/mil.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "1",
+              "linescores": [
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 1
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 2
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 3
+                },
+                {
+                  "value": 1.0,
+                  "displayValue": "1",
+                  "period": 4
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 5
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 6
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 7
+                },
+                {
+                  "value": 0.0,
+                  "displayValue": "0",
+                  "period": 8
+                }
+              ],
+              "team": {
+                "id": "30",
+                "displayName": "Tampa Bay Rays",
+                "name": "Rays",
+                "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/tb.png"
+              }
+            }
+          ],
+          "situation": {
+            "outs": 0,
+            "balls": 0,
+            "strikes": 0,
+            "onFirst": true,
+            "onSecond": false,
+            "onThird": false
+          }
+        }
+      ]
+    }
+  ]
+}

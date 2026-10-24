@@ -2,6 +2,7 @@
 name = "web_scraper"
 version = "0.1.0"
 edition = "2024"
+default-run = "web_scraper"
 
 [dependencies]
 chrono = "0.4.45"

@@ -1,5 +1,16 @@
 # Scraper handoff
 
+## Persisted scoreboard — deployed October 23, 2026 CDT
+
+New **web-scoreboard:20261023** service is healthy and separately scheduled from
+hourly ingestion. `dbo.SportsScoreboard` / `dbo.SportsScoreboardCoverage` expose
+257 initial deduplicated games across 13 configured sport/league combinations.
+Live and near-start days use a ten-minute cadence; stale samples are flagged
+at 25 minutes. Existing schedules, results worker and box scores remain intact.
+No frontend UI was changed. [Frontend handoff](docs/live-scoreboard-frontend-handoff.md),
+[operations](docs/live-scoreboard-operations.md), and
+[deployment evidence/rollback](reports/live-scoreboard-20261023.md).
+
 ## Documentation
 
 Start with [README.md](README.md). Five topic guides replace the overlapping individual handoffs; three history files preserve dated deployment evidence. SQL examples, validation evidence and the previous long handoff remain available there.

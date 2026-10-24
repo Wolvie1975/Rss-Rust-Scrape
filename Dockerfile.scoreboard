@@ -1,0 +1,20 @@
+FROM rust:1.97-bookworm AS build
+WORKDIR /src
+COPY Cargo.toml Cargo.lock ./
+COPY src/ src/
+COPY sql/ sql/
+# Keep builds bounded on the shared development/production host.
+RUN CARGO_BUILD_JOBS=1 cargo build --locked --release --bin scoreboard
+
+FROM debian:bookworm-slim
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates libssl3 \
+ && rm -rf /var/lib/apt/lists/* \
+ && useradd -r -u 10002 scraper \
+ && mkdir /data && chown scraper /data
+COPY --from=build /src/target/release/scoreboard /usr/local/bin/scoreboard
+USER scraper
+WORKDIR /data
+HEALTHCHECK --interval=5m --timeout=30s --start-period=5m --retries=2 CMD scoreboard --health-check
+ENTRYPOINT ["scoreboard"]
+CMD ["--watch", "--live-minutes", "10"]

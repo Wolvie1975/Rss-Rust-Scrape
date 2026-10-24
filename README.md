@@ -43,3 +43,5 @@ The deployed F1 collector and frontend read contract are documented above.
 The optional game-statistics cache and read view require the separate additive
 `--configure-boxscores` setup with migration credentials after shared results
 tables exist. [Setup, deployment and rollback](reports/sports-boxscores-20261019.md).
+
+Persisted scoreboard: [frontend read contract](docs/live-scoreboard-frontend-handoff.md), [operations/setup](docs/live-scoreboard-operations.md), and [deployment verification](reports/live-scoreboard-20261023.md).

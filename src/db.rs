@@ -1988,9 +1988,18 @@ mod movie_tests {
                 format: Some("DVD".into()),
                 platform: None,
             };
-            db.rt.block_on(db.client.execute("UPDATE dbo.MovieReleaseSources SET CollectDisc=1 WHERE SourceKey=@P1", &[&source]))?;
-            assert_eq!(db.save_movie_releases(std::slice::from_ref(&row), &report)?, 1);
-            db.rt.block_on(db.client.execute("UPDATE dbo.MovieReleaseSources SET CollectDisc=0 WHERE SourceKey=@P1", &[&source]))?;
+            db.rt.block_on(db.client.execute(
+                "UPDATE dbo.MovieReleaseSources SET CollectDisc=1 WHERE SourceKey=@P1",
+                &[&source],
+            ))?;
+            assert_eq!(
+                db.save_movie_releases(std::slice::from_ref(&row), &report)?,
+                1
+            );
+            db.rt.block_on(db.client.execute(
+                "UPDATE dbo.MovieReleaseSources SET CollectDisc=0 WHERE SourceKey=@P1",
+                &[&source],
+            ))?;
             assert!(!db.tracked_movie_urls()?.contains(&row.url));
             db.rt.block_on(db.client.execute("UPDATE r SET ReleaseStatus='withdrawn' FROM dbo.MovieReleases r JOIN dbo.MovieSourceLinks l ON l.ID=r.MovieSourceLinkId JOIN dbo.MovieReleaseSources s ON s.ID=l.MovieReleaseSourceId WHERE s.SourceKey=@P1 AND r.ReleaseType='disc'", &[&source]))?;
             assert_eq!(

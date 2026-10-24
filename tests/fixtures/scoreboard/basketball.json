@@ -1,0 +1,213 @@
+{
+  "leagues": [
+    {
+      "slug": "wnba"
+    }
+  ],
+  "events": [
+    {
+      "id": "401857190",
+      "date": "2026-09-17T23:30Z",
+      "season": {
+        "year": 2026,
+        "type": 2,
+        "slug": "regular-season"
+      },
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0.0",
+        "period": 4,
+        "type": {
+          "id": "3",
+          "name": "STATUS_FINAL",
+          "state": "post",
+          "completed": true,
+          "description": "Final",
+          "detail": "Final",
+          "shortDetail": "Final"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/wnba/game/_/gameId/401857190/sun-dream",
+          "text": "Gamecast",
+          "shortText": "Gamecast",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "boxscore",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/wnba/boxscore/_/gameId/401857190",
+          "text": "Box Score",
+          "shortText": "Box Score",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "https://www.espn.com/wnba/video?gameId=401857190",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "pbp",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/wnba/playbyplay/_/gameId/401857190",
+          "text": "Play-by-Play",
+          "shortText": "Play-by-Play",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "recap",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/wnba/recap?gameId=401857190",
+          "text": "Recap",
+          "shortText": "Recap",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "competitions": [
+        {
+          "id": "401857190",
+          "date": "2026-09-17T23:30Z",
+          "timeValid": true,
+          "neutralSite": false,
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0.0",
+            "period": 4,
+            "type": {
+              "id": "3",
+              "name": "STATUS_FINAL",
+              "state": "post",
+              "completed": true,
+              "description": "Final",
+              "detail": "Final",
+              "shortDetail": "Final"
+            }
+          },
+          "venue": {
+            "id": "6282",
+            "fullName": "Gateway Center",
+            "address": {
+              "city": "College Park",
+              "state": "GA"
+            },
+            "indoor": true
+          },
+          "broadcasts": [
+            {
+              "market": "away",
+              "names": [
+                "WNBA League Pass",
+                "NBC Sports BO"
+              ]
+            },
+            {
+              "market": "home",
+              "names": [
+                "Atlanta News First",
+                "Victory+ ATL"
+              ]
+            }
+          ],
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "103",
+              "winner": true,
+              "linescores": [
+                {
+                  "value": 22.0,
+                  "displayValue": "22",
+                  "period": 1
+                },
+                {
+                  "value": 23.0,
+                  "displayValue": "23",
+                  "period": 2
+                },
+                {
+                  "value": 31.0,
+                  "displayValue": "31",
+                  "period": 3
+                },
+                {
+                  "value": 27.0,
+                  "displayValue": "27",
+                  "period": 4
+                }
+              ],
+              "team": {
+                "id": "20",
+                "displayName": "Atlanta Dream",
+                "name": "Dream",
+                "logo": "https://a.espncdn.com/i/teamlogos/wnba/500/atl.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "59",
+              "winner": false,
+              "linescores": [
+                {
+                  "value": 17.0,
+                  "displayValue": "17",
+                  "period": 1
+                },
+                {
+                  "value": 18.0,
+                  "displayValue": "18",
+                  "period": 2
+                },
+                {
+                  "value": 11.0,
+                  "displayValue": "11",
+                  "period": 3
+                },
+                {
+                  "value": 13.0,
+                  "displayValue": "13",
+                  "period": 4
+                }
+              ],
+              "team": {
+                "id": "18",
+                "displayName": "Connecticut Sun",
+                "name": "Sun",
+                "logo": "https://a.espncdn.com/i/teamlogos/wnba/500/con.png"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
