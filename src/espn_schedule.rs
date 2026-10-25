@@ -1,4 +1,5 @@
 //! Shared ESPN schedule parsing; scores and results are deliberately ignored.
+use crate::Result;
 use crate::events::Event;
 use chrono::{DateTime, Datelike, NaiveDate, Timelike, Utc};
 use chrono_tz::America::{Chicago, New_York};
@@ -6,7 +7,6 @@ use reqwest::blocking::Client;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use url::Url;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum League {
     Nwsl,

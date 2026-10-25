@@ -8,15 +8,14 @@ use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
 use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 
-use crate::PageMeta;
 use crate::events::Event;
+use crate::pages::PageMeta;
 use crate::youtube::Video;
 
-#[allow(dead_code)] // Default used by database integration tests.
 const DB_NAME: &str = "WebScraper";
 
 type Conn = Client<Compat<TcpStream>>;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use crate::Result;
 const DB_TIMEOUT: Duration = Duration::from_secs(180);
 async fn bounded<T>(
     future: impl std::future::Future<Output = Result<T>>,
@@ -90,7 +89,6 @@ pub struct Db {
 
 impl Db {
     /// Connects, creating the database and its tables first if they are missing.
-    #[allow(dead_code)] // Convenience entry point for tests and callers using the default database.
     pub fn open(ado: &str) -> Result<Db> {
         Self::open_named(ado, DB_NAME)
     }
@@ -700,7 +698,6 @@ AND ISNULL(m.OriginalYear,0)=ISNULL(@P4,0) AND ISNULL(m.ImdbId,'')=ISNULL(@P5,''
 
     /// Upserts each page keyed on URL, linking it to its source (which is created
     /// in `Sources` if the requested URL isn't there yet). Returns the number of pages written.
-    #[allow(dead_code)] // Retained for isolated SQL fixture callers.
     pub fn save_pages(&mut self, pages: &[PageMeta]) -> Result<usize> {
         self.save_page_refs(&pages.iter().collect::<Vec<_>>())
     }
@@ -1301,7 +1298,7 @@ END CATCH
                     ] {
                         self.client.simple_query(sql).await?.into_results().await?;
                     }
-                    Ok::<_, Box<dyn std::error::Error>>(())
+                    Ok::<_, crate::Error>(())
                 }
                 .await;
                 if let Err(e) = result {
@@ -1709,7 +1706,7 @@ END CATCH;
                     .await?
                     .into_first_result()
                     .await?;
-                Ok::<_, Box<dyn std::error::Error>>(
+                Ok::<_, crate::Error>(
                     rows.iter()
                         .filter_map(|r| {
                             Some((r.get::<i32, _>(0)?, r.get::<&str, _>(1)?.to_owned()))
@@ -1741,7 +1738,7 @@ END CATCH;
                  ELSE IF NOT EXISTS(SELECT 1 FROM dbo.SportsEventsType WITH(UPDLOCK,HOLDLOCK) WHERE ProviderKey='big12' AND ProviderSchoolId=@P2)
                   INSERT dbo.SportsEventsType(RssUrl,EventsTypeName,SchoolName,ProviderKey,ProviderSchoolId,Enabled) VALUES(@P4,@P5,@P3,'big12',@P2,0);
                  COMMIT TRANSACTION; END TRY BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK TRANSACTION; THROW; END CATCH",&[&existing,&m.id,&m.name,&url,&label]).await?;
-                Ok::<_,Box<dyn std::error::Error>>(())
+                Ok::<_,crate::Error>(())
             },&self.poisoned))?;
         }
         self.rt.block_on(bounded(
@@ -1759,7 +1756,7 @@ END CATCH;
                         )
                         .await?;
                 }
-                Ok::<_, Box<dyn std::error::Error>>(())
+                Ok::<_, crate::Error>(())
             },
             &self.poisoned,
         ))
@@ -1970,7 +1967,7 @@ mod movie_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         let result = (|| -> Result<()> {
             let source = "disc-policy-fixture";
@@ -2041,7 +2038,7 @@ mod movie_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         result
     }
@@ -2086,7 +2083,7 @@ mod movie_tests {
                 assert_eq!(rows.len(), 1);
                 assert_eq!(rows[0].get::<chrono::NaiveDate,_>(0), Some(row.date));
                 db.client.execute("UPDATE dbo.MovieReleaseSources SET Enabled=0 WHERE SourceKey='dvdsreleasedates'", &[]).await?;
-                Ok::<_, Box<dyn std::error::Error>>(())
+                Ok::<_, crate::Error>(())
             })?;
             assert_eq!(db.save_movie_releases(&[row], &report)?, 0);
             Ok(())
@@ -2181,7 +2178,7 @@ mod school_logo_tests {
                 assert_eq!(rows[0].get::<&str,_>("TeamLogoUrl"),Some("https://example.invalid/jayhawk.png"));
                 assert_eq!(rows[1].get::<&str,_>("TeamLogoUrl"),Some("https://example.invalid/jayhawk.png"));
                 assert_eq!(rows[2].get::<&str,_>("TeamLogoUrl"),Some("http://big12sports.com/images/logos/site/site.png"));
-                Ok::<_,Box<dyn std::error::Error>>(())
+                Ok::<_,crate::Error>(())
             })?;
             assert_eq!(db.refresh_school_team_logo(kansas, None)?, 2);
             assert_eq!(db.refresh_school_team_logo(kansas, None)?, 0);
@@ -2245,7 +2242,7 @@ mod big12_tests {
     assert_eq!(rows.len(),1);assert_eq!(rows[0].get::<i32,_>("ID"),Some(original_id));assert_eq!(rows[0].get::<chrono::NaiveDateTime,_>("FirstSeenAt"),original_seen);
     assert_eq!(rows[0].get::<i32,_>("SchoolId"),Some(3));assert_eq!(rows[0].get::<&str,_>("Opponent"),Some("Utah"));assert_eq!(rows[0].get::<chrono::NaiveDate,_>("EventDate"),chrono::NaiveDate::from_ymd_opt(2026,10,17));
     let sources=db.client.query("SELECT ProviderGameId FROM dbo.SportsEventSources WHERE SportsEventId=@P1 AND ProviderGameId IN(179871,179872)",&[&original_id]).await?.into_first_result().await?;assert_eq!(sources.len(),2);
-    Ok::<_,Box<dyn std::error::Error>>(())
+    Ok::<_,crate::Error>(())
    })?;
             db.event_result(utah, true, 1, 0, None)?;
             db.event_attempt(utah)?;
@@ -2253,7 +2250,7 @@ mod big12_tests {
             db.rt.block_on(async {
     let rows=db.client.query("SELECT LastAttemptAt,LastSuccessAt,LastError FROM dbo.SportsEventsType WHERE ID=@P1",&[&utah]).await?.into_first_result().await?;
     assert!(rows[0].get::<chrono::NaiveDateTime,_>(0).is_some());assert!(rows[0].get::<chrono::NaiveDateTime,_>(1).is_some());assert_eq!(rows[0].get::<&str,_>(2),Some("fixture feed failure"));
-    Ok::<_,Box<dyn std::error::Error>>(())
+    Ok::<_,crate::Error>(())
    })?;
             db.rt.block_on(async {
                 db.client
@@ -2262,7 +2259,7 @@ mod big12_tests {
                         &[&utah],
                     )
                     .await?;
-                Ok::<_, Box<dyn std::error::Error>>(())
+                Ok::<_, crate::Error>(())
             })?;
             assert_eq!(db.save_big12_observation(utah, &b)?, "disabled");
             db.rt.block_on(async {
@@ -2272,7 +2269,7 @@ mod big12_tests {
                         &[&utah],
                     )
                     .await?;
-                Ok::<_, Box<dyn std::error::Error>>(())
+                Ok::<_, crate::Error>(())
             })?;
             let mut bad = b;
             bad["issue"] = serde_json::json!("identity unavailable");
@@ -2281,7 +2278,7 @@ mod big12_tests {
             db.rt.block_on(async {
     let rows=db.client.query("SELECT Payload,SourceUrl FROM dbo.SportsEventSources WHERE SportsEventsTypeId=@P1 AND ProviderGameId=179872",&[&utah]).await?.into_first_result().await?;
     let payload:serde_json::Value=serde_json::from_str(rows[0].get::<&str,_>(0).unwrap())?;assert!(payload["issue"].is_null());assert_eq!(rows[0].get::<&str,_>(1),Some("http://big12sports.com/calendar.aspx?id=179872"));
-    Ok::<_,Box<dyn std::error::Error>>(())
+    Ok::<_,crate::Error>(())
    })?;
             Ok(())
         })();
@@ -2314,7 +2311,7 @@ mod poster_tests {
         let result = (|| -> Result<()> {
             let report = serde_json::json!({"issues":[]});
             db.save_movie_releases(&[], &report)?;
-            db.rt.block_on(async{db.client.execute("UPDATE dbo.MovieReleaseSources SET Enabled=1 WHERE SourceKey='dvdsreleasedates'",&[]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+            db.rt.block_on(async{db.client.execute("UPDATE dbo.MovieReleaseSources SET Enabled=1 WHERE SourceKey='dvdsreleasedates'",&[]).await?;Ok::<_,crate::Error>(())})?;
             let row = crate::movies::MovieRelease {
                 source: "dvdsreleasedates".into(),
                 external_id: "poster-regression-fixture".into(),
@@ -2363,7 +2360,7 @@ mod poster_tests {
                 assert_eq!(rows.len(),1);assert_eq!(rows[0].get::<&str,_>(0),Some(poster));assert_eq!(rows[0].get::<i16,_>(1),Some(1947));
                 let rows=db.client.query("SELECT COUNT(*) AS Total FROM dbo.MovieReleases WHERE MovieSourceLinkId=@P1",&[&job.link_id]).await?.into_first_result().await?;assert_eq!(rows[0].get::<i32,_>(0),Some(1));
                 let rows=db.client.query("SELECT COUNT(*) FROM dbo.MoviePosterCache WHERE SourceLinkId=@P1",&[&job.link_id]).await?.into_first_result().await?;assert_eq!(rows[0].get::<i32,_>(0),Some(1));
-                Ok::<_,Box<dyn std::error::Error>>(())
+                Ok::<_,crate::Error>(())
             })?;
             Ok(())
         })();
@@ -2420,7 +2417,7 @@ mod tvmaze_tests {
             db.rt.block_on(async {
     let rows=db.client.query("SELECT ID,FirstSeenAt,Airdate,StartsAtUtc,IsDateOnly FROM dbo.TvEpisodes WHERE TvmazeEpisodeId=3682283",&[]).await?.into_first_result().await?;
     assert_eq!(rows.len(),1);assert_eq!(rows[0].get::<i32,_>(0),original_id);assert_eq!(rows[0].get::<chrono::NaiveDateTime,_>(1),original_seen);assert_eq!(rows[0].get::<chrono::NaiveDate,_>(2),chrono::NaiveDate::from_ymd_opt(2026,10,11));assert!(rows[0].get::<chrono::NaiveDateTime,_>(3).is_none());assert_eq!(rows[0].get::<bool,_>(4),Some(true));
-    db.client.execute("UPDATE dbo.TvTrackedSeries SET Enabled=0 WHERE TvmazeShowId=83073",&[]).await?;Ok::<_,Box<dyn std::error::Error>>(())
+    db.client.execute("UPDATE dbo.TvTrackedSeries SET Enabled=0 WHERE TvmazeShowId=83073",&[]).await?;Ok::<_,crate::Error>(())
    })?;
             db.setup_tv(true)?;
             assert!(!db.tv_jobs()?.iter().any(|(id, _)| *id == 83073));
@@ -2455,7 +2452,7 @@ mod tvmaze_tests {
    let rows=db.client.query("SELECT COUNT(*) FROM dbo.TvEpisodes",&[]).await?.into_first_result().await?;assert_eq!(rows[0].get::<i32,_>(0),Some(90));
    let rows=db.client.query("SELECT LastSuccessAt,EpisodeCount,LastError FROM dbo.TvTrackedSeries WHERE TvmazeShowId=83073",&[]).await?.into_first_result().await?;assert!(rows[0].get::<chrono::NaiveDateTime,_>(0).is_some());assert_eq!(rows[0].get::<i32,_>(1),Some(13));assert_eq!(rows[0].get::<&str,_>(2),Some("fixture incomplete response"));
    let rows=db.client.query("SELECT ID,FirstSeenAt,Airdate FROM dbo.TvEpisodes WHERE TvmazeEpisodeId=3682283",&[]).await?.into_first_result().await?;assert_eq!(rows[0].get::<i32,_>(0),original_id);assert_eq!(rows[0].get::<chrono::NaiveDateTime,_>(1),original_seen);assert_eq!(rows[0].get::<chrono::NaiveDate,_>(2),chrono::NaiveDate::from_ymd_opt(2026,10,9));
-   Ok::<_,Box<dyn std::error::Error>>(())
+   Ok::<_,crate::Error>(())
   })?;
         Ok(())
     }
@@ -2482,11 +2479,11 @@ mod nwsl_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         let result = (|| -> Result<()> {
             let legacy=db.ensure_sports_events_type("https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/scoreboard?team=20907","Kansas City Current")?;
-            db.rt.block_on(async {db.client.execute("UPDATE dbo.SportsEventsType SET ProviderKey='espn-nwsl',ProviderSchoolId=20907,Enabled=0 WHERE ID=@P1",&[&legacy]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+            db.rt.block_on(async {db.client.execute("UPDATE dbo.SportsEventsType SET ProviderKey='espn-nwsl',ProviderSchoolId=20907,Enabled=0 WHERE ID=@P1",&[&legacy]).await?;Ok::<_,crate::Error>(())})?;
             db.configure_nwsl()?;
             let id = db.ensure_sports_events_type(
                 "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/scoreboard",
@@ -2510,7 +2507,7 @@ mod nwsl_tests {
                         &[&id],
                     )
                     .await?;
-                Ok::<_, Box<dyn std::error::Error>>(())
+                Ok::<_, crate::Error>(())
             })?;
             db.configure_nwsl()?; // Reconfiguration must preserve Enabled.
             assert_eq!(db.save_espn_schedule(id, &fixtures)?, 3);
@@ -2602,7 +2599,7 @@ mod nwsl_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         result
     }
@@ -2626,7 +2623,7 @@ mod wnba_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         let result = (|| -> Result<()> {
             db.configure_wnba()?;
@@ -2648,7 +2645,7 @@ mod wnba_tests {
                     + chrono::Duration::days(1);
             }
             assert_eq!(db.save_espn_schedule(id, &fixtures)?, 0);
-            db.rt.block_on(async {db.client.execute("UPDATE dbo.SportsEventsType SET Enabled=1,RssUrl=RssUrl+'?season=2026' WHERE ID=@P1",&[&id]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+            db.rt.block_on(async {db.client.execute("UPDATE dbo.SportsEventsType SET Enabled=1,RssUrl=RssUrl+'?season=2026' WHERE ID=@P1",&[&id]).await?;Ok::<_,crate::Error>(())})?;
             db.configure_wnba()?;
             assert_eq!(
                 db.sports_event_feeds()?
@@ -2730,7 +2727,7 @@ mod wnba_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         result
     }
@@ -2754,7 +2751,7 @@ mod mlb_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         let result = (|| -> Result<()> {
             db.configure_mlb()?;
@@ -2785,7 +2782,7 @@ mod mlb_tests {
                     + chrono::Duration::days(1);
             }
             assert_eq!(db.save_espn_schedule(id, &fixtures)?, 0);
-            db.rt.block_on(async {db.client.execute("UPDATE dbo.SportsEventsType SET Enabled=1,RssUrl=RssUrl+'?season=2026' WHERE ID=@P1",&[&id]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+            db.rt.block_on(async {db.client.execute("UPDATE dbo.SportsEventsType SET Enabled=1,RssUrl=RssUrl+'?season=2026' WHERE ID=@P1",&[&id]).await?;Ok::<_,crate::Error>(())})?;
             db.configure_mlb()?;
             assert_eq!(
                 db.sports_event_feeds()?
@@ -2867,7 +2864,7 @@ mod mlb_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         result
     }
@@ -2902,7 +2899,7 @@ mod hardening_sql_tests {
             "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?season=2026",
             "Hardening fixture",
         )?;
-        db.rt.block_on(async {db.client.execute("DELETE dbo.SportsEvents WHERE ProviderKey='espn-mlb' AND GameId IN(90000001,90000002,90000003)",&[]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        db.rt.block_on(async {db.client.execute("DELETE dbo.SportsEvents WHERE ProviderKey='espn-mlb' AND GameId IN(90000001,90000002,90000003)",&[]).await?;Ok::<_,crate::Error>(())})?;
         let today = Utc::now()
             .with_timezone(&chrono_tz::America::Chicago)
             .date_naive();
@@ -2966,7 +2963,7 @@ mod hardening_sql_tests {
             after_error[0].get::<&str, _>("ScheduleStatus"),
             Some("STATUS_FINAL")
         );
-        db.rt.block_on(async {db.client.execute("DELETE dbo.SportsEvents WHERE ProviderKey='espn-mlb' AND GameId IN(90000001,90000002,90000003)",&[]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        db.rt.block_on(async {db.client.execute("DELETE dbo.SportsEvents WHERE ProviderKey='espn-mlb' AND GameId IN(90000001,90000002,90000003)",&[]).await?;Ok::<_,crate::Error>(())})?;
         let id = db.start_run()?;
         db.run_heartbeat(id)?;
         db.finish_run(id, "succeeded", None)?;
@@ -2990,7 +2987,7 @@ mod standings_sql_tests {
         db.configure_standings()?;
         db.rt.block_on(async {
             db.client.simple_query("DELETE dbo.SportsStandings; UPDATE dbo.SportsStandingsSources SET Enabled=1; DROP TRIGGER IF EXISTS dbo.StandingsValidationFailure;").await?.into_results().await?;
-            Ok::<_,Box<dyn std::error::Error>>(())
+            Ok::<_,crate::Error>(())
         })?;
         db.configure_standings()?;
         let sources = db.standings_sources()?;
@@ -3032,7 +3029,7 @@ mod standings_sql_tests {
                 .iter()
                 .all(|r| r.get::<bool, _>("IsCurrent") == Some(true))
         );
-        db.rt.block_on(async {db.client.simple_query("CREATE TRIGGER dbo.StandingsValidationFailure ON dbo.SportsStandings AFTER INSERT AS THROW 50000,'fixture write failure',1;").await?.into_results().await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        db.rt.block_on(async {db.client.simple_query("CREATE TRIGGER dbo.StandingsValidationFailure ON dbo.SportsStandings AFTER INSERT AS THROW 50000,'fixture write failure',1;").await?.into_results().await?;Ok::<_,crate::Error>(())})?;
         snapshot.season = "2027".into();
         let failed = db.save_standings(source, &snapshot);
         db.rt.block_on(async {
@@ -3041,7 +3038,7 @@ mod standings_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         assert!(failed.is_err());
         let rows = read(&mut db)?;
@@ -3074,7 +3071,7 @@ mod standings_sql_tests {
             let p=db.client.query("EXECUTE AS USER='webscraper_ingest'; SELECT HAS_PERMS_BY_NAME('dbo.SportsStandings','OBJECT','SELECT'),HAS_PERMS_BY_NAME('dbo.SportsStandings','OBJECT','INSERT'),HAS_PERMS_BY_NAME('dbo.SportsStandings','OBJECT','UPDATE'),HAS_PERMS_BY_NAME('dbo.SportsStandings','OBJECT','DELETE'),HAS_PERMS_BY_NAME('dbo.SportsStandingsSources','OBJECT','UPDATE','Url','COLUMN'),HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CREATE TABLE'); REVERT;",&[]).await?.into_first_result().await?;
             for i in 0..4 {assert_eq!(p[0].get::<i32,_>(i),Some(1));}
             for i in 4..6 {assert_eq!(p[0].get::<i32,_>(i),Some(0));}
-            Ok::<_,Box<dyn std::error::Error>>(())
+            Ok::<_,crate::Error>(())
         })?;
         Ok(())
     }
@@ -3149,7 +3146,7 @@ mod digital_movie_sql_tests {
         }
         let mut db = Db::open_named(&std::env::var("MSSQL_CONNECTION_STRING")?, &name)?;
         db.configure_movieinsider()?;
-        db.rt.block_on(async {db.client.simple_query("BEGIN TRANSACTION; UPDATE dbo.MovieReleaseSources SET Enabled=0 WHERE SourceKey='movieinsider';").await?.into_results().await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        db.rt.block_on(async {db.client.simple_query("BEGIN TRANSACTION; UPDATE dbo.MovieReleaseSources SET Enabled=0 WHERE SourceKey='movieinsider';").await?.into_results().await?;Ok::<_,crate::Error>(())})?;
         let result = (|| -> Result<()> {
             db.configure_movieinsider()?;
             assert!(
@@ -3160,7 +3157,7 @@ mod digital_movie_sql_tests {
             let report = serde_json::json!({"releases":[{"title":"Digital Fixture","source":"movieinsider","release_type":"digital","release_date":"2026-10-09","source_url":"https://www.movieinsider.com/m900001/digital-fixture","format":"VOD / Digital"}],"issues":[]});
             let mut rows = crate::movies::release_rows(&report)?;
             assert_eq!(db.save_movie_releases(&rows, &report)?, 0);
-            db.rt.block_on(async {db.client.execute("UPDATE dbo.MovieReleaseSources SET Enabled=1 WHERE SourceKey='movieinsider'",&[]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+            db.rt.block_on(async {db.client.execute("UPDATE dbo.MovieReleaseSources SET Enabled=1 WHERE SourceKey='movieinsider'",&[]).await?;Ok::<_,crate::Error>(())})?;
             db.configure_movieinsider()?;
             assert!(
                 db.enabled_movie_sources()?
@@ -3186,7 +3183,7 @@ mod digital_movie_sql_tests {
             assert_eq!(after[0].get::<chrono::NaiveDate, _>(2), Some(rows[0].date));
             assert_eq!(after[0].get::<&str, _>(3), Some("900001"));
             assert_eq!(after[0].get::<&str, _>(4), Some("digital:first"));
-            db.rt.block_on(async {db.client.execute("UPDATE dbo.MovieReleaseSources SET Enabled=0 WHERE SourceKey='movieinsider'",&[]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+            db.rt.block_on(async {db.client.execute("UPDATE dbo.MovieReleaseSources SET Enabled=0 WHERE SourceKey='movieinsider'",&[]).await?;Ok::<_,crate::Error>(())})?;
             db.configure_movieinsider()?;
             assert_eq!(db.save_movie_releases(&rows, &report)?, 0);
             assert_eq!(read(&mut db)?.len(), 1);
@@ -3198,7 +3195,7 @@ mod digital_movie_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         result
     }
@@ -3217,7 +3214,7 @@ mod ranking_sql_tests {
         let mut db = Db::open_named(&std::env::var("MSSQL_CONNECTION_STRING")?, &name)?;
         db.setup_tv(false)?;
         db.configure_rankings()?;
-        db.rt.block_on(async {db.client.simple_query("DELETE dbo.SportsRankingTeams; DELETE dbo.SportsRankingPolls; UPDATE dbo.SportsRankingSources SET Enabled=1; DROP TRIGGER IF EXISTS dbo.RankingValidationFailure;").await?.into_results().await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        db.rt.block_on(async {db.client.simple_query("DELETE dbo.SportsRankingTeams; DELETE dbo.SportsRankingPolls; UPDATE dbo.SportsRankingSources SET Enabled=1; DROP TRIGGER IF EXISTS dbo.RankingValidationFailure;").await?.into_results().await?;Ok::<_,crate::Error>(())})?;
         db.configure_rankings()?;
         let sources = db.ranking_sources()?;
         assert_eq!(sources.len(), 5);
@@ -3268,7 +3265,7 @@ mod ranking_sql_tests {
         older.updated = older.updated.map(|t| t - chrono::Duration::minutes(2));
         assert!(db.save_ranking(source, &older).is_err());
         assert_eq!(read(&mut db)?.len(), 25);
-        db.rt.block_on(async {db.client.simple_query("CREATE TRIGGER dbo.RankingValidationFailure ON dbo.SportsRankingTeams AFTER INSERT AS THROW 50000,'fixture insert failure',1;").await?.into_results().await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        db.rt.block_on(async {db.client.simple_query("CREATE TRIGGER dbo.RankingValidationFailure ON dbo.SportsRankingTeams AFTER INSERT AS THROW 50000,'fixture insert failure',1;").await?.into_results().await?;Ok::<_,crate::Error>(())})?;
         p.published += chrono::Duration::days(7);
         p.updated = p.updated.map(|t| t + chrono::Duration::days(7));
         let failure = db.save_ranking(source, &p);
@@ -3278,7 +3275,7 @@ mod ranking_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         assert!(failure.is_err());
         let unchanged = read(&mut db)?;
@@ -3307,7 +3304,7 @@ mod ranking_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         Ok(())
     }
@@ -3393,7 +3390,7 @@ mod championship_sql_tests {
                     &[&source],
                 )
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         assert!(db.save_championship_results(source, &batch).is_err());
         assert_eq!(read(&mut db)?[0].get::<i32, _>(2), Some(7));
@@ -3522,7 +3519,7 @@ mod schedule_batch_sql_tests {
             f.completed = false;
             games.push(f);
         }
-        db.rt.block_on(async {db.client.simple_query("CREATE TRIGGER dbo.BatchFailure ON dbo.SportsEvents AFTER INSERT AS IF EXISTS(SELECT 1 FROM inserted WHERE GameId=90000100) THROW 50000,'second chunk failure',1;").await?.into_results().await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        db.rt.block_on(async {db.client.simple_query("CREATE TRIGGER dbo.BatchFailure ON dbo.SportsEvents AFTER INSERT AS IF EXISTS(SELECT 1 FROM inserted WHERE GameId=90000100) THROW 50000,'second chunk failure',1;").await?.into_results().await?;Ok::<_,crate::Error>(())})?;
         assert!(db.save_espn_schedule(feed, &games).is_err());
         let count = db.rt.block_on(async {
             db.client
@@ -3541,7 +3538,7 @@ mod schedule_batch_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         assert_eq!(db.save_espn_schedule(feed, &games)?, 101);
         let read = |db: &mut Db| -> Result<Vec<tiberius::Row>> {
@@ -3638,7 +3635,7 @@ mod nhl_sql_tests {
                     &[&source],
                 )
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         assert_eq!(read(&mut db)?.len(), 1); // Schedule removal never removes results.
         assert!(
@@ -3682,7 +3679,7 @@ mod article_identity_sql_tests {
         }
         let ado = std::env::var("MSSQL_CONNECTION_STRING")?;
         let mut db = Db::open_named(&ado, &name)?;
-        db.rt.block_on(async {db.client.simple_query("DROP TRIGGER IF EXISTS dbo.IdentityRollbackTest; DROP TABLE IF EXISTS dbo.IdentityTestSaved; DELETE dbo.ArticleIdRedirects; DELETE dbo.ArticleUrlAliases; DELETE dbo.Pages; DELETE dbo.Sources;").await?.into_results().await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        db.rt.block_on(async {db.client.simple_query("DROP TRIGGER IF EXISTS dbo.IdentityRollbackTest; DROP TABLE IF EXISTS dbo.IdentityTestSaved; DELETE dbo.ArticleIdRedirects; DELETE dbo.ArticleUrlAliases; DELETE dbo.Pages; DELETE dbo.Sources;").await?.into_results().await?;Ok::<_,crate::Error>(())})?;
         let source = "https://publisher.test/";
         let old = "https://publisher.test/news/old";
         let new = "https://publisher.test/news/new";
@@ -3756,7 +3753,7 @@ mod article_identity_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         incoming.identity_urls.push(third.into());
         assert!(
@@ -3771,14 +3768,14 @@ mod article_identity_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         db.save_article(&incoming, false)?;
         let fourth = "https://publisher.test/news/fourth";
         db.save_pages(&[page(source, fourth)])?;
         incoming.identity_urls.push(fourth.into());
         let before = scalar(&mut db, "SELECT COUNT(*) FROM dbo.ArticleIdRedirects")?;
-        db.rt.block_on(async {db.client.simple_query("CREATE OR ALTER TRIGGER dbo.IdentityRollbackTest ON dbo.Pages AFTER UPDATE AS THROW 50000,'injected rollback test',1;").await?.into_results().await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        db.rt.block_on(async {db.client.simple_query("CREATE OR ALTER TRIGGER dbo.IdentityRollbackTest ON dbo.Pages AFTER UPDATE AS THROW 50000,'injected rollback test',1;").await?.into_results().await?;Ok::<_,crate::Error>(())})?;
         assert!(db.save_article(&incoming, false).is_err());
         assert_eq!(scalar(&mut db, "SELECT COUNT(*) FROM dbo.Pages")?, 2);
         assert_eq!(
@@ -3791,7 +3788,7 @@ mod article_identity_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         db.save_article(&incoming, false)?;
         // Separate sessions racing on a single URL converge under the global hash lock.
@@ -3799,17 +3796,15 @@ mod article_identity_sql_tests {
         for _ in 0..4 {
             let ado = ado.clone();
             let name = name.clone();
-            workers.push(std::thread::spawn(
-                move || -> std::result::Result<(), String> {
-                    let mut db = Db::connect_named(&ado, &name).map_err(|e| e.to_string())?;
-                    db.save_pages(&[page(
-                        "https://publisher.test/",
-                        "https://publisher.test/news/race",
-                    )])
-                    .map_err(|e| e.to_string())?;
-                    Ok(())
-                },
-            ));
+            workers.push(std::thread::spawn(move || -> Result<(), String> {
+                let mut db = Db::connect_named(&ado, &name).map_err(|e| e.to_string())?;
+                db.save_pages(&[page(
+                    "https://publisher.test/",
+                    "https://publisher.test/news/race",
+                )])
+                .map_err(|e| e.to_string())?;
+                Ok(())
+            }));
         }
         for worker in workers {
             worker
@@ -3868,7 +3863,7 @@ mod article_identity_sql_tests {
             .redirect(reqwest::redirect::Policy::none())
             .timeout(Duration::from_secs(2))
             .build()?;
-        crate::enrich_article_identities(
+        crate::pages::enrich_article_identities(
             &client,
             &mut found,
             recent,
@@ -3909,7 +3904,7 @@ mod movie_commerce_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         let report = serde_json::json!({"releases":[],"issues":[]});
         let row = crate::movies::MovieRelease {
@@ -3971,7 +3966,7 @@ mod movie_commerce_sql_tests {
         let capped=db.rt.block_on(async {db.client.query("SELECT VerifiedUntil,RetryAfter FROM dbo.MovieCommerceLinks WHERE MovieId=@P1 AND Provider='fandango'",&[&job.movie_id]).await?.into_first_result().await})?;
         assert!(capped[0].get::<chrono::NaiveDateTime, _>(0).unwrap() <= cap);
         assert!(capped[0].get::<chrono::NaiveDateTime, _>(1).unwrap() <= cap);
-        db.rt.block_on(async {db.client.execute("UPDATE dbo.MovieCommerceLinks SET VerifiedUntil=DATEADD(day,-1,SYSUTCDATETIME()) WHERE MovieId=@P1",&[&job.movie_id]).await?;Ok::<_,Box<dyn std::error::Error>>(())})?;
+        db.rt.block_on(async {db.client.execute("UPDATE dbo.MovieCommerceLinks SET VerifiedUntil=DATEADD(day,-1,SYSUTCDATETIME()) WHERE MovieId=@P1",&[&job.movie_id]).await?;Ok::<_,crate::Error>(())})?;
         assert_eq!(read(&mut db)?.0, "search");
         db.rt.block_on(async {
             db.client
@@ -3980,7 +3975,7 @@ mod movie_commerce_sql_tests {
                     &[&job.movie_id],
                 )
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         db.save_movie_commerce(
             &job,
@@ -4008,7 +4003,7 @@ mod movie_commerce_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         Ok(())
     }
@@ -4047,7 +4042,7 @@ mod f1_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         db.configure_f1()?; // Repeat migration preserves Enabled and existing snapshots.
         assert!(db.f1_enabled()?);
@@ -4089,7 +4084,7 @@ mod f1_sql_tests {
                 .await?
                 .into_results()
                 .await?;
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, crate::Error>(())
         })?;
         assert_eq!(count(&mut db, "F1Schedule")?, 0);
         assert_eq!(count(&mut db, "F1DriverStandings")?, 0);

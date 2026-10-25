@@ -1,7 +1,7 @@
 //! Optional ESPN game detail, separate from scores and article identity.
+use crate::Result;
 use serde_json::{Value, json};
 use std::time::{Duration, Instant};
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Debug, Clone)]
 pub struct Game {

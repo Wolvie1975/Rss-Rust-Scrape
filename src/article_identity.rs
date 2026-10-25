@@ -1,9 +1,9 @@
 //! Conservative, source-scoped article URL evidence. No content-similarity matching.
+use crate::Result;
 use reqwest::blocking::Client;
 use scraper::{Html, Selector};
 use std::{collections::BTreeSet, time::Duration};
 use url::Url;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Clone, Debug)]
 pub struct Evidence {
     pub requested: String,

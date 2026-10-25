@@ -9,7 +9,7 @@ use scraper::{Html, Selector};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use crate::Result;
 pub const BASE: &str = "https://big12sports.com/";
 pub const SPORTS: [(i32, &str); 5] = [
     (4, "Football"),

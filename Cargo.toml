@@ -2,6 +2,7 @@
 name = "web_scraper"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.97"
 default-run = "web_scraper"
 
 [dependencies]
@@ -20,3 +21,6 @@ tokio = { version = "1.53.1", features = ["rt", "net", "time"] }
 tokio-util = { version = "0.7.19", features = ["compat"] }
 url = "2.5.8"
 tempfile = "3.23"
+
+[lints.rust]
+unsafe_code = "forbid"

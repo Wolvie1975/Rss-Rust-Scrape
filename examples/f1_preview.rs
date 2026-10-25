@@ -1,10 +1,6 @@
 //! Read-only provider verification; optionally save the normalized snapshot JSON.
-#![allow(dead_code)]
-#[path = "../src/f1.rs"]
-mod f1;
-#[path = "../src/http.rs"]
-mod http;
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+use web_scraper::{f1, http};
+fn main() -> Result<(), web_scraper::Error> {
     let client = http::client_builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()?;

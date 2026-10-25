@@ -1,9 +1,9 @@
 //! Full Championship season: future fixtures and completed results stored separately.
+use crate::Result;
 use crate::espn_schedule::{self, Fixture, League};
 use chrono::{Datelike, Utc};
 use serde_json::Value;
 use std::collections::BTreeMap;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub const WREXHAM_ID: i32 = 352;
 pub struct Batch {
     pub season: i32,

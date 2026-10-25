@@ -1,8 +1,8 @@
 //! Persisted ESPN samples. This module never writes schedules or the web results tables.
+pub use crate::Result;
 use chrono::{DateTime, NaiveDate, Utc};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Debug, Clone)]
 pub struct Coverage {
     pub id: i32,

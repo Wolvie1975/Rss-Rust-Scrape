@@ -5,7 +5,7 @@ use tiberius::{Client, Config};
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), web_scraper::Error> {
     let args: Vec<_> = std::env::args().skip(1).collect();
     if !args.is_empty() && args != ["--verify"] {
         return Err("usage: setup_movie_schema [--verify]".into());
@@ -52,6 +52,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await?;
                 println!("SQL integration checks passed; test rows rolled back.");
             }
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, web_scraper::Error>(())
         })
 }

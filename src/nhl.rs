@@ -1,9 +1,9 @@
 //! League-wide NHL fixtures and final scores; seasons use ESPN's ending year.
+use crate::Result;
 use crate::espn_schedule::{self, Fixture, League};
 use chrono::{Datelike, NaiveDate, Utc};
 use serde_json::Value;
 use std::collections::BTreeMap;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub struct Batch {
     pub season: i32,
     pub fixtures: Vec<Fixture>,

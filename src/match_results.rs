@@ -1,8 +1,8 @@
 //! Shared ESPN final-score parsing for season-wide collectors.
+use crate::Result;
 use crate::espn_schedule::{self, Fixture, League};
 use chrono::Utc;
 use serde_json::{Value, json};
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub fn parse(
     root: &Value,
     season: i32,

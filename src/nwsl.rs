@@ -1,10 +1,10 @@
 //! League-wide NWSL schedules with optional team filters; shared ESPN parsing lives in espn_schedule.
+use crate::Result;
 pub use crate::espn_schedule::Fixture;
 use crate::espn_schedule::{self, League};
 use reqwest::blocking::Client;
 #[cfg(test)]
 use serde_json::Value;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub fn is_feed(raw: &str) -> bool {
     espn_schedule::is_feed(raw, League::Nwsl)
 }

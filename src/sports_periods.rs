@@ -1,8 +1,8 @@
 //! Labels come from explicit ESPN scoreboard period identities, never array length.
+use crate::Result;
 use crate::sports_boxscores::Game;
 use serde_json::{Value, json};
 use std::{collections::HashMap, time::Duration};
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 fn items(v: &Value) -> &[Value] {
     v.as_array().map(Vec::as_slice).unwrap_or_default()
 }

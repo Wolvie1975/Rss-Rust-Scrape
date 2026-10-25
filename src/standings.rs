@@ -1,10 +1,10 @@
 //! Complete, provider-owned standings snapshots; independent of schedules/results.
+use crate::Result;
 use reqwest::blocking::Client;
 use scraper::{Html, Selector};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 use url::Url;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Clone, Debug)]
 pub struct Source {

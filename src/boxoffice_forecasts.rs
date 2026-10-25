@@ -1,9 +1,9 @@
 //! Boxoffice Pro domestic forecasts: numeric facts and attribution, no article copy.
+use crate::Result;
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use scraper::{ElementRef, Html, Selector};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub const INDEX: &str = "https://www.boxofficepro.com/category/forecasts-tracking/";
 fn sel(s: &str) -> Selector {
     Selector::parse(s).unwrap()

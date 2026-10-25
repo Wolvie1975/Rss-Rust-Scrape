@@ -1,8 +1,8 @@
 //! Latest three-day domestic weekend chart. Never replace a good chart with partial data.
+use crate::Result;
 use chrono::NaiveDate;
 use scraper::{Html, Selector};
 use serde_json::{Value, json};
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub const URL: &str = "https://www.the-numbers.com/weekend-box-office-chart";
 pub struct Chart {
     pub weekend: NaiveDate,

@@ -1,4 +1,5 @@
 //! Source-first poster enrichment is independent of movie/release upserts.
+use crate::Result;
 use crate::{
     db::Db,
     movie_metadata::{self as meta, MovieIdentity, SourceMovie},
@@ -9,7 +10,6 @@ use scraper::{Html, Selector};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Clone)]
 pub struct PosterJob {
     pub movie_id: i32,
@@ -82,11 +82,7 @@ pub fn search_links(html: &str) -> Vec<String> {
         .into_iter()
         .collect()
 }
-fn source_page(
-    client: &Client,
-    source: &str,
-    url: &str,
-) -> std::result::Result<SourceMovie, String> {
+fn source_page(client: &Client, source: &str, url: &str) -> Result<SourceMovie, String> {
     let u = url::Url::parse(url).map_err(|e| e.to_string())?;
     let valid = match source {
         "dvdsreleasedates" => {
@@ -115,12 +111,12 @@ fn source_page(
         .get(url)
         .send()
         .and_then(|r| r.error_for_status())
-        .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })
+        .map_err(|e| -> crate::Error { Box::new(e) })
         .and_then(crate::http::response_text)
         .map_err(|e| e.to_string())?;
     meta::parse(source, &html, url)
 }
-fn check_image(client: &Client, raw: &str) -> std::result::Result<String, String> {
+fn check_image(client: &Client, raw: &str) -> Result<String, String> {
     let url = meta::image_url(raw, raw).ok_or("not an approved HTTPS poster URL")?;
     crate::http::public_url(&url).map_err(|e| e.to_string())?;
     let mut r = client
@@ -156,7 +152,7 @@ fn check_image(client: &Client, raw: &str) -> std::result::Result<String, String
 pub(crate) fn validate_candidates(
     client: &Client,
     m: &SourceMovie,
-    memo: &mut BTreeMap<String, std::result::Result<String, String>>,
+    memo: &mut BTreeMap<String, Result<String, String>>,
 ) -> (Option<String>, Option<String>) {
     let mut error = None;
     for url in &m.posters {
@@ -173,8 +169,8 @@ pub(crate) fn validate_candidates(
 pub(crate) fn search(
     client: &Client,
     target: &MovieIdentity,
-    memo: &mut BTreeMap<String, std::result::Result<String, String>>,
-) -> std::result::Result<Option<(SourceMovie, String)>, String> {
+    memo: &mut BTreeMap<String, Result<String, String>>,
+) -> Result<Option<(SourceMovie, String)>, String> {
     if target.year.is_none() && target.imdb_id.is_none() && target.tmdb_id.is_none() {
         return Err("original year unavailable; title-only lookup rejected".into());
     }

@@ -1,8 +1,8 @@
 //! Jolpica seasonal F1 snapshots. Pagination counts classifications, not races.
+use crate::Result;
 use reqwest::blocking::Client;
 use serde_json::{Value, json};
 use std::{collections::BTreeSet, time::Duration};
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 const BASE: &str = "https://api.jolpi.ca/ergast/f1/";
 
 #[derive(Debug)]

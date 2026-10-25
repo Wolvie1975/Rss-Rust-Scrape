@@ -1,7 +1,7 @@
 use tiberius::{Client, Config};
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), web_scraper::Error> {
     let _ = dotenvy::dotenv();
     let args: Vec<_> = std::env::args().skip(1).collect();
     let mut cfg = Config::from_ado_string(&std::env::var("MSSQL_CONNECTION_STRING")?)?;
@@ -15,6 +15,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
  ("episodes","IF OBJECT_ID('dbo.TvEpisodes','U') IS NOT NULL SELECT * FROM dbo.TvEpisodes ORDER BY ID FOR JSON PATH"),
  ("tracking","IF OBJECT_ID('dbo.TvTrackedSeries','U') IS NOT NULL SELECT ID,TvmazeShowId,ExpectedTitle,Enabled,LastAttemptAt,LastSuccessAt,LastError,EpisodeCount,LastIssueCount,CacheExpiresAt,RetryAfter FROM dbo.TvTrackedSeries ORDER BY ID FOR JSON PATH")
  ] {let rows=c.query(sql,&[]).await?.into_first_result().await?;let s:String=rows.iter().filter_map(|r|r.get::<&str,_>(0)).collect();out.insert(key.into(),if s.is_empty(){serde_json::json!([])}else{serde_json::from_str(&s)?});}
- let s=serde_json::to_string_pretty(&out)?;if let Some(path)=args.get(1){std::fs::write(path,s)?;}else{println!("{s}");}println!("{} series; {} episodes; {} tracking rows",out["series"].as_array().unwrap().len(),out["episodes"].as_array().unwrap().len(),out["tracking"].as_array().unwrap().len());Ok::<_,Box<dyn std::error::Error>>(())
+ let s=serde_json::to_string_pretty(&out)?;if let Some(path)=args.get(1){std::fs::write(path,s)?;}else{println!("{s}");}println!("{} series; {} episodes; {} tracking rows",out["series"].as_array().unwrap().len(),out["episodes"].as_array().unwrap().len(),out["tracking"].as_array().unwrap().len());Ok::<_,web_scraper::Error>(())
  })
 }

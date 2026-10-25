@@ -2,7 +2,7 @@
 use tiberius::{Client, Config};
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), web_scraper::Error> {
     let profile = std::env::args().nth(1).ok_or("profile required")?;
     dotenvy::from_filename(profile)?;
     let sql = std::fs::read_to_string(std::env::args().nth(2).ok_or("SQL file required")?)?;
@@ -34,6 +34,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}", serde_json::Value::Object(out));
                 }
             }
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, web_scraper::Error>(())
         })
 }

@@ -1,12 +1,6 @@
 //! Independently scheduled scoreboard worker. Runtime reads configuration, never changes it.
-#[path = "../http.rs"]
-#[allow(dead_code)]
-mod http;
-#[path = "../scoreboard.rs"]
-mod scoreboard;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use clap::Parser;
-use scoreboard::{Coverage, Result};
 use serde_json::{Value, json};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -15,6 +9,8 @@ use std::{
 use tiberius::{Client, Config, ToSql};
 use tokio::{net::TcpStream, runtime::Runtime};
 use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
+use web_scraper::scoreboard::{self, Coverage};
+use web_scraper::{Result, http};
 #[derive(Parser)]
 struct Args {
     /// Run continuously, checking which requests are due every minute.
@@ -53,8 +49,8 @@ impl Db {
                 Client::connect(cfg, tcp.compat_write()).await
             })
             .await
-            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?
-            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })
+            .map_err(|e| -> web_scraper::Error { Box::new(e) })?
+            .map_err(|e| -> web_scraper::Error { Box::new(e) })
         })?;
         let mut db = Self { rt, client };
         db.query("SET XACT_ABORT ON; SET LOCK_TIMEOUT 15000;", &[])?;

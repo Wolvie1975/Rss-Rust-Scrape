@@ -1,13 +1,5 @@
 //! Preview live movie releases without opening SQL Server.
-#[allow(dead_code)]
-#[path = "../src/http.rs"]
-mod http;
-#[allow(dead_code)]
-#[path = "../src/movie_metadata.rs"]
-mod movie_metadata;
-#[allow(dead_code)] // This example uses only the read-only portion of the shared module.
-#[path = "../src/movies.rs"]
-mod movies;
+use web_scraper::movies;
 
 use chrono::{Datelike, Duration, NaiveDate, Utc};
 use clap::Parser;
@@ -28,7 +20,7 @@ struct Args {
     #[arg(long)]
     output: Option<PathBuf>,
 }
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), web_scraper::Error> {
     let args = Args::parse();
     let day = args.week_of.unwrap_or_else(|| {
         Utc::now()

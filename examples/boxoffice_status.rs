@@ -2,7 +2,7 @@
 use tiberius::{Client, Config};
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), web_scraper::Error> {
     dotenvy::dotenv().ok();
     let migrate = std::env::args().any(|a| a == "--migrate");
     let mut cfg = Config::from_ado_string(&std::env::var("MSSQL_CONNECTION_STRING")?)?;
@@ -54,6 +54,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let rows=db.query("SELECT Rank,WeekendStart,MovieTitle,WeekendGross,ResultStatus,StatusSourceUrl,StatusAsOfUtc,FetchedAt FROM dbo.BoxOfficeWeekend ORDER BY Rank FOR JSON PATH, INCLUDE_NULL_VALUES",&[]).await?.into_first_result().await?;
         let json: String = rows.iter().filter_map(|r| r.get::<&str,_>(0)).collect();
         println!("{json}");
-        Ok::<_,Box<dyn std::error::Error>>(())
+        Ok::<_,web_scraper::Error>(())
     })
 }

@@ -298,7 +298,7 @@ pub fn movieinsider_details(html: &str, url: &str) -> Result<Vec<Value>, String>
 fn discover_movieinsider(
     client: &reqwest::blocking::Client,
     start: NaiveDate,
-) -> Result<(Vec<String>, Vec<Value>), Box<dyn std::error::Error>> {
+) -> Result<(Vec<String>, Vec<Value>), crate::Error> {
     let years = (0..7)
         .map(|n| (start + Duration::days(n)).year())
         .collect::<BTreeSet<_>>();
@@ -515,8 +515,7 @@ pub fn streaming_details(html: &str, url: &str) -> Result<Vec<Value>, String> {
     Ok(rows)
 }
 
-#[allow(dead_code)] // Used by the standalone read-only example.
-pub fn preview(start: NaiveDate) -> Result<Value, Box<dyn std::error::Error>> {
+pub fn preview(start: NaiveDate) -> Result<Value, crate::Error> {
     collect(
         start,
         &[],
@@ -529,13 +528,12 @@ pub fn preview(start: NaiveDate) -> Result<Value, Box<dyn std::error::Error>> {
     )
 }
 
-#[allow(dead_code)] // Standalone preview without persisted source policy.
 /// Refresh tracked movies as well as discovering this week's new releases.
 pub fn ingest(
     start: NaiveDate,
     tracked: &[String],
     enabled: &[String],
-) -> Result<Value, Box<dyn std::error::Error>> {
+) -> Result<Value, crate::Error> {
     collect(start, tracked, enabled, &[])
 }
 
@@ -545,7 +543,7 @@ pub fn ingest_with_disc_policy(
     tracked: &[String],
     enabled: &[String],
     disc_disabled: &[String],
-) -> Result<Value, Box<dyn std::error::Error>> {
+) -> Result<Value, crate::Error> {
     collect(start, tracked, enabled, disc_disabled)
 }
 
@@ -558,7 +556,7 @@ fn collect(
     tracked: &[String],
     enabled: &[String],
     disc_disabled: &[String],
-) -> Result<Value, Box<dyn std::error::Error>> {
+) -> Result<Value, crate::Error> {
     let client = crate::http::client_builder()
         .user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)")
         .timeout(std::time::Duration::from_secs(20))
@@ -616,7 +614,7 @@ fn collect(
             .get(&url)
             .send()
             .and_then(|r| r.error_for_status())
-            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })
+            .map_err(|e| -> crate::Error { Box::new(e) })
             .and_then(crate::http::response_text);
         match result {
             Ok(html) => {
@@ -668,7 +666,7 @@ fn collect(
             .get(&url)
             .send()
             .and_then(|r| r.error_for_status())
-            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })
+            .map_err(|e| -> crate::Error { Box::new(e) })
             .and_then(crate::http::response_text);
         match result {
             Ok(html) => {

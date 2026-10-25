@@ -8,7 +8,7 @@ use std::{
 };
 use url::Url;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use crate::Result;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Provider {
