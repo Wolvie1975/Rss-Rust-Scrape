@@ -1,5 +1,18 @@
 # Scraper handoff
 
+## USA TODAY feeds — October 24, 2026 CDT
+
+Added ten enabled Google News RSS sources **9412–9421** to existing categories:
+Top Headlines, More News (Money), Sports, Technology, Entertainment, TV/Film,
+Opinion, F1 News, Big 12 News and Men's College Basketball News. Production
+preview/import each succeeded with ten sources and zero failures. Read-back:
+92 dated articles, no thumbnails, all source errors NULL. Existing hourly
+collection needs no rebuild/restart. Searches can overlap and Google News links
+remain unless verified redirects resolve them. Personal, noncommercial reader
+use only. See [source details and verification](docs/usatoday-news.md) and
+[repeatable disabled-first seed](sql/usatoday_news_seed.sql). Frontend rendering
+was not verified. No recent gaming results were found for the tested queries.
+
 ## Scoreboard history limited to yesterday — October 23, 2026 CDT
 
 Scoreboard retention now keeps today, the previous America/Chicago calendar day,
