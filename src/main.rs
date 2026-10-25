@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -5,7 +6,8 @@ use chrono::{DateTime, Utc};
 use clap::error::ErrorKind;
 use clap::{CommandFactory, Parser};
 use rss::{ChannelBuilder, ItemBuilder};
-use web_scraper::pages;
+use web_scraper::Result;
+use web_scraper::pages::{self, PageMeta};
 use web_scraper::{
     article_identity, big12, boxoffice, boxoffice_forecasts, championship, cinema_posters, db, epl,
     espn_schedule, events, f1, http, metrics, mlb, mls, movie_commerce, movies, nhl, nwsl, posters,
@@ -215,175 +217,154 @@ fn read_urls_file(path: &Path) -> std::io::Result<Vec<String>> {
         .collect())
 }
 
-/// One full scrape: collect sources, scrape, filter, save, prune, and write the RSS feed.
-fn run_once(cli: &Cli) -> Result<(), web_scraper::Error> {
-    let use_db = cli.health_check
-        || cli.initialize_db
-        || cli.configure_rankings
-        || cli.rankings_from_db
-        || cli.configure_movieinsider
-        || cli.configure_standings
-        || cli.standings_from_db
-        || cli.configure_mlb
-        || cli.configure_wnba
-        || cli.configure_championship
-        || cli.boxoffice
-        || cli.boxoffice_forecasts
-        || cli.configure_boxoffice
-        || cli.configure_mls
-        || cli.configure_nhl
-        || cli.configure_boxscores
-        || cli.repair_boxscore_periods
-        || cli.boxscores_from_db
-        || cli.configure_f1
-        || cli.f1_from_db
-        || cli.configure_epl
-        || cli.configure_nwsl
-        || cli.configure_tv
-        || cli.tv_from_db
-        || cli.movie_posters
-        || cli.configure_big12
-        || cli.enable_big12
-        || cli.movies
-        || cli.db
-        || cli.from_db
-        || cli.save_sources
-        || !cli.events_feed.is_empty()
-        || cli.events_from_db
-        || !cli.youtube_feed.is_empty()
-        || cli.youtube_from_db;
-    let mut db = if use_db {
-        let setup = cli.configure_boxscores
-            || cli.configure_rankings
-            || cli.configure_movieinsider
-            || cli.configure_standings
-            || cli.initialize_db
-            || cli.configure_mlb
-            || cli.configure_wnba
-            || cli.configure_championship
-            || cli.configure_boxoffice
-            || cli.configure_mls
-            || cli.configure_nhl
-            || cli.configure_f1
-            || cli.configure_epl
-            || cli.configure_nwsl
-            || cli.configure_tv
-            || cli.configure_big12
-            || cli.enable_big12;
-        let ado = if setup {
-            std::env::var("MSSQL_MIGRATION_CONNECTION_STRING")
-                .or_else(|_| std::env::var("MSSQL_CONNECTION_STRING"))
-        } else {
-            std::env::var("MSSQL_CONNECTION_STRING")
-        }
-        .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
-        Some(if cli.configure_f1 || cli.configure_boxscores {
-            db::Db::connect_named(&ado, &cli.database)?
-        } else if setup {
-            db::Db::open_named(&ado, &cli.database)?
-        } else {
-            db::Db::connect_named(&ado, &cli.database)?
-        })
-    } else {
-        None
-    };
+impl Cli {
+    /// Whether any requested option reads or writes SQL Server.
+    fn uses_db(&self) -> bool {
+        self.health_check
+            || self.initialize_db
+            || self.configure_rankings
+            || self.rankings_from_db
+            || self.configure_movieinsider
+            || self.configure_standings
+            || self.standings_from_db
+            || self.configure_mlb
+            || self.configure_wnba
+            || self.configure_championship
+            || self.boxoffice
+            || self.boxoffice_forecasts
+            || self.configure_boxoffice
+            || self.configure_mls
+            || self.configure_nhl
+            || self.configure_boxscores
+            || self.repair_boxscore_periods
+            || self.boxscores_from_db
+            || self.configure_f1
+            || self.f1_from_db
+            || self.configure_epl
+            || self.configure_nwsl
+            || self.configure_tv
+            || self.tv_from_db
+            || self.movie_posters
+            || self.configure_big12
+            || self.enable_big12
+            || self.movies
+            || self.db
+            || self.from_db
+            || self.save_sources
+            || !self.events_feed.is_empty()
+            || self.events_from_db
+            || !self.youtube_feed.is_empty()
+            || self.youtube_from_db
+    }
 
-    if cli.health_check {
-        db.as_mut().unwrap().check_health()?;
-        return Ok(());
+    /// Whether a schema/registration command was requested; these use migration credentials.
+    fn is_setup(&self) -> bool {
+        self.configure_boxscores
+            || self.configure_rankings
+            || self.configure_movieinsider
+            || self.configure_standings
+            || self.initialize_db
+            || self.configure_mlb
+            || self.configure_wnba
+            || self.configure_championship
+            || self.configure_boxoffice
+            || self.configure_mls
+            || self.configure_nhl
+            || self.configure_f1
+            || self.configure_epl
+            || self.configure_nwsl
+            || self.configure_tv
+            || self.configure_big12
+            || self.enable_big12
     }
-    if cli.initialize_db {
-        db.as_mut().unwrap().setup_tv(false)?;
-        eprintln!("database schema initialized");
-        return Ok(());
+
+    fn dry_suffix(&self) -> &'static str {
+        if self.dry_run { " (dry run)" } else { "" }
     }
-    if cli.configure_rankings {
-        db.as_mut().unwrap().configure_rankings()?;
-        eprintln!(
-            "National Top 25 sources registered disabled; enable SportsRankingSources to import"
-        );
-        return Ok(());
+}
+
+fn connect_db(cli: &Cli) -> Result<Option<db::Db>> {
+    if !cli.uses_db() {
+        return Ok(None);
     }
-    if cli.configure_movieinsider {
-        db.as_mut().unwrap().configure_movieinsider()?;
-        eprintln!(
-            "Movie Insider digital source registered disabled; enable MovieReleaseSources to import"
-        );
-        return Ok(());
+    let setup = cli.is_setup();
+    let ado = if setup {
+        std::env::var("MSSQL_MIGRATION_CONNECTION_STRING")
+            .or_else(|_| std::env::var("MSSQL_CONNECTION_STRING"))
+    } else {
+        std::env::var("MSSQL_CONNECTION_STRING")
     }
-    if cli.configure_standings {
-        db.as_mut().unwrap().configure_standings()?;
-        eprintln!("Standings sources registered disabled; enable SportsStandingsSources to import");
-        return Ok(());
-    }
-    if cli.configure_mlb {
-        db.as_mut().unwrap().configure_mlb()?;
-        eprintln!("MLB schedule registered; enable it in SportsEventsType to import");
-        return Ok(());
-    }
-    if cli.configure_boxoffice {
-        db.as_mut().unwrap().configure_boxoffice()?;
-        eprintln!("Box-office chart table configured");
-        return Ok(());
-    }
-    if cli.configure_boxscores {
-        db.as_mut().unwrap().configure_boxscores()?;
-        eprintln!("configured optional sports box-score cache and read view");
-        return Ok(());
-    }
-    if cli.configure_f1 {
-        db.as_mut().unwrap().configure_f1()?;
-        eprintln!("F1 schedule/results and driver/constructor championships configured disabled");
-        return Ok(());
-    }
-    if cli.configure_nhl {
-        db.as_mut().unwrap().configure_nhl()?;
-        eprintln!("NHL schedule/results and standings registered disabled");
-        return Ok(());
-    }
-    if cli.configure_mls {
-        db.as_mut().unwrap().configure_mls()?;
-        eprintln!("MLS schedule/results registered disabled");
-        return Ok(());
-    }
-    if cli.configure_epl {
-        db.as_mut().unwrap().configure_epl()?;
-        eprintln!("Premier League sources registered disabled");
-        return Ok(());
-    }
-    if cli.configure_championship {
-        db.as_mut().unwrap().configure_championship()?;
-        eprintln!("EFL Championship sources registered disabled");
-        return Ok(());
-    }
-    if cli.configure_wnba {
-        db.as_mut().unwrap().configure_wnba()?;
-        eprintln!("WNBA schedule registered; enable it in SportsEventsType to import");
-        return Ok(());
-    }
-    if cli.configure_nwsl {
-        db.as_mut().unwrap().configure_nwsl()?;
-        eprintln!("League-wide NWSL schedule registered; existing Enabled setting preserved");
-        return Ok(());
-    }
-    if cli.configure_tv {
-        db.as_mut().unwrap().setup_tv(true)?;
-    }
-    if cli.configure_tv {
-        eprintln!(
-            "TVmaze schema ready; five tracking rows seeded without changing existing Enabled settings"
-        );
-        return Ok(());
-    }
-    if cli.configure_big12 || cli.enable_big12 {
+    .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
+    // F1 and box-score setup apply their own additive migrations to an existing database.
+    let db = if setup && !cli.configure_f1 && !cli.configure_boxscores {
+        db::Db::open_named(&ado, &cli.database)?
+    } else {
+        db::Db::connect_named(&ado, &cli.database)?
+    };
+    Ok(Some(db))
+}
+
+fn require(db: Option<&mut db::Db>) -> Result<&mut db::Db> {
+    db.ok_or_else(|| "this option requires a database connection".into())
+}
+
+/// Runs a one-shot health, schema or registration command. Returns false when none was requested.
+fn run_setup(cli: &Cli, db: Option<&mut db::Db>) -> Result<bool> {
+    let message = if cli.health_check {
+        require(db)?.check_health()?;
+        return Ok(true);
+    } else if cli.initialize_db {
+        require(db)?.setup_tv(false)?;
+        "database schema initialized"
+    } else if cli.configure_rankings {
+        require(db)?.configure_rankings()?;
+        "National Top 25 sources registered disabled; enable SportsRankingSources to import"
+    } else if cli.configure_movieinsider {
+        require(db)?.configure_movieinsider()?;
+        "Movie Insider digital source registered disabled; enable MovieReleaseSources to import"
+    } else if cli.configure_standings {
+        require(db)?.configure_standings()?;
+        "Standings sources registered disabled; enable SportsStandingsSources to import"
+    } else if cli.configure_mlb {
+        require(db)?.configure_mlb()?;
+        "MLB schedule registered; enable it in SportsEventsType to import"
+    } else if cli.configure_boxoffice {
+        require(db)?.configure_boxoffice()?;
+        "Box-office chart table configured"
+    } else if cli.configure_boxscores {
+        require(db)?.configure_boxscores()?;
+        "configured optional sports box-score cache and read view"
+    } else if cli.configure_f1 {
+        require(db)?.configure_f1()?;
+        "F1 schedule/results and driver/constructor championships configured disabled"
+    } else if cli.configure_nhl {
+        require(db)?.configure_nhl()?;
+        "NHL schedule/results and standings registered disabled"
+    } else if cli.configure_mls {
+        require(db)?.configure_mls()?;
+        "MLS schedule/results registered disabled"
+    } else if cli.configure_epl {
+        require(db)?.configure_epl()?;
+        "Premier League sources registered disabled"
+    } else if cli.configure_championship {
+        require(db)?.configure_championship()?;
+        "EFL Championship sources registered disabled"
+    } else if cli.configure_wnba {
+        require(db)?.configure_wnba()?;
+        "WNBA schedule registered; enable it in SportsEventsType to import"
+    } else if cli.configure_nwsl {
+        require(db)?.configure_nwsl()?;
+        "League-wide NWSL schedule registered; existing Enabled setting preserved"
+    } else if cli.configure_tv {
+        require(db)?.setup_tv(true)?;
+        "TVmaze schema ready; five tracking rows seeded without changing existing Enabled settings"
+    } else if cli.configure_big12 || cli.enable_big12 {
         let client = http::client_builder()
             .timeout(Duration::from_secs(20))
-            .user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)")
+            .user_agent(USER_AGENT)
             .build()?;
         let members = big12::current_members(&client)?;
-        db.as_mut()
-            .unwrap()
-            .configure_big12(&members, cli.enable_big12)?;
+        require(db)?.configure_big12(&members, cli.enable_big12)?;
         eprintln!(
             "configured {} current Big 12 members; new feeds {}",
             members.len(),
@@ -393,45 +374,92 @@ fn run_once(cli: &Cli) -> Result<(), web_scraper::Error> {
                 "disabled"
             }
         );
-        return Ok(());
-    }
-
-    if cli.movie_posters {
+        return Ok(true);
+    } else if cli.movie_posters {
+        let db = require(db)?;
         if cli.retry_missing_posters {
-            db.as_mut().unwrap().retry_missing_posters()?;
+            db.retry_missing_posters()?;
         }
-        let report = posters::enrich(db.as_mut().unwrap(), &std::collections::BTreeMap::new())?;
+        let report = posters::enrich(db, &BTreeMap::new())?;
         println!("{}", serde_json::to_string_pretty(&report)?);
-        eprintln!(
-            "box-office posters: {}",
-            cinema_posters::enrich(db.as_mut().unwrap())?
-        );
-        return Ok(());
+        eprintln!("box-office posters: {}", cinema_posters::enrich(db)?);
+        return Ok(true);
+    } else {
+        return Ok(false);
+    };
+    eprintln!("{message}");
+    Ok(true)
+}
+
+const USER_AGENT: &str = "Mozilla/5.0 (compatible; web_scraper/0.1)";
+
+fn json_client() -> Result<reqwest::blocking::Client> {
+    Ok(http::client_builder()
+        .user_agent("My-Newsfeed/1.0")
+        .timeout(Duration::from_secs(30))
+        .build()?)
+}
+
+/// A calendar feed to ingest: its `SportsEventsType` row (if registered), URL and school name.
+struct EventFeedRef {
+    known_id: Option<i32>,
+    url: String,
+    school: Option<String>,
+}
+
+/// Provider-specific labels for an ESPN-backed league feed.
+struct League {
+    stage: &'static str,
+    /// Prefix for failure messages.
+    label: &'static str,
+    /// `SportsEventsType` name used when an unregistered feed URL is first saved.
+    type_name: &'static str,
+}
+
+/// Per Big 12 feed: saved, quarantined, issues, and whether the feed succeeded overall.
+struct Big12Tally {
+    saved: i32,
+    quarantined: i32,
+    errors: Vec<String>,
+    success: bool,
+}
+
+/// State of one collection run: what succeeded, what failed, and the run-log row to heartbeat.
+struct Run<'a> {
+    cli: &'a Cli,
+    db: Option<db::Db>,
+    run_id: Option<i32>,
+    failures: Vec<String>,
+    succeeded: usize,
+}
+
+impl Run<'_> {
+    fn db(&mut self) -> Result<&mut db::Db> {
+        require(self.db.as_mut())
     }
 
-    let run_id = if !cli.dry_run {
-        db.as_mut().map(|d| d.start_run()).transpose()?
-    } else {
-        None
-    };
-    let mut failures: Vec<String> = Vec::new();
-    let mut succeeded_sources = 0usize;
-    let _run_timer = metrics::Stage::new("run");
-    let mut fetched_news = Vec::new();
-    let outcome: Result<(), web_scraper::Error> = (|| {
+    fn heartbeat(&mut self) -> Result<()> {
+        if let (Some(d), Some(id)) = (self.db.as_mut(), self.run_id) {
+            d.run_heartbeat(id)?;
+        }
+        Ok(())
+    }
+
+    fn collect(&mut self) -> Result<()> {
+        let cli = self.cli;
         let mut urls = cli.urls.clone();
         if let Some(path) = &cli.urls_file {
             urls.extend(read_urls_file(path)?);
         }
         if cli.save_sources {
-            let added = db.as_mut().unwrap().add_sources(&urls)?;
+            let added = self.db()?.add_sources(&urls)?;
             eprintln!(
                 "added {added} new sources ({} already present)",
                 urls.len() - added
             );
         }
         if cli.from_db {
-            for url in db.as_mut().unwrap().enabled_sources()? {
+            for url in self.db()?.enabled_sources()? {
                 if !urls.contains(&url) {
                     urls.push(url);
                 }
@@ -456,210 +484,261 @@ fn run_once(cli: &Cli) -> Result<(), web_scraper::Error> {
         }
 
         let client = http::client_builder()
-            .user_agent("Mozilla/5.0 (compatible; web_scraper/0.1)")
+            .user_agent(USER_AGENT)
             .timeout(Duration::from_secs(15))
             .build()?;
 
         if cli.f1_from_db || cli.events_from_db {
-            let _timer = metrics::Stage::new("f1");
-            let enabled = db.as_mut().unwrap().f1_enabled()?;
-            if enabled {
-                if !cli.dry_run {
-                    db.as_mut().unwrap().f1_status(None)?;
-                }
-                let result = (|| -> Result<(), web_scraper::Error> {
-                    let f1_client = http::client_builder()
-                        .timeout(Duration::from_secs(30))
-                        .build()?;
-                    let snapshot = f1::fetch(&f1_client)?;
-                    eprintln!(
-                        "{}{}",
-                        snapshot.summary(),
-                        if cli.dry_run { " (dry run)" } else { "" }
-                    );
-                    if !cli.dry_run {
-                        db.as_mut().unwrap().save_f1(&snapshot)?;
-                    }
-                    Ok(())
-                })();
-                match result {
-                    Ok(()) => succeeded_sources += 1,
-                    Err(e) => {
-                        if !cli.dry_run {
-                            db.as_mut().unwrap().f1_status(Some(&e.to_string()))?;
-                        }
-                        failures.push(format!("F1: {e}"));
-                    }
-                }
-            } else if cli.f1_from_db {
-                failures.push("F1 source is disabled or not configured".to_string());
+            self.collect_f1()?;
+        }
+        if cli.rankings_from_db {
+            self.collect_rankings()?;
+        }
+        if cli.boxoffice {
+            self.collect_boxoffice();
+        }
+        if cli.boxoffice_forecasts {
+            self.collect_boxoffice_forecasts()?;
+        }
+        if cli.standings_from_db {
+            self.collect_standings()?;
+        }
+        let pages = self.collect_news(&client, urls)?;
+        self.collect_event_feeds(&client)?;
+        self.heartbeat()?;
+        self.collect_youtube(&client)?;
+        self.heartbeat()?;
+        if cli.movies {
+            self.collect_movies();
+        }
+        self.heartbeat()?;
+        if cli.tv_from_db {
+            self.collect_tv()?;
+        }
+        if !cli.dry_run && (cli.boxoffice || cli.boxoffice_forecasts) {
+            let _timer = metrics::Stage::new("cinema_posters");
+            match cinema_posters::enrich(self.db()?) {
+                Ok(report) => eprintln!("box-office posters: {report}"),
+                Err(e) => self.failures.push(format!("box-office posters: {e}")),
             }
         }
+        if cli.repair_boxscore_periods {
+            let _timer = metrics::Stage::new("sports_periods");
+            let run_id = self.run_id;
+            let (ok, errors) =
+                sports_periods::repair(self.db()?, cli.dry_run, cli.boxscores_limit, run_id)?;
+            self.succeeded += ok;
+            if errors > 0 {
+                self.failures.push(format!(
+                    "period repair: {errors} metadata/validation errors; cached values preserved"
+                ));
+            }
+        }
+        if cli.boxscores_from_db || cli.events_from_db {
+            let _timer = metrics::Stage::new("sports_boxscores");
+            let run_id = self.run_id;
+            match sports_boxscores::collect(self.db()?, cli.dry_run, cli.boxscores_limit, run_id) {
+                Ok((ok, errors)) => {
+                    self.succeeded += ok;
+                    if errors > 0 {
+                        self.failures.push(format!("optional box scores: {errors} fetch/validation errors; existing results preserved"));
+                    }
+                }
+                Err(e) => self.failures.push(format!("optional box scores: {e}")),
+            }
+        }
+        write_feed(cli, pages)
+    }
 
-        if cli.rankings_from_db {
-            let _stage_timer = metrics::Stage::new("rankings");
-            let client = http::client_builder()
-                .user_agent("My-Newsfeed/1.0")
+    fn collect_f1(&mut self) -> Result<()> {
+        let _timer = metrics::Stage::new("f1");
+        let dry = self.cli.dry_run;
+        if !self.db()?.f1_enabled()? {
+            if self.cli.f1_from_db {
+                self.failures
+                    .push("F1 source is disabled or not configured".to_string());
+            }
+            return Ok(());
+        }
+        if !dry {
+            self.db()?.f1_status(None)?;
+        }
+        let result = (|| -> Result<()> {
+            let f1_client = http::client_builder()
                 .timeout(Duration::from_secs(30))
                 .build()?;
-            let sources = db.as_mut().unwrap().ranking_sources()?;
-            if !sources.is_empty() {
-                let members = rankings::current_members(&client);
-                for source in sources {
-                    if !cli.dry_run {
-                        db.as_mut().unwrap().ranking_attempt(source.id)?;
-                    }
-                    let result = (|| -> Result<(), web_scraper::Error> {
-                        let members = members
-                            .as_ref()
-                            .map_err(|e| format!("Big 12 membership: {e}"))?;
-                        let poll = rankings::fetch(&client, &source, members)?;
-                        if !cli.dry_run {
-                            db.as_mut().unwrap().save_ranking(&source, &poll)?;
-                        }
-                        eprintln!(
-                            "{} {}: {} ranked teams, {} Big 12, published {}{}",
-                            source.sport,
-                            poll.name,
-                            poll.teams.len(),
-                            poll.teams
-                                .iter()
-                                .filter(|t| t.big12_school_id.is_some())
-                                .count(),
-                            poll.published,
-                            if cli.dry_run { " (dry run)" } else { "" }
-                        );
-                        Ok(())
-                    })();
-                    if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
-                        d.run_heartbeat(id)?;
-                    }
-                    match result {
-                        Ok(()) => succeeded_sources += 1,
-                        Err(e) => {
-                            let message = format!("{} rankings: {e}", source.sport);
-                            eprintln!("{message}");
-                            if !cli.dry_run
-                                && let Err(e) =
-                                    db.as_mut().unwrap().ranking_error(source.id, &message)
-                            {
-                                failures.push(format!("ranking error tracking: {e}"));
-                            }
-                            failures.push(message);
-                        }
-                    }
+            let snapshot = f1::fetch(&f1_client)?;
+            eprintln!("{}{}", snapshot.summary(), self.cli.dry_suffix());
+            if !dry {
+                self.db()?.save_f1(&snapshot)?;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => self.succeeded += 1,
+            Err(e) => {
+                if !dry {
+                    self.db()?.f1_status(Some(&e.to_string()))?;
                 }
+                self.failures.push(format!("F1: {e}"));
             }
         }
+        Ok(())
+    }
 
-        if cli.boxoffice {
-            let _timer = metrics::Stage::new("boxoffice");
-            let result = (|| -> Result<(), web_scraper::Error> {
-                let client = http::client_builder()
-                    .user_agent("My-Newsfeed/1.0")
-                    .timeout(Duration::from_secs(30))
-                    .build()?;
-                let chart = boxoffice::fetch(&client)?;
-                if !cli.dry_run {
-                    db.as_mut().unwrap().save_boxoffice(&chart)?;
+    fn collect_rankings(&mut self) -> Result<()> {
+        let _stage_timer = metrics::Stage::new("rankings");
+        let dry = self.cli.dry_run;
+        let client = json_client()?;
+        let sources = self.db()?.ranking_sources()?;
+        if sources.is_empty() {
+            return Ok(());
+        }
+        let members = rankings::current_members(&client);
+        for source in sources {
+            if !dry {
+                self.db()?.ranking_attempt(source.id)?;
+            }
+            let result = (|| -> Result<()> {
+                let members = members
+                    .as_ref()
+                    .map_err(|e| format!("Big 12 membership: {e}"))?;
+                let poll = rankings::fetch(&client, &source, members)?;
+                if !dry {
+                    self.db()?.save_ranking(&source, &poll)?;
                 }
                 eprintln!(
-                    "Box office: 10 movies, weekend {}{}",
-                    chart.weekend,
-                    if cli.dry_run { " (dry run)" } else { "" }
+                    "{} {}: {} ranked teams, {} Big 12, published {}{}",
+                    source.sport,
+                    poll.name,
+                    poll.teams.len(),
+                    poll.teams
+                        .iter()
+                        .filter(|t| t.big12_school_id.is_some())
+                        .count(),
+                    poll.published,
+                    self.cli.dry_suffix()
                 );
                 Ok(())
             })();
+            self.heartbeat()?;
             match result {
-                Ok(()) => succeeded_sources += 1,
-                Err(e) => failures.push(format!("Box office: {e}")),
-            }
-        }
-
-        if cli.boxoffice_forecasts {
-            let _timer = metrics::Stage::new("boxoffice_forecasts");
-            if !cli.dry_run {
-                db.as_mut().unwrap().boxoffice_forecast_status(None)?;
-            }
-            let result = (|| -> Result<(), web_scraper::Error> {
-                let client = http::client_builder()
-                    .user_agent("My-Newsfeed/1.0")
-                    .timeout(Duration::from_secs(30))
-                    .build()?;
-                let snapshots = boxoffice_forecasts::fetch(&client)?;
-                if !cli.dry_run {
-                    db.as_mut().unwrap().save_boxoffice_forecasts(&snapshots)?;
-                }
-                for snapshot in &snapshots {
-                    eprintln!(
-                        "Boxoffice Pro {}: {} current/future movies{}",
-                        snapshot.kind,
-                        snapshot.rows.len(),
-                        if cli.dry_run { " (dry run)" } else { "" }
-                    );
-                }
-                Ok(())
-            })();
-            match result {
-                Ok(()) => succeeded_sources += 1,
+                Ok(()) => self.succeeded += 1,
                 Err(e) => {
-                    let message = format!("Boxoffice Pro forecasts: {e}");
-                    if !cli.dry_run {
-                        db.as_mut()
-                            .unwrap()
-                            .boxoffice_forecast_status(Some(&message))?;
+                    let message = format!("{} rankings: {e}", source.sport);
+                    eprintln!("{message}");
+                    if !dry && let Err(e) = self.db()?.ranking_error(source.id, &message) {
+                        self.failures.push(format!("ranking error tracking: {e}"));
                     }
-                    failures.push(message);
+                    self.failures.push(message);
                 }
             }
         }
+        Ok(())
+    }
 
-        if cli.standings_from_db {
-            let _stage_timer = metrics::Stage::new("standings");
-            let client = http::client_builder()
-                .user_agent("My-Newsfeed/1.0")
-                .timeout(Duration::from_secs(30))
-                .build()?;
-            for source in db.as_mut().unwrap().standings_sources()? {
-                if !cli.dry_run {
-                    db.as_mut().unwrap().standings_attempt(source.id)?;
+    fn collect_boxoffice(&mut self) {
+        let _timer = metrics::Stage::new("boxoffice");
+        let result = (|| -> Result<()> {
+            let chart = boxoffice::fetch(&json_client()?)?;
+            if !self.cli.dry_run {
+                self.db()?.save_boxoffice(&chart)?;
+            }
+            eprintln!(
+                "Box office: 10 movies, weekend {}{}",
+                chart.weekend,
+                self.cli.dry_suffix()
+            );
+            Ok(())
+        })();
+        match result {
+            Ok(()) => self.succeeded += 1,
+            Err(e) => self.failures.push(format!("Box office: {e}")),
+        }
+    }
+
+    fn collect_boxoffice_forecasts(&mut self) -> Result<()> {
+        let _timer = metrics::Stage::new("boxoffice_forecasts");
+        let dry = self.cli.dry_run;
+        if !dry {
+            self.db()?.boxoffice_forecast_status(None)?;
+        }
+        let result = (|| -> Result<()> {
+            let snapshots = boxoffice_forecasts::fetch(&json_client()?)?;
+            if !dry {
+                self.db()?.save_boxoffice_forecasts(&snapshots)?;
+            }
+            for snapshot in &snapshots {
+                eprintln!(
+                    "Boxoffice Pro {}: {} current/future movies{}",
+                    snapshot.kind,
+                    snapshot.rows.len(),
+                    self.cli.dry_suffix()
+                );
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => self.succeeded += 1,
+            Err(e) => {
+                let message = format!("Boxoffice Pro forecasts: {e}");
+                if !dry {
+                    self.db()?.boxoffice_forecast_status(Some(&message))?;
                 }
-                let result = standings::fetch(&client, &source).and_then(|snapshot| {
-                    if !cli.dry_run {
-                        db.as_mut().unwrap().save_standings(&source, &snapshot)?;
-                    }
-                    eprintln!(
-                        "{} {} standings: {} teams, season {}{}",
-                        source.provider,
-                        source.sport,
-                        snapshot.entries.len(),
-                        snapshot.season,
-                        if cli.dry_run { " (dry run)" } else { "" }
-                    );
-                    Ok(())
-                });
-                if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
-                    d.run_heartbeat(id)?;
+                self.failures.push(message);
+            }
+        }
+        Ok(())
+    }
+
+    fn collect_standings(&mut self) -> Result<()> {
+        let _stage_timer = metrics::Stage::new("standings");
+        let dry = self.cli.dry_run;
+        let client = json_client()?;
+        for source in self.db()?.standings_sources()? {
+            if !dry {
+                self.db()?.standings_attempt(source.id)?;
+            }
+            let result = standings::fetch(&client, &source).and_then(|snapshot| {
+                if !dry {
+                    self.db()?.save_standings(&source, &snapshot)?;
                 }
-                match result {
-                    Ok(()) => succeeded_sources += 1,
-                    Err(e) => {
-                        let message =
-                            format!("{} {} standings: {e}", source.provider, source.sport);
-                        eprintln!("{message}");
-                        if !cli.dry_run
-                            && let Err(e) =
-                                db.as_mut().unwrap().standings_error(source.id, &message)
-                        {
-                            failures.push(format!("standings error tracking: {e}"));
-                        }
-                        failures.push(message);
+                eprintln!(
+                    "{} {} standings: {} teams, season {}{}",
+                    source.provider,
+                    source.sport,
+                    snapshot.entries.len(),
+                    snapshot.season,
+                    self.cli.dry_suffix()
+                );
+                Ok(())
+            });
+            self.heartbeat()?;
+            match result {
+                Ok(()) => self.succeeded += 1,
+                Err(e) => {
+                    let message = format!("{} {} standings: {e}", source.provider, source.sport);
+                    eprintln!("{message}");
+                    if !dry && let Err(e) = self.db()?.standings_error(source.id, &message) {
+                        self.failures.push(format!("standings error tracking: {e}"));
                     }
+                    self.failures.push(message);
                 }
             }
         }
+        Ok(())
+    }
 
+    /// Scrapes every news source, then filters, saves and prunes. Returns the pages for the RSS output.
+    fn collect_news(
+        &mut self,
+        client: &reqwest::blocking::Client,
+        mut urls: Vec<String>,
+    ) -> Result<Vec<PageMeta>> {
+        let _news_timer = metrics::Stage::new("news");
+        let cli = self.cli;
         let mut pages = Vec::new();
+        let mut fetched = Vec::new();
         let identity_started = std::time::Instant::now();
         let identity_client = article_identity::client()?;
         // Rotate the identity work order so the bounded HTTP budget cannot starve later sources.
@@ -667,39 +746,35 @@ fn run_once(cli: &Cli) -> Result<(), web_scraper::Error> {
             let offset = (Utc::now().timestamp().div_euclid(3600) as usize) % urls.len();
             urls.rotate_left(offset);
         }
-        let news_timer = metrics::Stage::new("news");
         for url in &urls {
-            let result = pages::scrape_source(&client, url);
-            if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
-                d.run_heartbeat(id)?;
-            }
+            let result = pages::scrape_source(client, url);
+            self.heartbeat()?;
             match result {
                 Ok((mut found, how)) => {
-                    fetched_news.push(url.clone());
-                    if cli.dry_run || db.is_none() {
-                        succeeded_sources += 1;
+                    fetched.push(url.clone());
+                    if cli.dry_run || self.db.is_none() {
+                        self.succeeded += 1;
                     }
                     let total = found.len();
                     if let Some(cap) = cli.per_source {
                         found.sort_by_key(|p| std::cmp::Reverse(p.published));
                         found.truncate(cap as usize);
                     }
-                    let recent = if let Some(d) = db.as_mut() {
-                        d.recent_articles(url)?
-                    } else {
-                        vec![]
+                    let recent = match self.db.as_mut() {
+                        Some(d) => d.recent_articles(url)?,
+                        None => vec![],
                     };
                     pages::enrich_article_identities(
                         &identity_client,
                         &mut found,
                         recent,
                         identity_started,
-                        db.as_mut(),
+                        self.db.as_mut(),
                         cli.dry_run,
                     )?;
                     if how == "feed" {
                         let missing = found.iter().filter(|p| p.image_url.is_none()).count();
-                        pages::fill_missing_images(&client, &mut found);
+                        pages::fill_missing_images(client, &mut found);
                         let still = found.iter().filter(|p| p.image_url.is_none()).count();
                         if missing > 0 {
                             eprintln!(
@@ -713,8 +788,8 @@ fn run_once(cli: &Cli) -> Result<(), web_scraper::Error> {
                 }
                 Err(e) => {
                     eprintln!("skipping {url}: {e}");
-                    failures.push(format!("news {url}: {e}"));
-                    if let Some(d) = db.as_mut().filter(|_| !cli.dry_run) {
+                    self.failures.push(format!("news {url}: {e}"));
+                    if let Some(d) = self.db.as_mut().filter(|_| !cli.dry_run) {
                         d.record_result(url, Some(&e.to_string()))?;
                     }
                 }
@@ -758,25 +833,27 @@ fn run_once(cli: &Cli) -> Result<(), web_scraper::Error> {
                     p.title
                 );
             }
-        } else if let Some(db) = db.as_mut().filter(|_| !urls.is_empty()) {
+        } else if !urls.is_empty()
+            && let Some(db) = self.db.as_mut()
+        {
             let mut n = 0;
             for url in &urls {
-                let source_pages: Vec<_> = pages.iter().filter(|p| p.source == *url).collect();
-                if !fetched_news.contains(url) {
+                if !fetched.contains(url) {
                     continue;
                 }
+                let source_pages: Vec<_> = pages.iter().filter(|p| p.source == *url).collect();
                 match db.save_page_refs(&source_pages) {
                     Ok(count) => {
                         n += count;
-                        succeeded_sources += 1;
+                        self.succeeded += 1;
                         db.record_result(url, None)?;
                     }
                     Err(e) => {
-                        failures.push(format!("save news {url}: {e}"));
+                        self.failures.push(format!("save news {url}: {e}"));
                         let _ = db.record_result(url, Some(&e.to_string()));
                     }
                 }
-                if let Some(id) = run_id {
+                if let Some(id) = self.run_id {
                     db.run_heartbeat(id)?;
                 }
             }
@@ -790,326 +867,317 @@ fn run_once(cli: &Cli) -> Result<(), web_scraper::Error> {
                 eprintln!("pruned {pruned} old pages (keeping the newest {keep})");
             }
         }
+        Ok(pages)
+    }
 
-        // Calendar feeds from --events-feed and from the lookup table, each with its known type row
-        // (if any) and school name. A flagged URL that is already in the table reuses that row.
-        drop(news_timer);
-        let mut event_feeds: Vec<(Option<i32>, String, Option<String>)> = Vec::new();
-        if !cli.events_feed.is_empty() || cli.events_from_db {
-            let known = db.as_mut().unwrap().sports_event_feeds()?;
-            for url in &cli.events_feed {
-                match known.iter().find(|f| f.url == *url) {
-                    Some(f) => event_feeds.push((Some(f.id), url.clone(), f.school.clone())),
-                    None => event_feeds.push((None, url.clone(), None)),
-                }
-            }
-            if cli.events_from_db {
-                for f in known {
-                    if !event_feeds.iter().any(|(_, u, _)| *u == f.url) {
-                        event_feeds.push((Some(f.id), f.url, f.school));
-                    }
+    /// Calendar feeds from --events-feed and from the lookup table, each with its known type row
+    /// (if any) and school name. A flagged URL that is already in the table reuses that row.
+    fn event_feeds(&mut self) -> Result<Vec<EventFeedRef>> {
+        let cli = self.cli;
+        let mut feeds: Vec<EventFeedRef> = Vec::new();
+        if cli.events_feed.is_empty() && !cli.events_from_db {
+            return Ok(feeds);
+        }
+        let known = self.db()?.sports_event_feeds()?;
+        for url in &cli.events_feed {
+            let row = known.iter().find(|f| f.url == *url);
+            feeds.push(EventFeedRef {
+                known_id: row.map(|f| f.id),
+                url: url.clone(),
+                school: row.and_then(|f| f.school.clone()),
+            });
+        }
+        if cli.events_from_db {
+            for f in known {
+                if !feeds.iter().any(|e| e.url == f.url) {
+                    feeds.push(EventFeedRef {
+                        known_id: Some(f.id),
+                        url: f.url,
+                        school: f.school,
+                    });
                 }
             }
         }
-        if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
-            d.run_heartbeat(id)?;
-        }
-        let big12_feeds: Vec<_> = event_feeds
+        Ok(feeds)
+    }
+
+    fn collect_event_feeds(&mut self, client: &reqwest::blocking::Client) -> Result<()> {
+        let feeds = self.event_feeds()?;
+        self.heartbeat()?;
+        let big12_feeds: Vec<_> = feeds
             .iter()
-            .filter(|(_, url, _)| big12::school_id(url).is_some())
-            .filter_map(|(id, url, school)| {
-                id.map(|id| db::EventFeed {
+            .filter(|f| big12::school_id(&f.url).is_some())
+            .filter_map(|f| {
+                f.known_id.map(|id| db::EventFeed {
                     id,
-                    url: url.clone(),
-                    school: school.clone(),
+                    url: f.url.clone(),
+                    school: f.school.clone(),
                 })
             })
             .collect();
         if !big12_feeds.is_empty() {
-            let _stage_timer = metrics::Stage::new("big12_schedules");
-            if !cli.dry_run {
-                for f in &big12_feeds {
-                    db.as_mut().unwrap().event_attempt(f.id)?;
-                }
-            }
-            let collection = {
-                let _timer = metrics::Stage::new("big12_http");
-                big12::collect(&client, &big12_feeds)
-            };
-            match collection {
-                Ok(results) => {
-                    let _sql_timer = metrics::Stage::new("big12_sql");
-                    use std::collections::BTreeMap;
-                    let mut counts: BTreeMap<i32, (i32, i32, Vec<String>, bool)> = results
-                        .iter()
-                        .map(|r| (r.id, (0, 0, r.warnings.clone(), r.error.is_none())))
-                        .collect();
-                    for r in &results {
-                        if let Some(e) = &r.error {
-                            counts.get_mut(&r.id).unwrap().2.push(e.clone());
-                        }
-                    }
-                    // New events choose a home perspective first; existing primary IDs never flip.
-                    let mut observations: Vec<_> = results
-                        .iter()
-                        .flat_map(|r| r.observations.iter().map(move |o| (r.id, o)))
-                        .collect();
-                    observations.sort_by_key(|(feed, o)| {
-                        (
-                            o["event"]["is_away"] == true,
-                            *feed,
-                            o["provider_game_id"].as_i64().unwrap_or(0),
-                        )
-                    });
-                    for (index, (feed, observation)) in observations.into_iter().enumerate() {
-                        if index % 100 == 0 {
-                            eprintln!("Big 12 source observation {}", index + 1);
-                        }
-                        let (saved, quarantined, errors, success) = counts.get_mut(&feed).unwrap();
-                        if let Some(issue) = observation["issue"].as_str() {
-                            errors.push(format!("{}: {issue}", observation["provider_game_id"]));
-                        }
-                        if cli.dry_run {
-                            if observation["issue"].is_null() {
-                                *saved += 1;
-                            } else {
-                                *quarantined += 1;
-                            }
-                        } else {
-                            match db
-                                .as_mut()
-                                .unwrap()
-                                .save_big12_observation(feed, observation)
-                            {
-                                Ok(outcome) if outcome == "saved" => *saved += 1,
-                                Ok(outcome) => {
-                                    *quarantined += 1;
-                                    if observation["issue"].is_null() {
-                                        errors.push(format!(
-                                            "{}: {outcome}",
-                                            observation["provider_game_id"]
-                                        ));
-                                    }
-                                }
-                                Err(e) => {
-                                    *quarantined += 1;
-                                    *success = false;
-                                    errors.push(e.to_string());
-                                }
-                            }
-                        }
-                    }
-                    for result in results {
-                        let (saved, quarantined, errors, success) =
-                            counts.remove(&result.id).unwrap();
-                        if !success {
-                            failures.push(format!("Big12 {} failed", result.school));
-                        } else {
-                            succeeded_sources += 1;
-                        }
-                        eprintln!(
-                            "Big 12 {}: {saved} source observations saved, {quarantined} quarantined, {} issues{}",
-                            result.school,
-                            errors.len(),
-                            if cli.dry_run { " (dry run)" } else { "" }
-                        );
-                        if !cli.dry_run {
-                            let error = (!errors.is_empty()).then(|| errors.join("; "));
-                            db.as_mut().unwrap().event_result(
-                                result.id,
-                                success,
-                                result.observations.len() as i32,
-                                errors.len() as i32,
-                                error.as_deref(),
-                            )?;
-                        }
-                    }
-                }
-                Err(e) => {
-                    failures.push(format!("Big12: {e}"));
-                    eprintln!("Big 12 collection failed: {e}");
-                    if !cli.dry_run {
-                        for f in &big12_feeds {
-                            db.as_mut().unwrap().event_result(
-                                f.id,
-                                false,
-                                0,
-                                1,
-                                Some(&e.to_string()),
-                            )?;
-                        }
-                    }
-                }
+            self.collect_big12(client, &big12_feeds)?;
+        }
+        self.heartbeat()?;
+        for feed in &feeds {
+            self.collect_event_feed(client, feed)?;
+        }
+        Ok(())
+    }
+
+    fn collect_big12(
+        &mut self,
+        client: &reqwest::blocking::Client,
+        feeds: &[db::EventFeed],
+    ) -> Result<()> {
+        let _stage_timer = metrics::Stage::new("big12_schedules");
+        let dry = self.cli.dry_run;
+        if !dry {
+            for f in feeds {
+                self.db()?.event_attempt(f.id)?;
             }
         }
-        if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
-            d.run_heartbeat(id)?;
-        }
-        for (known_id, feed_url, school) in &event_feeds {
-            if big12::is_provider_feed(feed_url) {
-                if known_id.is_none() {
-                    eprintln!(
-                        "{feed_url}: register and enable this school using --configure-big12 / --enable-big12"
-                    );
-                } else if big12::school_id(feed_url).is_none() {
-                    eprintln!(
-                        "{feed_url}: conference-wide RSS is not supported for ingestion; use registered school feeds"
-                    );
+        let collection = {
+            let _timer = metrics::Stage::new("big12_http");
+            big12::collect(client, feeds)
+        };
+        let results = match collection {
+            Ok(results) => results,
+            Err(e) => {
+                self.failures.push(format!("Big12: {e}"));
+                eprintln!("Big 12 collection failed: {e}");
+                if !dry {
+                    for f in feeds {
+                        self.db()?
+                            .event_result(f.id, false, 0, 1, Some(&e.to_string()))?;
+                    }
+                }
+                return Ok(());
+            }
+        };
+        let _sql_timer = metrics::Stage::new("big12_sql");
+        let mut tallies: BTreeMap<i32, Big12Tally> = results
+            .iter()
+            .map(|r| {
+                let mut errors = r.warnings.clone();
+                errors.extend(r.error.clone());
+                let tally = Big12Tally {
+                    saved: 0,
+                    quarantined: 0,
+                    errors,
+                    success: r.error.is_none(),
+                };
+                (r.id, tally)
+            })
+            .collect();
+        // New events choose a home perspective first; existing primary IDs never flip.
+        let mut observations: Vec<_> = results
+            .iter()
+            .flat_map(|r| r.observations.iter().map(move |o| (r.id, o)))
+            .collect();
+        observations.sort_by_key(|(feed, o)| {
+            (
+                o["event"]["is_away"] == true,
+                *feed,
+                o["provider_game_id"].as_i64().unwrap_or(0),
+            )
+        });
+        for (index, (feed, observation)) in observations.into_iter().enumerate() {
+            if index % 100 == 0 {
+                eprintln!("Big 12 source observation {}", index + 1);
+            }
+            let tally = tallies
+                .get_mut(&feed)
+                .ok_or("Big 12 observation for an unknown feed")?;
+            if let Some(issue) = observation["issue"].as_str() {
+                tally
+                    .errors
+                    .push(format!("{}: {issue}", observation["provider_game_id"]));
+            }
+            if dry {
+                if observation["issue"].is_null() {
+                    tally.saved += 1;
+                } else {
+                    tally.quarantined += 1;
                 }
                 continue;
             }
-            if !cli.dry_run
-                && let Some(id) = known_id
-            {
-                db.as_mut().unwrap().event_attempt(*id)?;
+            match require(self.db.as_mut())?.save_big12_observation(feed, observation) {
+                Ok(outcome) if outcome == "saved" => tally.saved += 1,
+                Ok(outcome) => {
+                    tally.quarantined += 1;
+                    if observation["issue"].is_null() {
+                        tally
+                            .errors
+                            .push(format!("{}: {outcome}", observation["provider_game_id"]));
+                    }
+                }
+                Err(e) => {
+                    tally.quarantined += 1;
+                    tally.success = false;
+                    tally.errors.push(e.to_string());
+                }
             }
+        }
+        for result in results {
+            let tally = tallies
+                .remove(&result.id)
+                .ok_or("Big 12 result reported twice")?;
+            if tally.success {
+                self.succeeded += 1;
+            } else {
+                self.failures
+                    .push(format!("Big12 {} failed", result.school));
+            }
+            eprintln!(
+                "Big 12 {}: {} source observations saved, {} quarantined, {} issues{}",
+                result.school,
+                tally.saved,
+                tally.quarantined,
+                tally.errors.len(),
+                self.cli.dry_suffix()
+            );
+            if !dry {
+                let error = (!tally.errors.is_empty()).then(|| tally.errors.join("; "));
+                self.db()?.event_result(
+                    result.id,
+                    tally.success,
+                    result.observations.len() as i32,
+                    tally.errors.len() as i32,
+                    error.as_deref(),
+                )?;
+            }
+        }
+        Ok(())
+    }
 
-            if epl::is_feed(feed_url) {
-                let _stage_timer = metrics::Stage::new("epl_schedule");
-                let result = (|| -> Result<(), web_scraper::Error> {
-                    let fixtures = epl::fetch(&client, feed_url)?;
+    /// Records a failed feed on its registered row (unregistered feeds have none yet).
+    fn event_feed_failed(&mut self, known_id: Option<i32>, error: &str) -> Result<()> {
+        if !self.cli.dry_run
+            && let Some(id) = known_id
+        {
+            self.db()?.event_result(id, false, 0, 1, Some(error))?;
+        }
+        Ok(())
+    }
+
+    fn collect_event_feed(
+        &mut self,
+        client: &reqwest::blocking::Client,
+        feed: &EventFeedRef,
+    ) -> Result<()> {
+        let url = feed.url.as_str();
+        if big12::is_provider_feed(url) {
+            if feed.known_id.is_none() {
+                eprintln!(
+                    "{url}: register and enable this school using --configure-big12 / --enable-big12"
+                );
+            } else if big12::school_id(url).is_none() {
+                eprintln!(
+                    "{url}: conference-wide RSS is not supported for ingestion; use registered school feeds"
+                );
+            }
+            return Ok(());
+        }
+        if !self.cli.dry_run
+            && let Some(id) = feed.known_id
+        {
+            self.db()?.event_attempt(id)?;
+        }
+
+        if epl::is_feed(url) {
+            const EPL: League = League {
+                stage: "epl_schedule",
+                label: "Premier League",
+                type_name: "Premier League",
+            };
+            return self.collect_league(
+                &EPL,
+                feed,
+                || {
+                    let fixtures = epl::fetch(client, url)?;
                     eprintln!(
                         "Premier League: {} current/future schedule observations",
                         fixtures.len()
                     );
-                    if !cli.dry_run {
-                        let d = db.as_mut().unwrap();
-                        let id = match known_id {
-                            Some(id) => *id,
-                            None => d.ensure_sports_events_type(feed_url, "Premier League")?,
-                        };
-                        let n = d.save_espn_schedule(id, &fixtures)?;
-                        d.event_result(id, true, n as i32, 0, None)?;
-                    }
-                    Ok(())
-                })();
-                match result {
-                    Ok(()) => succeeded_sources += 1,
-                    Err(e) => {
-                        failures.push(format!("Premier League: {e}"));
-                        if !cli.dry_run
-                            && let Some(id) = known_id
-                        {
-                            db.as_mut().unwrap().event_result(
-                                *id,
-                                false,
-                                0,
-                                1,
-                                Some(&e.to_string()),
-                            )?;
-                        }
-                    }
-                }
-                continue;
-            }
-            if nhl::is_feed(feed_url) {
-                let _stage_timer = metrics::Stage::new("nhl_schedule");
-                let result = (|| -> Result<(), web_scraper::Error> {
-                    let batch = nhl::fetch(&client, feed_url)?;
+                    Ok(fixtures)
+                },
+                |d, id, fixtures| Ok(d.save_espn_schedule(id, fixtures)? as i32),
+            );
+        }
+        if nhl::is_feed(url) {
+            const NHL: League = League {
+                stage: "nhl_schedule",
+                label: "NHL",
+                type_name: "NHL",
+            };
+            return self.collect_league(
+                &NHL,
+                feed,
+                || {
+                    let batch = nhl::fetch(client, url)?;
                     eprintln!(
                         "NHL season {}: {} schedule observations, {} final results",
                         batch.season,
                         batch.fixtures.len(),
                         batch.results.len()
                     );
-                    if !cli.dry_run {
-                        let d = db.as_mut().unwrap();
-                        let id = match known_id {
-                            Some(id) => *id,
-                            None => d.ensure_sports_events_type(feed_url, "NHL")?,
-                        };
-                        d.save_espn_schedule(id, &batch.fixtures)?;
-                        d.save_match_results(
-                            id,
-                            espn_schedule::League::Nhl,
-                            batch.season,
-                            &batch.results,
-                        )?;
-                        d.event_result(
-                            id,
-                            true,
-                            batch.fixtures.iter().filter(|f| !f.completed).count() as i32,
-                            0,
-                            None,
-                        )?;
-                    }
-                    Ok(())
-                })();
-                match result {
-                    Ok(()) => succeeded_sources += 1,
-                    Err(e) => {
-                        failures.push(format!("NHL: {e}"));
-                        if !cli.dry_run
-                            && let Some(id) = known_id
-                        {
-                            db.as_mut().unwrap().event_result(
-                                *id,
-                                false,
-                                0,
-                                1,
-                                Some(&e.to_string()),
-                            )?;
-                        }
-                    }
-                }
-                continue;
-            }
-            if mls::is_feed(feed_url) {
-                let _stage_timer = metrics::Stage::new("mls_schedule");
-                let result = (|| -> Result<(), web_scraper::Error> {
-                    let batch = mls::fetch(&client, feed_url)?;
+                    Ok(batch)
+                },
+                |d, id, batch| {
+                    d.save_espn_schedule(id, &batch.fixtures)?;
+                    d.save_match_results(
+                        id,
+                        espn_schedule::League::Nhl,
+                        batch.season,
+                        &batch.results,
+                    )?;
+                    Ok(upcoming(&batch.fixtures))
+                },
+            );
+        }
+        if mls::is_feed(url) {
+            const MLS: League = League {
+                stage: "mls_schedule",
+                label: "MLS",
+                type_name: "MLS",
+            };
+            return self.collect_league(
+                &MLS,
+                feed,
+                || {
+                    let batch = mls::fetch(client, url)?;
                     eprintln!(
                         "MLS season {}: {} schedule observations, {} final results",
                         batch.season,
                         batch.fixtures.len(),
                         batch.results.len()
                     );
-                    if !cli.dry_run {
-                        let d = db.as_mut().unwrap();
-                        let id = match known_id {
-                            Some(id) => *id,
-                            None => d.ensure_sports_events_type(feed_url, "MLS")?,
-                        };
-                        d.save_espn_schedule(id, &batch.fixtures)?;
-                        d.save_match_results(
-                            id,
-                            espn_schedule::League::Mls,
-                            batch.season,
-                            &batch.results,
-                        )?;
-                        d.event_result(
-                            id,
-                            true,
-                            batch.fixtures.iter().filter(|f| !f.completed).count() as i32,
-                            0,
-                            None,
-                        )?;
-                    }
-                    Ok(())
-                })();
-                match result {
-                    Ok(()) => succeeded_sources += 1,
-                    Err(e) => {
-                        failures.push(format!("MLS: {e}"));
-                        if !cli.dry_run
-                            && let Some(id) = known_id
-                        {
-                            db.as_mut().unwrap().event_result(
-                                *id,
-                                false,
-                                0,
-                                1,
-                                Some(&e.to_string()),
-                            )?;
-                        }
-                    }
-                }
-                continue;
-            }
-            if championship::is_feed(feed_url) {
-                let _stage_timer = metrics::Stage::new("championship_schedule");
-                let result = (|| -> Result<(), web_scraper::Error> {
-                    let batch = championship::fetch(&client, feed_url)?;
+                    Ok(batch)
+                },
+                |d, id, batch| {
+                    d.save_espn_schedule(id, &batch.fixtures)?;
+                    d.save_match_results(
+                        id,
+                        espn_schedule::League::Mls,
+                        batch.season,
+                        &batch.results,
+                    )?;
+                    Ok(upcoming(&batch.fixtures))
+                },
+            );
+        }
+        if championship::is_feed(url) {
+            const CHAMPIONSHIP: League = League {
+                stage: "championship_schedule",
+                label: "Championship",
+                type_name: "EFL Championship",
+            };
+            return self.collect_league(
+                &CHAMPIONSHIP,
+                feed,
+                || {
+                    let batch = championship::fetch(client, url)?;
                     eprintln!(
                         "Championship season {}: {} schedule observations, {} final results; Wrexham ID {}",
                         batch.season,
@@ -1117,489 +1185,451 @@ fn run_once(cli: &Cli) -> Result<(), web_scraper::Error> {
                         batch.results.len(),
                         championship::WREXHAM_ID
                     );
-                    if !cli.dry_run {
-                        let d = db.as_mut().unwrap();
-                        let id = match known_id {
-                            Some(id) => *id,
-                            None => d.ensure_sports_events_type(feed_url, "EFL Championship")?,
-                        };
-                        d.save_espn_schedule(id, &batch.fixtures)?;
-                        d.save_championship_results(id, &batch)?;
-                        d.event_result(
-                            id,
-                            true,
-                            batch.fixtures.iter().filter(|f| !f.completed).count() as i32,
-                            0,
-                            None,
-                        )?;
-                    }
-                    Ok(())
-                })();
-                match result {
-                    Ok(()) => succeeded_sources += 1,
-                    Err(e) => {
-                        failures.push(format!("Championship: {e}"));
-                        if !cli.dry_run
-                            && let Some(id) = known_id
-                        {
-                            db.as_mut().unwrap().event_result(
-                                *id,
-                                false,
-                                0,
-                                1,
-                                Some(&e.to_string()),
-                            )?;
-                        }
-                    }
-                }
-                continue;
-            }
-            if nwsl::is_feed(feed_url) || wnba::is_feed(feed_url) || mlb::is_feed(feed_url) {
-                let is_mlb = mlb::is_feed(feed_url);
-                let is_wnba = wnba::is_feed(feed_url);
-                let _stage_timer = metrics::Stage::new(if is_mlb {
-                    "mlb_schedule"
-                } else if is_wnba {
-                    "wnba_schedule"
-                } else {
-                    "nwsl_schedule"
-                });
-                let label = if is_mlb {
-                    "MLB"
-                } else if is_wnba {
-                    "WNBA"
-                } else {
-                    "NWSL"
+                    Ok(batch)
+                },
+                |d, id, batch| {
+                    d.save_espn_schedule(id, &batch.fixtures)?;
+                    d.save_championship_results(id, batch)?;
+                    Ok(upcoming(&batch.fixtures))
+                },
+            );
+        }
+        let league = if mlb::is_feed(url) {
+            Some(("mlb_schedule", "MLB", mlb::fetch as FixtureFetch))
+        } else if wnba::is_feed(url) {
+            Some(("wnba_schedule", "WNBA", wnba::fetch as FixtureFetch))
+        } else if nwsl::is_feed(url) {
+            Some(("nwsl_schedule", "NWSL", nwsl::fetch as FixtureFetch))
+        } else {
+            None
+        };
+        if let Some((stage, label, fetch)) = league {
+            let _stage_timer = metrics::Stage::new(stage);
+            return self.collect_schedule_only(feed, label, fetch(client, url));
+        }
+        self.collect_calendar(client, feed)
+    }
+
+    /// Fetch, persist and record one ESPN-backed league feed. Provider and save failures are
+    /// recorded against the feed and the run continues.
+    fn collect_league<T>(
+        &mut self,
+        league: &League,
+        feed: &EventFeedRef,
+        fetch: impl FnOnce() -> Result<T>,
+        save: impl FnOnce(&mut db::Db, i32, &T) -> Result<i32>,
+    ) -> Result<()> {
+        let _stage_timer = metrics::Stage::new(league.stage);
+        let result = (|| -> Result<()> {
+            let data = fetch()?;
+            if !self.cli.dry_run {
+                let d = self.db()?;
+                let id = match feed.known_id {
+                    Some(id) => id,
+                    None => d.ensure_sports_events_type(&feed.url, league.type_name)?,
                 };
-                let fetched = if is_mlb {
-                    mlb::fetch(&client, feed_url)
-                } else if is_wnba {
-                    wnba::fetch(&client, feed_url)
-                } else {
-                    nwsl::fetch(&client, feed_url)
-                };
-                match fetched {
-                    Ok(fixtures) => {
-                        eprintln!(
-                            "{feed_url}: {} {label} fixtures{}",
-                            fixtures.len(),
-                            if cli.dry_run { " (dry run)" } else { "" }
-                        );
-                        if cli.dry_run {
-                            succeeded_sources += 1;
-                            for f in &fixtures {
-                                eprintln!(
-                                    "{} | {} | {:?} | {}",
-                                    f.event.event_date, f.event.title, f.event.starts_at, f.status
-                                );
-                            }
-                        } else {
-                            let db = db.as_mut().unwrap();
-                            let id = match known_id {
-                                Some(id) => *id,
-                                None => db.ensure_sports_events_type(
-                                    feed_url,
-                                    if is_mlb {
-                                        "MLB"
-                                    } else if is_wnba {
-                                        "WNBA"
-                                    } else {
-                                        "NWSL"
-                                    },
-                                )?,
-                            };
-                            match db.save_espn_schedule(id, &fixtures) {
-                                Ok(n) => {
-                                    succeeded_sources += 1;
-                                    db.event_result(id, true, n as i32, 0, None)?;
-                                }
-                                Err(e) => {
-                                    eprintln!("{label} save failed: {e}");
-                                    failures.push(format!("{label} save: {e}"));
-                                    let _ = db.event_result(id, false, 0, 1, Some(&e.to_string()));
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        failures.push(format!("{label} {feed_url}: {e}"));
-                        eprintln!("{label} schedule {feed_url} failed: {e}");
-                        if !cli.dry_run
-                            && let Some(id) = known_id
-                        {
-                            db.as_mut().unwrap().event_result(
-                                *id,
-                                false,
-                                0,
-                                1,
-                                Some(&e.to_string()),
-                            )?;
-                        }
-                    }
-                }
-                continue;
+                let n = save(d, id, &data)?;
+                d.event_result(id, true, n, 0, None)?;
             }
-
-            // A broken calendar feed shouldn't stop the rest of the run.
-            match events::fetch_events(&client, feed_url, school.as_deref()) {
-                Ok(batch) if cli.dry_run => {
-                    eprintln!(
-                        "{feed_url}: {} events (dry run, not saved)",
-                        batch.events.len()
-                    );
-                    for e in &batch.events {
-                        eprintln!(
-                            "  - {} | {} {} {} | {} | {}",
-                            e.event_date,
-                            e.sport.as_deref().unwrap_or("?"),
-                            if e.is_away == Some(true) { "at" } else { "vs" },
-                            e.opponent.as_deref().unwrap_or("?"),
-                            e.starts_at.map_or("time TBD".into(), |t| t.to_rfc3339()),
-                            e.tv.as_deref().unwrap_or("no TV listed"),
-                        );
-                    }
-                }
-                Ok(batch) => {
-                    let db = db.as_mut().unwrap();
-                    let type_id = match known_id {
-                        Some(id) => *id,
-                        None => {
-                            let name = url::Url::parse(feed_url)
-                                .ok()
-                                .and_then(|u| u.host_str().map(str::to_string))
-                                .unwrap_or_else(|| feed_url.clone());
-                            db.ensure_sports_events_type(feed_url, &name)?
-                        }
-                    };
-                    let n = match db.save_events(type_id, &batch.events) {
-                        Ok(n) => n,
-                        Err(e) => {
-                            failures.push(format!("calendar save {feed_url}: {e}"));
-                            let _ = db.event_result(type_id, false, 0, 1, Some(&e.to_string()));
-                            continue;
-                        }
-                    };
-                    eprintln!("{feed_url}: saved {n} events to type {type_id}");
-                    succeeded_sources += 1;
-                    db.event_result(type_id, true, n as i32, 0, None)?;
-                    if batch.school_id.is_some() {
-                        let corrected =
-                            db.refresh_school_team_logo(type_id, batch.team_logo_url.as_deref())?;
-                        eprintln!(
-                            "{feed_url}: corrected team logos on {corrected} retained events"
-                        );
-                    }
-                }
-                Err(e) => {
-                    failures.push(format!("calendar {feed_url}: {e}"));
-                    eprintln!("events feed {feed_url} failed: {e}");
-                    if !cli.dry_run
-                        && let Some(id) = known_id
-                    {
-                        db.as_mut().unwrap().event_result(
-                            *id,
-                            false,
-                            0,
-                            1,
-                            Some(&e.to_string()),
-                        )?;
-                    }
-                }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => self.succeeded += 1,
+            Err(e) => {
+                self.failures.push(format!("{}: {e}", league.label));
+                self.event_feed_failed(feed.known_id, &e.to_string())?;
             }
-        }
-
-        if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
-            d.run_heartbeat(id)?;
-        }
-        // Channels from --youtube-feed (feed row found or created below) and from the lookup table.
-        let mut youtube: Vec<(Option<i32>, String)> =
-            cli.youtube_feed.iter().map(|u| (None, u.clone())).collect();
-        if cli.youtube_from_db {
-            for (id, url) in db.as_mut().unwrap().youtube_feeds()? {
-                match youtube.iter_mut().find(|(_, u)| *u == url) {
-                    Some(existing) => existing.0 = Some(id),
-                    None => youtube.push((Some(id), url)),
-                }
-            }
-        }
-        let youtube_timer = metrics::Stage::new("youtube");
-        for (known_id, feed_url) in &youtube {
-            match youtube::fetch_latest(&client, feed_url, cli.youtube_latest as usize) {
-                Ok((found, how)) if cli.dry_run => {
-                    eprintln!(
-                        "{feed_url}: {} videos via {how} (dry run, not saved)",
-                        found.len()
-                    );
-                    for v in &found {
-                        eprintln!(
-                            "  - {}{} | {} | {} views | {}",
-                            v.published_at.to_rfc3339(),
-                            if v.published_is_estimate {
-                                " (estimated)"
-                            } else {
-                                ""
-                            },
-                            v.channel_name.as_deref().unwrap_or("?"),
-                            v.views.map_or("?".into(), |n| n.to_string()),
-                            v.title
-                        );
-                    }
-                }
-                Ok((found, how)) => {
-                    let db = db.as_mut().unwrap();
-                    let feed_id = match (known_id, found.first()) {
-                        (Some(id), _) => *id,
-                        (None, Some(v)) => db.ensure_youtube_feed(
-                            &v.channel_id,
-                            v.channel_name.as_deref(),
-                            feed_url,
-                        )?,
-                        (None, None) => {
-                            eprintln!("{feed_url}: the feed has no videos, nothing saved");
-                            continue;
-                        }
-                    };
-                    let n = match db.save_videos(feed_id, &found) {
-                        Ok(n) => n,
-                        Err(e) => {
-                            failures.push(format!("YouTube save {feed_url}: {e}"));
-                            continue;
-                        }
-                    };
-                    succeeded_sources += 1;
-                    let pruned = db.prune_videos(cli.youtube_latest)?;
-                    eprintln!(
-                        "{feed_url}: saved {n} videos via {how} to feed {feed_id}, pruned {pruned} older (keeping the newest {} per channel)",
-                        cli.youtube_latest
-                    );
-                }
-                Err(e) => {
-                    failures.push(format!("YouTube {feed_url}: {e}"));
-                    eprintln!("youtube feed {feed_url} failed: {e}");
-                }
-            }
-        }
-
-        if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
-            d.run_heartbeat(id)?;
-        }
-        drop(youtube_timer);
-        if cli.movies {
-            let _stage_timer = metrics::Stage::new("movies");
-            let result = (|| -> Result<(), web_scraper::Error> {
-                use chrono::Datelike;
-                let day = Utc::now()
-                    .with_timezone(&chrono_tz::America::Chicago)
-                    .date_naive();
-                let start =
-                    day - chrono::Duration::days(day.weekday().num_days_from_monday().into());
-                let tracked = db.as_mut().unwrap().tracked_movie_urls()?;
-                let enabled = db.as_mut().unwrap().enabled_movie_sources()?;
-                let disc_disabled = db.as_mut().unwrap().disc_disabled_movie_sources()?;
-                let mut report =
-                    movies::ingest_with_disc_policy(start, &tracked, &enabled, &disc_disabled)?;
-                let skipped = movies::retain_current_releases(&mut report, day);
-                eprintln!("metrics: movies past_releases_skipped={skipped}");
-                let rows = movies::release_rows(&report)?;
-                let issues = report["issues"].as_array().map_or(0, Vec::len);
-                if cli.dry_run {
-                    eprintln!(
-                        "movies: {} releases would be saved; {issues} issues (dry run)",
-                        rows.len()
-                    );
-                } else {
-                    let n = db.as_mut().unwrap().save_movie_releases(&rows, &report)?;
-                    eprintln!(
-                        "movies: saved {n} releases (week {start} plus tracked movies); {issues} issues"
-                    );
-                    let inputs = report["releases"]
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                        .filter_map(|r| {
-                            Some((
-                                r["source_url"].as_str()?.to_owned(),
-                                posters::decode(&r["poster_metadata"])?,
-                            ))
-                        })
-                        .collect();
-                    match posters::enrich(db.as_mut().unwrap(), &inputs) {
-                        Ok(posters) => eprintln!(
-                            "movie posters: {} enriched, {} preserved, {} unmatched",
-                            posters["enriched_count"],
-                            posters["preserved_count"],
-                            posters["unmatched"].as_array().map_or(0, Vec::len)
-                        ),
-                        Err(e) => eprintln!(
-                            "movie poster enrichment failed (release ingestion completed): {e}"
-                        ),
-                    }
-                }
-                if !cli.dry_run {
-                    match movie_commerce::enrich(db.as_mut().unwrap(), &report) {
-                        Ok(n) => eprintln!("movie retailer links: checked {n} movies/providers"),
-                        Err(e) => {
-                            eprintln!("movie retailer link enrichment failed (releases saved): {e}")
-                        }
-                    }
-                }
-                if issues == 0 {
-                    succeeded_sources += 1;
-                }
-                if issues > 0 {
-                    failures.push(format!("movies: {issues} source issues"));
-                    eprintln!("movie source issues: {}", report["issues"]);
-                }
-                Ok(())
-            })();
-            if let Err(e) = result {
-                failures.push(format!("movies: {e}"));
-                eprintln!("movie ingestion failed: {e}");
-            }
-        }
-
-        if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
-            d.run_heartbeat(id)?;
-        }
-        if cli.tv_from_db {
-            let _stage_timer = metrics::Stage::new("tv");
-            match tvmaze::collect(db.as_mut().unwrap(), cli.dry_run, cli.tv_force_refresh) {
-                Ok(report) => {
-                    succeeded_sources += report["series"]
-                        .as_array()
-                        .map_or(0, |s| s.iter().filter(|s| s["status"] != "failed").count());
-                    if report["series"]
-                        .as_array()
-                        .is_some_and(|s| s.iter().any(|s| s["status"] == "failed"))
-                    {
-                        failures.push("TVmaze series collection failed".into());
-                    }
-                    eprintln!("TVmaze collection report: {}", report)
-                }
-                Err(e) => {
-                    failures.push(format!("TVmaze: {e}"));
-                    eprintln!("TVmaze collector failed: {e}");
-                }
-            }
-        }
-
-        if !cli.dry_run && (cli.boxoffice || cli.boxoffice_forecasts) {
-            let _timer = metrics::Stage::new("cinema_posters");
-            match cinema_posters::enrich(db.as_mut().unwrap()) {
-                Ok(report) => eprintln!("box-office posters: {report}"),
-                Err(e) => failures.push(format!("box-office posters: {e}")),
-            }
-        }
-        if cli.repair_boxscore_periods {
-            let _timer = metrics::Stage::new("sports_periods");
-            let (ok, errors) = sports_periods::repair(
-                db.as_mut().unwrap(),
-                cli.dry_run,
-                cli.boxscores_limit,
-                run_id,
-            )?;
-            succeeded_sources += ok;
-            if errors > 0 {
-                failures.push(format!(
-                    "period repair: {errors} metadata/validation errors; cached values preserved"
-                ));
-            }
-        }
-        if cli.boxscores_from_db || cli.events_from_db {
-            let _timer = metrics::Stage::new("sports_boxscores");
-            match sports_boxscores::collect(
-                db.as_mut().unwrap(),
-                cli.dry_run,
-                cli.boxscores_limit,
-                run_id,
-            ) {
-                Ok((ok, errors)) => {
-                    succeeded_sources += ok;
-                    if errors > 0 {
-                        failures.push(format!("optional box scores: {errors} fetch/validation errors; existing results preserved"));
-                    }
-                }
-                Err(e) => failures.push(format!("optional box scores: {e}")),
-            }
-        }
-
-        let items: Vec<_> = pages
-            .into_iter()
-            .map(|meta| {
-                ItemBuilder::default()
-                    .title(meta.title)
-                    .link(meta.url.clone())
-                    .description(meta.description)
-                    .pub_date(meta.published.map(|d| d.to_rfc2822()))
-                    .guid(
-                        rss::GuidBuilder::default()
-                            .value(meta.url)
-                            .permalink(true)
-                            .build(),
-                    )
-                    .build()
-            })
-            .collect();
-
-        let channel = ChannelBuilder::default()
-            .title(cli.title.clone())
-            .link(cli.link.clone())
-            .description(cli.description.clone())
-            .last_build_date(Some(Utc::now().to_rfc2822()))
-            .items(items)
-            .build();
-
-        match &cli.output {
-            Some(path) => write_atomic(path, &channel.to_string())?,
-            // In loop mode, stdout would fill the log with a feed every run.
-            None if cli.every_hours.is_some() => {}
-            None => println!("{channel}"),
         }
         Ok(())
-    })();
-    if !cli.dry_run
-        && let Some(d) = db.as_mut()
-    {
-        let _stage_timer = metrics::Stage::new("retention");
-        match d.apply_retention() {
-            Ok(()) => eprintln!(
-                "retention: past/canceled schedules, past releases/episodes and old polls removed"
-            ),
-            Err(e) => failures.push(format!("retention cleanup failed: {e}")),
-        }
-    }
-    if let (Some(d), Some(id)) = (db.as_mut(), run_id) {
-        let message = outcome
-            .as_ref()
-            .err()
-            .map(|e| e.to_string())
-            .or_else(|| (!failures.is_empty()).then(|| failures.join("; ")));
-        let status = if outcome.is_err() || (!failures.is_empty() && succeeded_sources == 0) {
-            "failed"
-        } else if failures.is_empty() {
-            "succeeded"
-        } else {
-            "partial"
-        };
-        if let Err(e) = d.finish_run(id, status, message.as_deref()) {
-            eprintln!("cannot persist run outcome: {e}");
-        }
-    }
-    eprintln!(
-        "collection summary: {succeeded_sources} source successes, {} failures",
-        failures.len()
-    );
-    outcome?;
-    if !failures.is_empty() {
-        return Err(format!(
-            "collection incomplete ({} failures): {}",
-            failures.len(),
-            failures.join("; ")
-        )
-        .into());
     }
 
+    /// MLB, WNBA and NWSL league schedules (fixtures only; results come from other paths).
+    fn collect_schedule_only(
+        &mut self,
+        feed: &EventFeedRef,
+        label: &str,
+        fetched: Result<Vec<espn_schedule::Fixture>>,
+    ) -> Result<()> {
+        let url = feed.url.as_str();
+        let fixtures = match fetched {
+            Ok(fixtures) => fixtures,
+            Err(e) => {
+                self.failures.push(format!("{label} {url}: {e}"));
+                eprintln!("{label} schedule {url} failed: {e}");
+                return self.event_feed_failed(feed.known_id, &e.to_string());
+            }
+        };
+        eprintln!(
+            "{url}: {} {label} fixtures{}",
+            fixtures.len(),
+            self.cli.dry_suffix()
+        );
+        if self.cli.dry_run {
+            self.succeeded += 1;
+            for f in &fixtures {
+                eprintln!(
+                    "{} | {} | {:?} | {}",
+                    f.event.event_date, f.event.title, f.event.starts_at, f.status
+                );
+            }
+            return Ok(());
+        }
+        let db = require(self.db.as_mut())?;
+        let id = match feed.known_id {
+            Some(id) => id,
+            None => db.ensure_sports_events_type(url, label)?,
+        };
+        match db.save_espn_schedule(id, &fixtures) {
+            Ok(n) => {
+                self.succeeded += 1;
+                db.event_result(id, true, n as i32, 0, None)?;
+            }
+            Err(e) => {
+                eprintln!("{label} save failed: {e}");
+                self.failures.push(format!("{label} save: {e}"));
+                let _ = db.event_result(id, false, 0, 1, Some(&e.to_string()));
+            }
+        }
+        Ok(())
+    }
+
+    /// A Sidearm-style school calendar. A broken feed shouldn't stop the rest of the run.
+    fn collect_calendar(
+        &mut self,
+        client: &reqwest::blocking::Client,
+        feed: &EventFeedRef,
+    ) -> Result<()> {
+        let url = feed.url.as_str();
+        let batch = match events::fetch_events(client, url, feed.school.as_deref()) {
+            Ok(batch) => batch,
+            Err(e) => {
+                self.failures.push(format!("calendar {url}: {e}"));
+                eprintln!("events feed {url} failed: {e}");
+                return self.event_feed_failed(feed.known_id, &e.to_string());
+            }
+        };
+        if self.cli.dry_run {
+            eprintln!("{url}: {} events (dry run, not saved)", batch.events.len());
+            for e in &batch.events {
+                eprintln!(
+                    "  - {} | {} {} {} | {} | {}",
+                    e.event_date,
+                    e.sport.as_deref().unwrap_or("?"),
+                    if e.is_away == Some(true) { "at" } else { "vs" },
+                    e.opponent.as_deref().unwrap_or("?"),
+                    e.starts_at.map_or("time TBD".into(), |t| t.to_rfc3339()),
+                    e.tv.as_deref().unwrap_or("no TV listed"),
+                );
+            }
+            return Ok(());
+        }
+        let db = require(self.db.as_mut())?;
+        let type_id = match feed.known_id {
+            Some(id) => id,
+            None => {
+                let name = url::Url::parse(url)
+                    .ok()
+                    .and_then(|u| u.host_str().map(str::to_string))
+                    .unwrap_or_else(|| url.to_string());
+                db.ensure_sports_events_type(url, &name)?
+            }
+        };
+        let n = match db.save_events(type_id, &batch.events) {
+            Ok(n) => n,
+            Err(e) => {
+                self.failures.push(format!("calendar save {url}: {e}"));
+                let _ = db.event_result(type_id, false, 0, 1, Some(&e.to_string()));
+                return Ok(());
+            }
+        };
+        eprintln!("{url}: saved {n} events to type {type_id}");
+        self.succeeded += 1;
+        db.event_result(type_id, true, n as i32, 0, None)?;
+        if batch.school_id.is_some() {
+            let corrected = db.refresh_school_team_logo(type_id, batch.team_logo_url.as_deref())?;
+            eprintln!("{url}: corrected team logos on {corrected} retained events");
+        }
+        Ok(())
+    }
+
+    /// Channels from --youtube-feed (feed row found or created below) and from the lookup table.
+    fn collect_youtube(&mut self, client: &reqwest::blocking::Client) -> Result<()> {
+        let cli = self.cli;
+        let mut feeds: Vec<(Option<i32>, String)> =
+            cli.youtube_feed.iter().map(|u| (None, u.clone())).collect();
+        if cli.youtube_from_db {
+            for (id, url) in self.db()?.youtube_feeds()? {
+                match feeds.iter_mut().find(|(_, u)| *u == url) {
+                    Some(existing) => existing.0 = Some(id),
+                    None => feeds.push((Some(id), url)),
+                }
+            }
+        }
+        let _youtube_timer = metrics::Stage::new("youtube");
+        for (known_id, feed_url) in &feeds {
+            let (found, how) =
+                match youtube::fetch_latest(client, feed_url, cli.youtube_latest as usize) {
+                    Ok(fetched) => fetched,
+                    Err(e) => {
+                        self.failures.push(format!("YouTube {feed_url}: {e}"));
+                        eprintln!("youtube feed {feed_url} failed: {e}");
+                        continue;
+                    }
+                };
+            if cli.dry_run {
+                eprintln!(
+                    "{feed_url}: {} videos via {how} (dry run, not saved)",
+                    found.len()
+                );
+                for v in &found {
+                    eprintln!(
+                        "  - {}{} | {} | {} views | {}",
+                        v.published_at.to_rfc3339(),
+                        if v.published_is_estimate {
+                            " (estimated)"
+                        } else {
+                            ""
+                        },
+                        v.channel_name.as_deref().unwrap_or("?"),
+                        v.views.map_or("?".into(), |n| n.to_string()),
+                        v.title
+                    );
+                }
+                continue;
+            }
+            let db = require(self.db.as_mut())?;
+            let feed_id = match (known_id, found.first()) {
+                (Some(id), _) => *id,
+                (None, Some(v)) => {
+                    db.ensure_youtube_feed(&v.channel_id, v.channel_name.as_deref(), feed_url)?
+                }
+                (None, None) => {
+                    eprintln!("{feed_url}: the feed has no videos, nothing saved");
+                    continue;
+                }
+            };
+            let n = match db.save_videos(feed_id, &found) {
+                Ok(n) => n,
+                Err(e) => {
+                    self.failures.push(format!("YouTube save {feed_url}: {e}"));
+                    continue;
+                }
+            };
+            self.succeeded += 1;
+            let pruned = db.prune_videos(cli.youtube_latest)?;
+            eprintln!(
+                "{feed_url}: saved {n} videos via {how} to feed {feed_id}, pruned {pruned} older (keeping the newest {} per channel)",
+                cli.youtube_latest
+            );
+        }
+        Ok(())
+    }
+
+    fn collect_movies(&mut self) {
+        let _stage_timer = metrics::Stage::new("movies");
+        if let Err(e) = self.try_collect_movies() {
+            self.failures.push(format!("movies: {e}"));
+            eprintln!("movie ingestion failed: {e}");
+        }
+    }
+
+    fn try_collect_movies(&mut self) -> Result<()> {
+        use chrono::Datelike;
+        let dry = self.cli.dry_run;
+        let day = Utc::now()
+            .with_timezone(&chrono_tz::America::Chicago)
+            .date_naive();
+        let start = day - chrono::Duration::days(day.weekday().num_days_from_monday().into());
+        let db = self.db()?;
+        let tracked = db.tracked_movie_urls()?;
+        let enabled = db.enabled_movie_sources()?;
+        let disc_disabled = db.disc_disabled_movie_sources()?;
+        let mut report =
+            movies::ingest_with_disc_policy(start, &tracked, &enabled, &disc_disabled)?;
+        let skipped = movies::retain_current_releases(&mut report, day);
+        eprintln!("metrics: movies past_releases_skipped={skipped}");
+        let rows = movies::release_rows(&report)?;
+        let issues = report["issues"].as_array().map_or(0, Vec::len);
+        if dry {
+            eprintln!(
+                "movies: {} releases would be saved; {issues} issues (dry run)",
+                rows.len()
+            );
+        } else {
+            let db = self.db()?;
+            let n = db.save_movie_releases(&rows, &report)?;
+            eprintln!(
+                "movies: saved {n} releases (week {start} plus tracked movies); {issues} issues"
+            );
+            let inputs = report["releases"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|r| {
+                    Some((
+                        r["source_url"].as_str()?.to_owned(),
+                        posters::decode(&r["poster_metadata"])?,
+                    ))
+                })
+                .collect();
+            match posters::enrich(db, &inputs) {
+                Ok(posters) => eprintln!(
+                    "movie posters: {} enriched, {} preserved, {} unmatched",
+                    posters["enriched_count"],
+                    posters["preserved_count"],
+                    posters["unmatched"].as_array().map_or(0, Vec::len)
+                ),
+                Err(e) => {
+                    eprintln!("movie poster enrichment failed (release ingestion completed): {e}")
+                }
+            }
+            match movie_commerce::enrich(db, &report) {
+                Ok(n) => eprintln!("movie retailer links: checked {n} movies/providers"),
+                Err(e) => eprintln!("movie retailer link enrichment failed (releases saved): {e}"),
+            }
+        }
+        if issues == 0 {
+            self.succeeded += 1;
+        } else {
+            self.failures
+                .push(format!("movies: {issues} source issues"));
+            eprintln!("movie source issues: {}", report["issues"]);
+        }
+        Ok(())
+    }
+
+    fn collect_tv(&mut self) -> Result<()> {
+        let _stage_timer = metrics::Stage::new("tv");
+        let (dry, force) = (self.cli.dry_run, self.cli.tv_force_refresh);
+        match tvmaze::collect(self.db()?, dry, force) {
+            Ok(report) => {
+                let series = report["series"].as_array();
+                self.succeeded +=
+                    series.map_or(0, |s| s.iter().filter(|s| s["status"] != "failed").count());
+                if series.is_some_and(|s| s.iter().any(|s| s["status"] == "failed")) {
+                    self.failures.push("TVmaze series collection failed".into());
+                }
+                eprintln!("TVmaze collection report: {report}");
+            }
+            Err(e) => {
+                self.failures.push(format!("TVmaze: {e}"));
+                eprintln!("TVmaze collector failed: {e}");
+            }
+        }
+        Ok(())
+    }
+
+    /// Applies retention, records the run outcome, and folds partial failures into the result.
+    fn finish(mut self, outcome: Result<()>) -> Result<()> {
+        if !self.cli.dry_run
+            && let Some(d) = self.db.as_mut()
+        {
+            let _stage_timer = metrics::Stage::new("retention");
+            match d.apply_retention() {
+                Ok(()) => eprintln!(
+                    "retention: past/canceled schedules, past releases/episodes and old polls removed"
+                ),
+                Err(e) => self.failures.push(format!("retention cleanup failed: {e}")),
+            }
+        }
+        if let (Some(d), Some(id)) = (self.db.as_mut(), self.run_id) {
+            let message = outcome
+                .as_ref()
+                .err()
+                .map(|e| e.to_string())
+                .or_else(|| (!self.failures.is_empty()).then(|| self.failures.join("; ")));
+            let status = if outcome.is_err() || (!self.failures.is_empty() && self.succeeded == 0) {
+                "failed"
+            } else if self.failures.is_empty() {
+                "succeeded"
+            } else {
+                "partial"
+            };
+            if let Err(e) = d.finish_run(id, status, message.as_deref()) {
+                eprintln!("cannot persist run outcome: {e}");
+            }
+        }
+        eprintln!(
+            "collection summary: {} source successes, {} failures",
+            self.succeeded,
+            self.failures.len()
+        );
+        outcome?;
+        if !self.failures.is_empty() {
+            return Err(format!(
+                "collection incomplete ({} failures): {}",
+                self.failures.len(),
+                self.failures.join("; ")
+            )
+            .into());
+        }
+        Ok(())
+    }
+}
+
+type FixtureFetch = fn(&reqwest::blocking::Client, &str) -> Result<Vec<espn_schedule::Fixture>>;
+
+/// Count of not-yet-completed fixtures, recorded as the feed's event count.
+fn upcoming(fixtures: &[espn_schedule::Fixture]) -> i32 {
+    fixtures.iter().filter(|f| !f.completed).count() as i32
+}
+
+fn write_feed(cli: &Cli, pages: Vec<PageMeta>) -> Result<()> {
+    let items: Vec<_> = pages
+        .into_iter()
+        .map(|meta| {
+            ItemBuilder::default()
+                .title(meta.title)
+                .link(meta.url.clone())
+                .description(meta.description)
+                .pub_date(meta.published.map(|d| d.to_rfc2822()))
+                .guid(
+                    rss::GuidBuilder::default()
+                        .value(meta.url)
+                        .permalink(true)
+                        .build(),
+                )
+                .build()
+        })
+        .collect();
+
+    let channel = ChannelBuilder::default()
+        .title(cli.title.clone())
+        .link(cli.link.clone())
+        .description(cli.description.clone())
+        .last_build_date(Some(Utc::now().to_rfc2822()))
+        .items(items)
+        .build();
+
+    match &cli.output {
+        Some(path) => write_atomic(path, &channel.to_string())?,
+        // In loop mode, stdout would fill the log with a feed every run.
+        None if cli.every_hours.is_some() => {}
+        None => println!("{channel}"),
+    }
     Ok(())
+}
+
+/// One full scrape: collect sources, scrape, filter, save, prune, and write the RSS feed.
+fn run_once(cli: &Cli) -> Result<()> {
+    let mut db = connect_db(cli)?;
+    if run_setup(cli, db.as_mut())? {
+        return Ok(());
+    }
+    let run_id = match db.as_mut() {
+        Some(d) if !cli.dry_run => Some(d.start_run()?),
+        _ => None,
+    };
+    let mut run = Run {
+        cli,
+        db,
+        run_id,
+        failures: Vec::new(),
+        succeeded: 0,
+    };
+    let _run_timer = metrics::Stage::new("run");
+    let outcome = run.collect();
+    run.finish(outcome)
 }
 
 fn write_atomic(path: &Path, contents: &str) -> std::io::Result<()> {
@@ -1644,7 +1674,7 @@ fn stamp(t: DateTime<Utc>) -> String {
         .to_string()
 }
 
-fn main() -> Result<(), web_scraper::Error> {
+fn main() -> Result<()> {
     let _ = dotenvy::dotenv();
     let cli = Cli::parse();
 
