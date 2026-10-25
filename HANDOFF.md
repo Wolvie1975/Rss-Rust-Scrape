@@ -1,16 +1,17 @@
 # Scraper handoff
 
-## Code structure cleanup — October 25, 2026 CDT
+## Code structure cleanup — deployed October 25, 2026 CDT
 
-Code-only refactor on branch `code-cleanup`; no schema, SQL text, scheduler or
-image change, and nothing deployed. Modules now live in a library crate
-([src/lib.rs](src/lib.rs)) shared by `web_scraper`, `scoreboard` and the examples,
-with one `Error`/`Result` type. Page scraping moved to [src/pages.rs](src/pages.rs);
-`run_once` in [src/main.rs](src/main.rs) is split into per-stage `Run` methods;
-`Db` tests moved to [src/db/tests.rs](src/db/tests.rs). Library tests now run with
-`cargo test --lib` (not `--bin web_scraper`), and `Db` test paths are
-`db::tests::*`. Cargo.lock was refreshed for RUSTSEC-2026-0382/0383/0386; the
-deployed images get those fixes only after an approved rebuild.
+Code-only refactor, merged to `main` and deployed as **web-scraper:code-cleanup-20261025**
+and **web-scoreboard:code-cleanup-20261025**; no schema, SQL text, configuration or data
+change. Modules now live in a library crate ([src/lib.rs](src/lib.rs)) shared by
+`web_scraper`, `scoreboard` and the examples, with one `Error`/`Result` type. Page
+scraping moved to [src/pages.rs](src/pages.rs); `run_once` in [src/main.rs](src/main.rs)
+is split into per-stage `Run` methods; `Db` tests moved to [src/db/tests.rs](src/db/tests.rs).
+Library tests now run with `cargo test --lib` (not `--bin web_scraper`), and `Db` test
+paths are `db::tests::*`. Cargo.lock fixes RUSTSEC-2026-0382/0383/0386. First production
+run matched the previous release (266 successes; the one failure is the pre-existing
+TVmaze *High Potential* incomplete-episode guard). See [deployment and rollback](reports/code-cleanup-20261025.md).
 
 ## USA TODAY feeds — October 24, 2026 CDT
 
