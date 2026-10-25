@@ -90,7 +90,7 @@ operator verification. Repeat manually only with isolated migration credentials:
 ```sh
 NWSL_TEST_PROFILE=.env.migrations \
 NWSL_TEST_DATABASE=WebScraper_Nwsl_Validation_example \
-cargo test --locked --bin web_scraper db::nwsl_tests -- --ignored --nocapture
+cargo test --locked --lib db::tests::nwsl_tests -- --ignored --nocapture
 ```
 
 Production imported **24 upcoming fixtures across all 16 clubs** with zero

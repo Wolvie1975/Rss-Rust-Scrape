@@ -621,7 +621,7 @@ The source exposes one theatrical/digital event per movie; separate reissues
 without explicit source identity cannot be distinguished automatically.
 
 Verification: `cargo test --locked --all-targets`; live rollback-only upsert test:
-`cargo test --locked --bin web_scraper movie_upserts_are_repeatable -- --ignored`.
+`cargo test --locked --lib movie_upserts_are_repeatable -- --ignored`.
 
 
 <a id="movie-releases--posters"></a>
@@ -719,7 +719,7 @@ cargo run --locked -- --movie-posters --retry-missing-posters
 cargo run --locked --example audit_movies -- WebScraper /tmp/movie-audit.json
 # Matching/parser tests, plus optional rollback-only SQL preservation test.
 cargo test --locked --all-targets
-cargo test --locked --bin web_scraper poster_backfill_preserves -- --ignored
+cargo test --locked --lib poster_backfill_preserves -- --ignored
 ```
 
 Poster-only mode cannot be combined with dry-run or scheduled mode. Regular movie

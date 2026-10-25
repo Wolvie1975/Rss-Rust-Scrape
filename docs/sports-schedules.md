@@ -221,7 +221,7 @@ stops polling; disabling a feed during a run also prevents subsequent source wri
 ```sh
 cargo test --locked --all-targets
 # Named staging database populated from Kansas data and configured first:
-cargo test --locked --bin web_scraper mirrored_imports -- --ignored
+cargo test --locked --lib mirrored_imports -- --ignored
 ```
 
 Fixtures cover membership, linked Kansas/Utah IDs, primary/secondary perspective,
@@ -708,7 +708,7 @@ against isolated staging; no production events/configuration were written.
 ```sh
 cargo test --locked --all-targets
 MLB_TEST_DATABASE=WebScraper_Mlb_Validation_20261009 \
-  cargo test --locked --bin web_scraper db::mlb_tests -- --ignored --nocapture
+  cargo test --locked --lib db::tests::mlb_tests -- --ignored --nocapture
 ```
 
 Coverage includes MLB home/away/venue/link mapping, playoff placeholder resolution,
@@ -860,7 +860,7 @@ last-good stored games if a request or parser check fails.
 cargo test --locked --all-targets
 # Separate database only; fixture writes roll back.
 WNBA_TEST_DATABASE=WebScraper_Wnba_Validation_20261009 \
-  cargo test --locked --bin web_scraper db::wnba_tests -- --ignored --nocapture
+  cargo test --locked --lib db::tests::wnba_tests -- --ignored --nocapture
 ```
 
 Coverage includes home/away participants and links, team filters, games shared by
@@ -1029,7 +1029,7 @@ host deployment and scheduler restart were not performed.
 cargo test --locked --all-targets
 # SQL test initializes only a separate staging database; fixture writes roll back.
 NWSL_TEST_DATABASE=WebScraper_Nwsl_Validation_20261009 \
-  cargo test --locked --bin web_scraper db::nwsl_tests -- --ignored --nocapture
+  cargo test --locked --lib db::tests::nwsl_tests -- --ignored --nocapture
 ```
 
 Tests cover live home/away fixtures, missing/malformed payloads, Central date/DST

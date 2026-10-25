@@ -180,7 +180,7 @@ cargo test --locked --all-targets
 # Migration credentials; ONLY an isolated database with this prefix is accepted.
 MOVIE_COMMERCE_TEST_DATABASE=WebScraper_MovieCommerce_Validation_example \
 MOVIE_COMMERCE_TEST_PROFILE=.env.migrations \
-cargo test --locked --bin web_scraper movie_commerce_cache_preserves -- --ignored
+cargo test --locked --lib movie_commerce_cache_preserves -- --ignored
 ```
 
 The opt-in test creates its isolated schema and leaves its database for inspection;

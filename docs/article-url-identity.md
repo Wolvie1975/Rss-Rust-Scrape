@@ -130,7 +130,7 @@ transaction rollback and concurrent sessions.
 cargo test --locked --all-targets
 # Explicit SQL write tests, using an isolated migration profile only:
 ARTICLE_IDENTITY_TEST_DATABASE=WebScraper_ArticleIdentity_Validation_NAME \
-  cargo test --locked db::article_identity_sql_tests -- --ignored --nocapture
+  cargo test --locked db::tests::article_identity_sql_tests -- --ignored --nocapture
 ```
 
 October 16 production verification and rollback details are recorded in
