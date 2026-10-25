@@ -277,13 +277,13 @@ The existing frontend is now confirmed to consume the view and render direct lin
 
 The validated [schema-only database snapshot](sql/schema/WebScraper.schema.sql) captures 31 tables and one view, without data or credentials. Article identity and F1 use separate additive migrations after this baseline. See the [operations guide](docs/operations.md#database-schema-snapshot) for scope and empty-database restore instructions.
 
-Use runtime credentials for ingestion and migration credentials for explicit setup. Never print or commit credentials. Preserve existing environment, network, scheduler, retention and rollback settings during deployments. Use appropriate tests and verify the deployed image and targeted live imports. The user commits and pushes Git changes themselves unless they explicitly request otherwise.
+Use runtime credentials for ingestion and migration credentials for explicit setup. Never print or commit credentials. Preserve existing environment, network, scheduler, retention and rollback settings during deployments. Use appropriate tests and verify the deployed image and targeted live imports. As of October 25, 2026, Claude may commit and push completed, verified work; recheck Git status and preserve concurrent changes first.
 
 Historical images, table counts, earlier open items and source audits: [operations history](reports/operations-history.md#previous-handoff), [sports history](reports/sports-history.md), [entertainment history](reports/entertainment-history.md).
 
 ## Working conventions with this user
 
-- Confirm before anything outward-facing; the user pushes to GitHub, and restarts/pauses the scheduler
-  on their own call.
+- Claude may commit and push to GitHub (authorized October 25, 2026). Other outward-facing
+  actions still need confirmation; the user restarts/pauses the scheduler on their own call.
 - Prefer verifying against the live DB and live feeds (dry-run first, then a real run) and report
   exactly what was and wasn't checked.
