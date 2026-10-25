@@ -30,8 +30,35 @@ fn heading_date(s: &str) -> Option<NaiveDate> {
         .unwrap_or(s.split('(').next()?.trim());
     date(s).or_else(|| s.split_once(' ').and_then(|(_, rest)| date(rest)))
 }
-fn in_week(d: NaiveDate, start: NaiveDate) -> bool {
-    d >= start && d < start + Duration::days(7)
+/// Whole Monday-Sunday weeks of release dates, starting at `start`.
+#[derive(Debug, Clone, Copy)]
+pub struct Window {
+    pub start: NaiveDate,
+    pub weeks: u32,
+}
+impl Window {
+    pub fn week(start: NaiveDate) -> Self {
+        Self { start, weeks: 1 }
+    }
+    pub fn end(self) -> NaiveDate {
+        self.start + Duration::weeks(self.weeks.into())
+    }
+    fn days(self) -> impl Iterator<Item = NaiveDate> {
+        (0..i64::from(self.weeks) * 7).map(move |n| self.start + Duration::days(n))
+    }
+    fn contains(self, d: NaiveDate) -> bool {
+        d >= self.start && d < self.end()
+    }
+}
+/// A calendar with dated headings but nothing in the window is simply empty;
+/// a calendar with no recognizable headings indicates changed markup.
+fn has_date_headings(html: &str) -> bool {
+    let doc = Html::parse_document(html);
+    doc.select(&sel(".reldate"))
+        .any(|e| heading_date(&text(e)).is_some())
+        || doc
+            .select(&sel(".entry-content h2"))
+            .any(|e| date(&text(e)).is_some())
 }
 fn tv_title(s: &str) -> bool {
     let s = s.to_lowercase();
@@ -57,7 +84,7 @@ fn absolute(base: &str, href: &str) -> Option<String> {
     (target.scheme() == "https" && target.host_str() == base.host_str()).then(|| target.to_string())
 }
 
-pub fn dvd_links(html: &str, base: &str, start: NaiveDate, theatrical: bool) -> Vec<String> {
+pub fn dvd_links(html: &str, base: &str, window: Window, theatrical: bool) -> Vec<String> {
     let doc = Html::parse_document(html);
     let mut current = None;
     let mut links = BTreeSet::new();
@@ -71,9 +98,9 @@ pub fn dvd_links(html: &str, base: &str, start: NaiveDate, theatrical: bool) -> 
         };
         // A theatrical heading labels a week, not each movie's exact date.
         let eligible = if theatrical {
-            d >= start - Duration::days(6) && d < start + Duration::days(13)
+            d >= window.start - Duration::days(6) && d < window.end() + Duration::days(6)
         } else {
-            in_week(d, start)
+            window.contains(d)
         };
         if !eligible {
             continue;
@@ -87,7 +114,7 @@ pub fn dvd_links(html: &str, base: &str, start: NaiveDate, theatrical: bool) -> 
     links.into_iter().collect()
 }
 
-pub fn streaming_links(html: &str, base: &str, start: NaiveDate) -> Vec<String> {
+pub fn streaming_links(html: &str, base: &str, window: Window) -> Vec<String> {
     let doc = Html::parse_document(html);
     let mut current = None;
     let mut links = BTreeSet::new();
@@ -96,7 +123,7 @@ pub fn streaming_links(html: &str, base: &str, start: NaiveDate) -> Vec<String> 
             current = date(&text(e));
             continue;
         }
-        if current.is_some_and(|d| in_week(d, start))
+        if current.is_some_and(|d| window.contains(d))
             && let Some(u) = e.value().attr("href").and_then(|h| absolute(base, h))
         {
             links.insert(u);
@@ -134,7 +161,7 @@ pub fn retain_current_releases(report: &mut Value, today: NaiveDate) -> usize {
 pub fn movieinsider_calendar(
     html: &str,
     base: &str,
-    start: NaiveDate,
+    window: Window,
 ) -> Result<(Vec<String>, Option<String>), String> {
     let doc = Html::parse_document(html);
     let cards = doc.select(&sel(".browse-movie")).collect::<Vec<_>>();
@@ -163,7 +190,7 @@ pub fn movieinsider_calendar(
         }
         let d = date(&format!("{} {}, {}", path[1], path[3], path[2]))
             .ok_or("unrecognized Movie Insider calendar date")?;
-        if in_week(d, start) {
+        if window.contains(d) {
             let a = card
                 .select(&sel("h2 a"))
                 .next()
@@ -297,11 +324,9 @@ pub fn movieinsider_details(html: &str, url: &str) -> Result<Vec<Value>, String>
 }
 fn discover_movieinsider(
     client: &reqwest::blocking::Client,
-    start: NaiveDate,
+    window: Window,
 ) -> Result<(Vec<String>, Vec<Value>), crate::Error> {
-    let years = (0..7)
-        .map(|n| (start + Duration::days(n)).year())
-        .collect::<BTreeSet<_>>();
+    let years = window.days().map(|d| d.year()).collect::<BTreeSet<_>>();
     let mut found = BTreeSet::new();
     let mut coverage = vec![];
     for year in years {
@@ -315,7 +340,7 @@ fn discover_movieinsider(
             }
             eprintln!("calendar: digital: {url}");
             let html = crate::http::get_text(client, &url)?;
-            let (links, following) = movieinsider_calendar(&html, &url, start)?;
+            let (links, following) = movieinsider_calendar(&html, &url, window)?;
             coverage.push(json!({"url":url,"category":"digital","candidate_count":links.len()}));
             found.extend(links);
             // The provider sometimes has out-of-order cards. Scan every page.
@@ -515,9 +540,9 @@ pub fn streaming_details(html: &str, url: &str) -> Result<Vec<Value>, String> {
     Ok(rows)
 }
 
-pub fn preview(start: NaiveDate) -> Result<Value, crate::Error> {
+pub fn preview(window: Window) -> Result<Value, crate::Error> {
     collect(
-        start,
+        window,
         &[],
         &[
             "dvdsreleasedates".into(),
@@ -528,23 +553,23 @@ pub fn preview(start: NaiveDate) -> Result<Value, crate::Error> {
     )
 }
 
-/// Refresh tracked movies as well as discovering this week's new releases.
+/// Refresh tracked movies as well as discovering new releases in the window.
 pub fn ingest(
-    start: NaiveDate,
+    window: Window,
     tracked: &[String],
     enabled: &[String],
 ) -> Result<Value, crate::Error> {
-    collect(start, tracked, enabled, &[])
+    collect(window, tracked, enabled, &[])
 }
 
 /// Provider-wide enablement and physical-disc eligibility are independent.
 pub fn ingest_with_disc_policy(
-    start: NaiveDate,
+    window: Window,
     tracked: &[String],
     enabled: &[String],
     disc_disabled: &[String],
 ) -> Result<Value, crate::Error> {
-    collect(start, tracked, enabled, disc_disabled)
+    collect(window, tracked, enabled, disc_disabled)
 }
 
 fn release_allowed(row: &Value, disc_disabled: &[String]) -> bool {
@@ -552,7 +577,7 @@ fn release_allowed(row: &Value, disc_disabled: &[String]) -> bool {
 }
 
 fn collect(
-    start: NaiveDate,
+    window: Window,
     tracked: &[String],
     enabled: &[String],
     disc_disabled: &[String],
@@ -562,8 +587,7 @@ fn collect(
         .timeout(std::time::Duration::from_secs(20))
         .build()?;
     let mut calendars = BTreeMap::new();
-    for offset in 0..7 {
-        let d = start + Duration::days(offset);
+    for d in window.days() {
         let y = d.year();
         let m = d.month();
         let month = d.format("%B").to_string().to_lowercase();
@@ -587,7 +611,7 @@ fn collect(
     let mut issues = Vec::new();
     let mut coverage = Vec::new();
     if enabled.iter().any(|s| s == "movieinsider") {
-        match discover_movieinsider(&client, start) {
+        match discover_movieinsider(&client, window) {
             Ok((links, pages)) => {
                 coverage.extend(pages);
                 for link in links {
@@ -619,12 +643,12 @@ fn collect(
         match result {
             Ok(html) => {
                 let links = if category == "subscription" {
-                    streaming_links(&html, &url, start)
+                    streaming_links(&html, &url, window)
                 } else {
-                    dvd_links(&html, &url, start, category == "theatrical")
+                    dvd_links(&html, &url, window, category == "theatrical")
                 };
                 coverage.push(json!({"url":url,"category":category,"candidate_count":links.len()}));
-                if links.is_empty() {
+                if links.is_empty() && !has_date_headings(&html) {
                     issues.push(json!({"url":url,"reason":"no candidates found; empty week or changed page markup requires review"}));
                 }
                 for link in links {
@@ -718,14 +742,14 @@ fn collect(
                                 r["release_date"]
                                     .as_str()
                                     .and_then(date)
-                                    .is_some_and(|d| in_week(d, start))
+                                    .is_some_and(|d| window.contains(d))
                                     && r["release_type"]
                                         .as_str()
                                         .is_some_and(|t| categories.contains(t))
                             })
                             .collect();
                         if found.is_empty() {
-                            no_matching_release.push(json!({"url":url,"categories":categories,"reason":"no announced detail date in the selected week/category"}));
+                            no_matching_release.push(json!({"url":url,"categories":categories,"reason":"no announced detail date in the selected window/category"}));
                         }
                         releases.extend(found);
                     }
@@ -753,7 +777,7 @@ fn collect(
             .or_insert(0) += 1;
     }
     Ok(
-        json!({"week_start":start.to_string(),"week_end":(start+Duration::days(6)).to_string(),"database_written":false,"candidate_count":candidate_count,"counts":counts,"calendars":coverage,"releases":releases,"issues":issues,"excluded_tv":excluded_tv,"no_matching_release":no_matching_release}),
+        json!({"week_start":window.start.to_string(),"week_end":(window.end()-Duration::days(1)).to_string(),"weeks":window.weeks,"database_written":false,"candidate_count":candidate_count,"counts":counts,"calendars":coverage,"releases":releases,"issues":issues,"excluded_tv":excluded_tv,"no_matching_release":no_matching_release}),
     )
 }
 
@@ -929,9 +953,40 @@ mod tests {
     fn calendar_filters_week_and_resolves_links() {
         let h = "<table><tr><td class='reldate'>Tuesday October 6, 2026<div>(this week)</div></td></tr><tr><td class='dvdcell'><a href='/movies/1/test'>Test</a></td></tr><tr><td class='reldate'>Tuesday October 13, 2026</td></tr><tr><td class='dvdcell'><a href='/movies/2/next'>Next</a></td></tr></table>";
         assert_eq!(
-            dvd_links(h, "https://www.dvdsreleasedates.com/", start(), false),
+            dvd_links(
+                h,
+                "https://www.dvdsreleasedates.com/",
+                Window::week(start()),
+                false
+            ),
             vec!["https://www.dvdsreleasedates.com/movies/1/test"]
         );
+    }
+    #[test]
+    fn multi_week_window_discovers_later_weeks_only_within_range() {
+        let h = "<table><tr><td class='reldate'>Tuesday October 6, 2026</td></tr><tr><td class='dvdcell'><a href='/movies/1/a'>A</a></td></tr><tr><td class='reldate'>Tuesday October 27, 2026</td></tr><tr><td class='dvdcell'><a href='/movies/2/b'>B</a></td></tr><tr><td class='reldate'>Tuesday November 3, 2026</td></tr><tr><td class='dvdcell'><a href='/movies/3/c'>C</a></td></tr></table>";
+        let window = Window {
+            start: start(),
+            weeks: 4,
+        };
+        assert_eq!(window.end(), date("2026-11-02").unwrap());
+        assert_eq!(
+            dvd_links(h, "https://www.dvdsreleasedates.com/", window, false),
+            vec![
+                "https://www.dvdsreleasedates.com/movies/1/a",
+                "https://www.dvdsreleasedates.com/movies/2/b"
+            ]
+        );
+    }
+    #[test]
+    fn empty_window_is_not_mistaken_for_changed_markup() {
+        assert!(has_date_headings(
+            "<table><tr><td class='reldate'>Tuesday November 3, 2026</td></tr></table>"
+        ));
+        assert!(has_date_headings(
+            "<div class='entry-content'><h2>November 3, 2026</h2></div>"
+        ));
+        assert!(!has_date_headings("<html>Access denied</html>"));
     }
     #[test]
     fn disc_bundle_does_not_become_a_digital_release() {
@@ -1000,7 +1055,7 @@ mod tests {
             streaming_links(
                 h,
                 "https://whentostream.com/streaming-october-2026/",
-                start()
+                Window::week(start())
             ),
             vec!["https://whentostream.com/movie-2026/"]
         );
@@ -1079,7 +1134,7 @@ mod digital_coverage_tests {
         let (links, next) = movieinsider_calendar(
             html,
             "https://www.movieinsider.com/releases/vod-digital/2026",
-            NaiveDate::from_ymd_opt(2026, 10, 5).unwrap(),
+            Window::week(NaiveDate::from_ymd_opt(2026, 10, 5).unwrap()),
         )
         .unwrap();
         assert_eq!(links, vec!["https://www.movieinsider.com/m123/film"]);
@@ -1088,7 +1143,7 @@ mod digital_coverage_tests {
             movieinsider_calendar(
                 "<html>Access denied</html>",
                 "https://www.movieinsider.com/releases/vod-digital/2026",
-                NaiveDate::from_ymd_opt(2026, 10, 5).unwrap()
+                Window::week(NaiveDate::from_ymd_opt(2026, 10, 5).unwrap())
             )
             .is_err()
         );
@@ -1099,7 +1154,7 @@ mod digital_coverage_tests {
                     "https://evil.example/page_offset=20"
                 ),
                 "https://www.movieinsider.com/releases/vod-digital/2026",
-                NaiveDate::from_ymd_opt(2026, 10, 5).unwrap()
+                Window::week(NaiveDate::from_ymd_opt(2026, 10, 5).unwrap())
             )
             .is_err()
         );

@@ -191,6 +191,10 @@ struct Cli {
     #[arg(long)]
     movies: bool,
 
+    /// Monday-Sunday weeks of movie releases to discover, starting with this week
+    #[arg(long, value_name = "N", default_value_t = 4, value_parser = clap::value_parser!(u32).range(1..=12))]
+    movie_weeks: u32,
+
     /// How many of each YouTube channel's newest videos to keep
     #[arg(long, value_name = "N", default_value_t = 10, value_parser = clap::value_parser!(u32).range(1..=i32::MAX as i64))]
     youtube_latest: u32,
@@ -1444,8 +1448,12 @@ impl Run<'_> {
         let tracked = db.tracked_movie_urls()?;
         let enabled = db.enabled_movie_sources()?;
         let disc_disabled = db.disc_disabled_movie_sources()?;
+        let window = movies::Window {
+            start,
+            weeks: self.cli.movie_weeks,
+        };
         let mut report =
-            movies::ingest_with_disc_policy(start, &tracked, &enabled, &disc_disabled)?;
+            movies::ingest_with_disc_policy(window, &tracked, &enabled, &disc_disabled)?;
         let skipped = movies::retain_current_releases(&mut report, day);
         eprintln!("metrics: movies past_releases_skipped={skipped}");
         let rows = movies::release_rows(&report)?;
@@ -1459,7 +1467,8 @@ impl Run<'_> {
             let db = self.db()?;
             let n = db.save_movie_releases(&rows, &report)?;
             eprintln!(
-                "movies: saved {n} releases (week {start} plus tracked movies); {issues} issues"
+                "movies: saved {n} releases ({} weeks from {start} plus tracked movies); {issues} issues",
+                window.weeks
             );
             let inputs = report["releases"]
                 .as_array()

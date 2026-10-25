@@ -422,7 +422,12 @@ investigation notes below describe the original implementation.
 
 Scope agreed 2026-10-08: U.S. theatrical releases, digital purchase/rental,
 subscription streaming, and physical discs. The database schema, read-only preview, and main-CLI database ingestion are implemented.
-`--movies` imports the current Central-time week and refreshes tracked movie detail pages on each run.
+`--movies` discovers releases in `--movie-weeks` Monday–Sunday weeks (default 4,
+range 1–12) starting with the current Central-time week, and refreshes tracked movie
+detail pages on each run. Before October 25, 2026 discovery covered only the current
+week, so upcoming theatrical/digital/subscription dates appeared only once their
+week began. Frontend views that filter to the current week are unaffected; future
+rows are available for an upcoming-releases view.
 
 <a id="movie-releases--sources-investigated"></a>
 
@@ -606,6 +611,9 @@ verified against studios or platform catalogs. No movie data is saved to SQL Ser
 `cargo run --locked -- --movies` imports movie releases into SQL Server. Combine
 `--movies` with the existing news/events/YouTube flags and `--every-hours 1` for
 hourly collection. `--dry-run` parses movies without writing movie/source rows.
+A calendar page that lists dated headings but nothing inside the window is treated
+as empty, not as a source issue; a page with no recognizable date headings is still
+reported. Preview several weeks with `movie_preview --weeks N`.
 The standalone Docker Compose service includes `--movies` and keeps its existing
 persistent feed volume and hourly Central-time schedule.
 

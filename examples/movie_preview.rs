@@ -10,6 +10,9 @@ struct Args {
     /// Any date in the desired Monday-Sunday week (YYYY-MM-DD).
     #[arg(long)]
     week_of: Option<NaiveDate>,
+    /// Number of Monday-Sunday weeks to preview, starting with that week.
+    #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=12))]
+    weeks: u32,
     /// Restrict preview to selected sources (repeat for multiple sources).
     #[arg(long,value_parser=["dvdsreleasedates","whentostream","movieinsider"])]
     source: Vec<String>,
@@ -28,6 +31,10 @@ fn main() -> Result<(), web_scraper::Error> {
             .date_naive()
     });
     let start = day - Duration::days(day.weekday().num_days_from_monday().into());
+    let window = movies::Window {
+        start,
+        weeks: args.weeks,
+    };
     let report = if args.exclude_discs {
         let enabled = if args.source.is_empty() {
             vec![
@@ -38,11 +45,11 @@ fn main() -> Result<(), web_scraper::Error> {
         } else {
             args.source.clone()
         };
-        movies::ingest_with_disc_policy(start, &[], &enabled, &["dvdsreleasedates".into()])?
+        movies::ingest_with_disc_policy(window, &[], &enabled, &["dvdsreleasedates".into()])?
     } else if args.source.is_empty() {
-        movies::preview(start)?
+        movies::preview(window)?
     } else {
-        movies::ingest(start, &[], &args.source)?
+        movies::ingest(window, &[], &args.source)?
     };
     let json = serde_json::to_string_pretty(&report)?;
     if let Some(path) = args.output {
