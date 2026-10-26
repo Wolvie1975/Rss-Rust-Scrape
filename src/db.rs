@@ -296,6 +296,7 @@ impl Db {
                 include_str!("../sql/article_identity.sql"),
                 include_str!("../sql/upsert_article_identity.sql"),
                 include_str!("../sql/big12_views.sql"),
+                include_str!("../sql/youtube_categories.sql"),
             ] {
                 client.simple_query(migration).await?.into_results().await?;
             }

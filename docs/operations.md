@@ -62,6 +62,34 @@ never result scores. Missing detail leaves existing fallbacks intact and failed
 refreshes retain last-good snapshots. See [limits, deployment evidence and
 rollback](../reports/sports-boxscores-20261019.md) and [the frontend handoff](<../New Development/sports-boxscores-frontend-handoff.md>).
 
+## YouTube channel categories
+
+YouTube channels have their own category lookup, separate from news
+`SourceCategories`, so YouTube-only categories never appear as empty news
+categories. `dbo.YoutubeCategories` (`ID`, `Category_Name`) is referenced by the
+nullable `dbo.YoutubeVideoFeed.YoutubeCategoryId`; videos inherit their channel's
+category through `YouTubeVideos.YoutubeVideoFeedId`. Channels the collector adds
+later stay uncategorized (NULL) until assigned.
+
+| Category | Channels (October 26, 2026) |
+| --- | --- |
+| Sports | Field of 68, BYU Sports Nation, Locked On Big 12, Locked on BYU, Big 12 Sports, CBS - Eye on College Basketball, Open For Business, Sleepers Media, Awful Announcing, Robin Lundberg |
+| Video Games | Destin, Indie Games Hub, Xbox Nation, ID@Xbox, Xbox, MrMatty Plays, Colton Eastwood, CultOfMush |
+| Tech | WaveForm Podcast, The Verge, Android, Marques Brownlee, iJustine, MrMobile, ShortCircuit, C. Scott Brown, Shane Craig, Auto Focus, CodingBite, The Linux Experiment, Paul J Lipsky |
+| News & Politics | Bulwark |
+
+Schema: [`sql/youtube_categories.sql`](../sql/youtube_categories.sql) (additive, also
+run by `--initialize-db`). Assignments: [`sql/youtube_categories_seed.sql`](../sql/youtube_categories_seed.sql),
+keyed by `ChannelId`; rerunning it resets the listed channels to these categories.
+Apply both with the migration profile against **WebScraper**. Collection needs no
+rebuild or restart; the ingest role only gains `SELECT` on the lookup. Applied to
+production twice on October 26, 2026; read-back: Sports 10 channels, Video Games 8,
+Tech 13, News & Politics 1, none uncategorized, ingest grant present.
+[Frontend handoff](<../New Development/youtube-categories-frontend-handoff.md>).
+
+Frontend: join `YouTubeVideos` → `YoutubeVideoFeed` → `YoutubeCategories` by ID and
+resolve categories by name, not hardcoded IDs. Decide how to show NULL-category channels.
+
 ## Kansas City local news
 
 Five enabled publishers populate **Kansas City News**: KSHB 9172, Flatland 9173,
