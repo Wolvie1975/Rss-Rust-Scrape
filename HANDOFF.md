@@ -1,5 +1,14 @@
 # Scraper handoff
 
+## KCTV5 and KMBC in Kansas City News — October 28, 2026 CDT
+
+Added enabled sources **12137 (KCTV5)** and **12138 (KMBC 9)** to Kansas City News
+using [the repeatable disabled-first seed](sql/kansas_city_news_seed.sql). The targeted
+import had two successes and zero failures and saved 20 dated articles with images.
+LastError is NULL for both. Hourly `--from-db` picks them up, so no rebuild or restart
+is needed. KCTV5 uses its site-wide feed, which includes some national stories. See
+[Kansas City news](docs/kansas-city-news.md#kctv5-and-kmbc--added-october-28-2026).
+
 ## Code structure cleanup — deployed October 25, 2026 CDT
 
 Code-only refactor, merged to `main` and deployed as **web-scraper:code-cleanup-20261025**

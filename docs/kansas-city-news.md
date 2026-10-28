@@ -93,10 +93,36 @@ Representative stories:
 - [Kansas City helping renters avoid eviction](https://flatlandkc.org/news-issues/housing/kansas-city-helping-renters-avoid-eviction/)
 - [Kansas City restaurants and bars](https://www.thepitchkc.com/dish-drink-kc-sandwiches-and-world-building-at-marina-27-italian-sausage-co-and-brass-monkey/)
 
+## KCTV5 and KMBC — added October 28, 2026
+
+Two more sources were added to the same category through the same seed and the
+same disabled-first sequence, which brought it to seven enabled sources:
+
+| Publisher | Source ID | Feed | Parsed entries | Retained articles |
+| --- | --- | --- | --- | --- |
+| KCTV5 | 12137 | https://www.kctv5.com/arc/outboundfeeds/rss/?outputType=xml | 20 | 10 |
+| KMBC 9 | 12138 | https://www.kmbc.com/local-news-rss | 20 | 10 |
+
+The seed was applied twice (the repeat inserted nothing). A dry-run and then a targeted
+`--db --per-source 10` import using the ingest profile each reported two successes and
+zero failures. All 20 articles had dates and images, LastError was NULL, and no
+article-ownership conflicts occurred. A guarded transaction then enabled only IDs 12137
+and 12138. The five original sources were left unchanged. SQL ran through
+`cargo run --example scoreboard_sql -- .env.migrations <file>`.
+
+- KCTV5 (Gray) has empty category feeds (`/category/news/local/`, `/category/local/`),
+  so this source uses the site-wide feed. That feed is mostly Kansas City, but it
+  includes some national and out-of-area Gray stories. Disable 12137 if that mix is
+  unwanted.
+- KMBC's earlier deferral is resolved. Its October 28 sample had no future-dated items
+  and no Wichita stories. It did include statewide Kansas/Missouri politics.
+
+Rollback: disable only 12137/12138 and keep their articles.
+
 ## Deferred candidates
 
-- KMBC local feed: populated, but sampled out-of-area Wichita coverage and two
-  future-dated items; deferred in favor of the selected five.
+- KMBC local feed (October 19): populated, but sampled out-of-area Wichita coverage and
+  two future-dated items. Added October 28 after a clean re-check (see above).
 - FOX4 news feed: mixed national and statewide stories. Its local-news subfeed was
   empty. Neither was registered.
 - KCUR `index.rss`: empty. `news.rss` worked but included wider regional stories;
