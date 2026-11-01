@@ -1,5 +1,25 @@
 # Scraper handoff
 
+## Top 25 scoreboard and upcoming ranked games — deployed November 1, 2026 CST
+
+Deployed **web-scoreboard:top25-20261101**, tagged as `web-scoreboard:latest` and healthy.
+Added Top 25 scoreboard support and weekly upcoming ranked games view:
+
+1. **Rank Storage & Parsing:**
+   - Added `HomeRank TINYINT NULL` and `AwayRank TINYINT NULL` to `dbo.SportsScoreboardGames` with `CHECK (... IS NULL OR ... BETWEEN 1 AND 25)`.
+   - `src/scoreboard.rs` extracts `competitors[].curatedRank.current` (1–25, treating `99` as unranked `NULL`).
+   - `sql/scoreboard_upsert.sql` updates ranks on live/upcoming games and freezes them when games are `final`.
+2. **Top 25 Coverage (`SourceKind = 'rankings'`, `Scope = 'top25'`):**
+   - Added union in `sql/scoreboard_config.sql` for enabled `dbo.SportsRankingSources` rows (`PollId = '1'`) for Football and Men's Basketball.
+   - Updated `dbo.SportsScoreboardCoverage` to include rankings sources, and extended `SportsScoreboardSources.SourceKind` check to allow `'rankings'`.
+   - `Coverage::accepts` in `src/scoreboard.rs` accepts regular/postseason games when either team is ranked.
+3. **Views & Permissions:**
+   - Updated `dbo.SportsScoreboard` to expose `HomeRank` / `AwayRank` and include games covered by rankings sources where at least one team is ranked.
+   - Created `dbo.SportsScoreboardTop25Week` for upcoming games: filters to `college-football` and `mens-college-basketball`, current Monday–Sunday week (Central time), `Status <> 'cancelled'`, at least one ranked team, and excludes Big 12 matchups via `ResultFollowTeams`.
+   - Granted `SELECT` on `dbo.SportsScoreboardTop25Week` to `WebScraperScoreboardReader` and `WebScraperIngest`.
+
+Applied repeatable migration [`sql/scoreboard_top25_migration.sql`](sql/scoreboard_top25_migration.sql), view scripts, and verified clean health check.
+
 ## Tech section feeds (Release Tracker, Dev Reading, Service Status) — deployed November 1, 2026 CST
 
 Deployed **web-scraper:tech-20261101**, tagged as `web-scraper:latest` and healthy.

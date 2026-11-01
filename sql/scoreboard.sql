@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 IF OBJECT_ID('dbo.SportsScoreboardSources','U') IS NULL
 CREATE TABLE dbo.SportsScoreboardSources(
  ID INT IDENTITY PRIMARY KEY,
- SourceKind VARCHAR(12) NOT NULL CHECK(SourceKind IN('events','follow')),
+ SourceKind VARCHAR(12) NOT NULL CHECK(SourceKind IN('events','follow','rankings')),
  OriginId INT NOT NULL,
  Sport NVARCHAR(40) NOT NULL,League NVARCHAR(60) NOT NULL,
  Label NVARCHAR(200) NOT NULL,
@@ -21,6 +21,8 @@ CREATE TABLE dbo.SportsScoreboardGames(
  TimeTbd BIT NOT NULL,WasRescheduled BIT NOT NULL DEFAULT 0,
  HomeTeamId NVARCHAR(80) NULL,HomeName NVARCHAR(200) NOT NULL,HomeLogoUrl NVARCHAR(2048) NULL,
  AwayTeamId NVARCHAR(80) NULL,AwayName NVARCHAR(200) NOT NULL,AwayLogoUrl NVARCHAR(2048) NULL,
+ HomeRank TINYINT NULL CHECK(HomeRank IS NULL OR HomeRank BETWEEN 1 AND 25),
+ AwayRank TINYINT NULL CHECK(AwayRank IS NULL OR AwayRank BETWEEN 1 AND 25),
  HomeScore DECIMAL(12,3) NULL,AwayScore DECIMAL(12,3) NULL,
  Status VARCHAR(12) NOT NULL CHECK(Status IN('upcoming','live','final','postponed','cancelled','suspended','delayed','unknown')),
  Completed BIT NOT NULL,ProviderStatus NVARCHAR(100) NOT NULL,StatusText NVARCHAR(300) NULL,

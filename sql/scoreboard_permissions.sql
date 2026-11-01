@@ -3,8 +3,10 @@ IF DATABASE_PRINCIPAL_ID('WebScraperScoreboardReader') IS NULL
  CREATE ROLE WebScraperScoreboardReader;
 GRANT SELECT ON dbo.SportsScoreboard TO WebScraperScoreboardReader;
 GRANT SELECT ON dbo.SportsScoreboardCoverage TO WebScraperScoreboardReader;
+GRANT SELECT ON dbo.SportsScoreboardTop25Week TO WebScraperScoreboardReader;
 IF DATABASE_PRINCIPAL_ID('WebScraperIngest') IS NOT NULL
 BEGIN
  GRANT SELECT ON dbo.SportsScoreboard TO WebScraperIngest;
  GRANT SELECT ON dbo.SportsScoreboardCoverage TO WebScraperIngest;
+ GRANT SELECT ON dbo.SportsScoreboardTop25Week TO WebScraperIngest;
 END;

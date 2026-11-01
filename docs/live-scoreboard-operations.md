@@ -13,18 +13,24 @@ SportsBoxScoreCache, restricted ingestion credentials, and the deployed SQL CA.
 Use migration credentials explicitly for these additive scripts, in this order:
 
 ```sh
+# Base scoreboard schema and configuration
 cargo run --locked --example scoreboard_sql -- .env.migrations sql/scoreboard.sql
+cargo run --locked --example scoreboard_sql -- .env.migrations sql/scoreboard_config.sql
 cargo run --locked --example scoreboard_sql -- .env.migrations sql/scoreboard_sources_view.sql
+cargo run --locked --example scoreboard_sql -- .env.migrations sql/scoreboard_upsert.sql
 cargo run --locked --example scoreboard_sql -- .env.migrations sql/scoreboard_view.sql
+cargo run --locked --example scoreboard_sql -- .env.migrations sql/scoreboard_top25_week_view.sql
 cargo run --locked --example scoreboard_sql -- .env.migrations sql/scoreboard_permissions.sql
 ```
 
+For existing deployments upgrading to Top 25 coverage, apply `sql/scoreboard_top25_migration.sql` (adds `HomeRank`/`AwayRank` and allows `SourceKind='rankings'`), followed by `sql/scoreboard_config.sql`, `sql/scoreboard_sources_view.sql`, `sql/scoreboard_upsert.sql`, `sql/scoreboard_view.sql`, `sql/scoreboard_top25_week_view.sql`, and `sql/scoreboard_permissions.sql`.
+
 The helper always targets WebScraper; it prints query results, never connection
 strings. Run it in a shell without a conflicting MSSQL_CONNECTION_STRING override.
-The migration grants ingestion SELECT on follow configuration and writes on the
-new scoreboard tables only. Frontend access is SELECT on SportsScoreboard and
-SportsScoreboardCoverage through WebScraperScoreboardReader; add the actual
-app-specific database user to that role with migration credentials if necessary.
+The migration grants ingestion SELECT on follow/ranking configuration and writes on the
+new scoreboard tables only. Frontend access is SELECT on SportsScoreboard,
+SportsScoreboardCoverage, and SportsScoreboardTop25Week through WebScraperScoreboardReader;
+add the actual app-specific database user to that role with migration credentials if necessary.
 No app user is given scoreboard write access. Existing broader readers continue
 working; this task does not change their unrelated permissions.
 
@@ -126,6 +132,14 @@ calendar retention rule is independent. Disabling a source hides its association
 immediately without an ad hoc history delete. Other enabled associations can keep
 the same game visible until normal retention expires. Existing schedules, web
 results, match results and cached box scores retain their separate policies.
+
+Top 25 coverage is scraper-owned via `SourceKind = 'rankings'` and `Scope = 'top25'`.
+It is linked to enabled `dbo.SportsRankingSources` rows (`PollId = '1'`, AP Top 25)
+for `college-football` and `mens-college-basketball`. When enabled, regular season and
+postseason games where either team is ranked 1–25 are accepted into `dbo.SportsScoreboard`,
+with ranks updating while upcoming/live and frozen upon game completion. A dedicated view
+`dbo.SportsScoreboardTop25Week` provides upcoming/current-week ranked matchups excluding
+Big 12 conference teams.
 
 Only verified ESPN coverage is collected. The Big 12 calendar has other sports
 with no established live provider here. Its IDs are not ESPN IDs, and there is no
