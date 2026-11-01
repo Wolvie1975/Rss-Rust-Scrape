@@ -107,6 +107,21 @@ struct Cli {
     /// Explicitly enable registered Big 12 feeds (also configures current members).
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     enable_big12: bool,
+    /// Apply Tech section schema and seeds (implies migration profile).
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_tech: bool,
+    /// Collect enabled Tech release tracker projects (implies --db).
+    #[arg(long)]
+    tech_releases: bool,
+    /// Collect Developer Reading feeds (Hacker News & Lobsters) (implies --db).
+    #[arg(long)]
+    tech_reading: bool,
+    /// Collect Service Status indicators from configured status pages (implies --db).
+    #[arg(long)]
+    tech_status: bool,
+    /// Collect all Tech section feeds: releases, reading, and service status (implies --db).
+    #[arg(long)]
+    tech_from_db: bool,
     /// Page URLs to include in the feed
     urls: Vec<String>,
 
@@ -251,7 +266,13 @@ impl Cli {
             || self.movie_posters
             || self.configure_big12
             || self.enable_big12
+            || self.configure_tech
             || self.movies
+            || self.tech_releases
+            || self.tech_reading
+            || self.tech_status
+            || self.tech_from_db
+            || self.configure_tech
             || self.db
             || self.from_db
             || self.save_sources
@@ -280,6 +301,7 @@ impl Cli {
             || self.configure_tv
             || self.configure_big12
             || self.enable_big12
+            || self.configure_tech
     }
 
     fn dry_suffix(&self) -> &'static str {
@@ -359,6 +381,9 @@ fn run_setup(cli: &Cli, db: Option<&mut db::Db>) -> Result<bool> {
     } else if cli.configure_nwsl {
         require(db)?.configure_nwsl()?;
         "League-wide NWSL schedule registered; existing Enabled setting preserved"
+    } else if cli.configure_tech {
+        require(db)?.configure_tech()?;
+        "Tech section tables, seeds, and permissions configured"
     } else if cli.configure_tv {
         require(db)?.setup_tv(true)?;
         "TVmaze schema ready; five tracking rows seeded without changing existing Enabled settings"
@@ -481,6 +506,10 @@ impl Run<'_> {
             && !cli.boxoffice_forecasts
             && !cli.standings_from_db
             && !cli.rankings_from_db
+            && !cli.tech_releases
+            && !cli.tech_reading
+            && !cli.tech_status
+            && !cli.tech_from_db
             && cli.youtube_feed.is_empty()
             && !cli.youtube_from_db
         {
@@ -506,6 +535,15 @@ impl Run<'_> {
         }
         if cli.standings_from_db {
             self.collect_standings()?;
+        }
+        if cli.tech_releases || cli.tech_from_db {
+            self.collect_tech_releases(&client)?;
+        }
+        if cli.tech_reading || cli.tech_from_db {
+            self.collect_tech_reading(&client)?;
+        }
+        if cli.tech_status || cli.tech_from_db {
+            self.collect_tech_status(&client)?;
         }
         let pages = self.collect_news(&client, urls)?;
         self.collect_event_feeds(&client)?;
@@ -587,6 +625,179 @@ impl Run<'_> {
                 self.failures.push(format!("F1: {e}"));
             }
         }
+        Ok(())
+    }
+
+    fn collect_tech_releases(&mut self, client: &reqwest::blocking::Client) -> Result<()> {
+        let _timer = metrics::Stage::new("tech_releases");
+        let dry = self.cli.dry_run;
+        let projects = self.db()?.load_enabled_tech_projects()?;
+        eprintln!("tech releases: checking {} enabled projects", projects.len());
+
+        let mut kernel_cache: Option<String> = None;
+        let mut total_saved = 0;
+
+        for p in &projects {
+            let p_res = (|| -> Result<usize> {
+                let releases = match p.source_kind.as_str() {
+                    "kernel_org" => {
+                        let body = match &kernel_cache {
+                            Some(b) => b.clone(),
+                            None => {
+                                let b = client
+                                    .get(&p.source_url)
+                                    .header("User-Agent", web_scraper::tech::USER_AGENT)
+                                    .send()?
+                                    .error_for_status()?
+                                    .text()?;
+                                kernel_cache = Some(b.clone());
+                                b
+                            }
+                        };
+                        web_scraper::tech::collect_kernel_org(client, &body, std::slice::from_ref(p))?
+                    }
+                    "github_releases" => {
+                        let body = client
+                            .get(&p.source_url)
+                            .header("User-Agent", web_scraper::tech::USER_AGENT)
+                            .header("Accept", "application/vnd.github+json, application/atom+xml, */*")
+                            .timeout(Duration::from_secs(30))
+                            .send()?
+                            .error_for_status()?
+                            .text()?;
+                        web_scraper::tech::collect_github_releases(client, &body, p)?
+                    }
+                    "gitlab_tags" => {
+                        let body = client
+                            .get(&p.source_url)
+                            .header("User-Agent", web_scraper::tech::USER_AGENT)
+                            .send()?
+                            .error_for_status()?
+                            .text()?;
+                        web_scraper::tech::collect_gitlab_tags(client, &body, p)?
+                    }
+                    "rss" => {
+                        let body = client
+                            .get(&p.source_url)
+                            .header("User-Agent", web_scraper::tech::USER_AGENT)
+                            .header("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml, */*")
+                            .timeout(Duration::from_secs(30))
+                            .send()?
+                            .error_for_status()?
+                            .text()?;
+                        web_scraper::tech::collect_rss_releases(client, &body, p)?
+                    }
+                    other => return Err(format!("unknown source kind: {other}").into()),
+                };
+
+                let count = releases.len();
+                if !dry {
+                    for rel in &releases {
+                        self.db()?.upsert_tech_release(rel)?;
+                    }
+                    self.db()?.update_tech_project_status(p.id, None)?;
+                }
+                eprintln!("tech release project {}: {} releases found{}", p.slug, count, self.cli.dry_suffix());
+                Ok(count)
+            })();
+
+            match p_res {
+                Ok(count) => {
+                    self.succeeded += 1;
+                    total_saved += count;
+                }
+                Err(e) => {
+                    let err_msg = e.to_string();
+                    eprintln!("tech release project {} failed: {}", p.slug, err_msg);
+                    self.failures.push(format!("tech release {}: {err_msg}", p.slug));
+                    if !dry {
+                        let _ = self.db()?.update_tech_project_status(p.id, Some(&err_msg));
+                    }
+                }
+            }
+        }
+
+        eprintln!("tech releases: finished with {total_saved} releases");
+        Ok(())
+    }
+
+    fn collect_tech_reading(&mut self, client: &reqwest::blocking::Client) -> Result<()> {
+        let _timer = metrics::Stage::new("tech_reading");
+        let dry = self.cli.dry_run;
+
+        // HN
+        match web_scraper::tech::collect_hn_top10(client) {
+            Ok(items) => {
+                eprintln!("tech reading (HN): {} stories collected{}", items.len(), self.cli.dry_suffix());
+                if !dry {
+                    self.db()?.replace_tech_dev_reading("hn", &items)?;
+                }
+                self.succeeded += 1;
+            }
+            Err(e) => {
+                let err_msg = format!("tech reading HN: {e}");
+                eprintln!("{err_msg}");
+                self.failures.push(err_msg);
+            }
+        }
+
+        // Lobsters
+        match web_scraper::tech::collect_lobsters_top10(client) {
+            Ok(items) => {
+                eprintln!("tech reading (Lobsters): {} stories collected{}", items.len(), self.cli.dry_suffix());
+                if !dry {
+                    self.db()?.replace_tech_dev_reading("lobsters", &items)?;
+                }
+                self.succeeded += 1;
+            }
+            Err(e) => {
+                let err_msg = format!("tech reading Lobsters: {e}");
+                eprintln!("{err_msg}");
+                self.failures.push(err_msg);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn collect_tech_status(&mut self, client: &reqwest::blocking::Client) -> Result<()> {
+        let _timer = metrics::Stage::new("tech_status");
+        let dry = self.cli.dry_run;
+        let services = self.db()?.load_enabled_tech_status_services()?;
+        eprintln!("tech status: checking {} enabled services", services.len());
+
+        for s in &services {
+            let s_res = (|| -> Result<web_scraper::tech::ServiceStatusUpdate> {
+                let resp = client
+                    .get(&s.api_url)
+                    .header("User-Agent", web_scraper::tech::USER_AGENT)
+                    .timeout(Duration::from_secs(15))
+                    .send()?
+                    .error_for_status()?;
+                let body = resp.text()?;
+                let checked_at = Utc::now().naive_utc();
+                web_scraper::tech::parse_statuspage_summary(s.id, &body, checked_at)
+            })();
+
+            match s_res {
+                Ok(st) => {
+                    eprintln!("tech status {}: indicator={} desc={:?}{}", s.slug, st.indicator, st.description, self.cli.dry_suffix());
+                    if !dry {
+                        self.db()?.upsert_tech_service_status(&st)?;
+                    }
+                    self.succeeded += 1;
+                }
+                Err(e) => {
+                    let err_msg = e.to_string();
+                    eprintln!("tech status {} failed: {}", s.slug, err_msg);
+                    self.failures.push(format!("tech status {}: {err_msg}", s.slug));
+                    if !dry {
+                        let _ = self.db()?.record_tech_service_failure(s.id, &err_msg);
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -1712,6 +1923,10 @@ fn main() -> Result<()> {
         && !cli.boxoffice_forecasts
         && !cli.standings_from_db
         && !cli.rankings_from_db
+        && !cli.tech_releases
+        && !cli.tech_reading
+        && !cli.tech_status
+        && !cli.tech_from_db
         && cli.youtube_feed.is_empty()
         && !cli.youtube_from_db
     {

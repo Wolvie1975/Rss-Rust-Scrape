@@ -1808,6 +1808,41 @@ END CATCH
             &batch.results,
         )
     }
+    /// Explicit tech section migration; repeatable and idempotent.
+    pub fn configure_tech(&mut self) -> Result<()> {
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .simple_query("BEGIN TRANSACTION")
+                    .await?
+                    .into_results()
+                    .await?;
+                let result = async {
+                    for sql in [
+                        include_str!("../sql/tech_schema.sql"),
+                        include_str!("../sql/tech_seed.sql"),
+                        include_str!("../sql/tech_permissions.sql"),
+                    ] {
+                        self.client.simple_query(sql).await?.into_results().await?;
+                    }
+                    Ok::<_, crate::Error>(())
+                }
+                .await;
+                if let Err(e) = result {
+                    let _ = self.client.simple_query("IF @@TRANCOUNT > 0 ROLLBACK").await;
+                    return Err(e);
+                }
+                self.client
+                    .simple_query("COMMIT")
+                    .await?
+                    .into_results()
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
     /// Explicit migration only; runtime does no DDL.
     pub fn configure_f1(&mut self) -> Result<()> {
         self.rt.block_on(bounded(
@@ -2564,6 +2599,238 @@ END CATCH;
                     .execute(Self::PRUNE_VIDEOS_SQL, &[&keep])
                     .await?;
                 Ok(res.total())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    // ==========================================
+    // Tech Section database queries
+    // ==========================================
+
+    /// Load enabled TechReleaseProjects.
+    pub fn load_enabled_tech_projects(&mut self) -> Result<Vec<crate::tech::ReleaseProject>> {
+        let sql = "SELECT Id, Slug, Name, Kind, SourceKind, SourceUrl, SourceFilter, NotesLabel, IncludePrerelease
+                   FROM dbo.TechReleaseProjects
+                   WHERE Enabled = 1
+                   ORDER BY SortOrder, Id;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let mut out = Vec::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("Id").ok_or("Id missing")?;
+                    let slug = r.get::<&str, _>("Slug").ok_or("Slug missing")?.to_string();
+                    let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
+                    let kind = r.get::<&str, _>("Kind").ok_or("Kind missing")?.to_string();
+                    let source_kind = r.get::<&str, _>("SourceKind").ok_or("SourceKind missing")?.to_string();
+                    let source_url = r.get::<&str, _>("SourceUrl").ok_or("SourceUrl missing")?.to_string();
+                    let source_filter = r.get::<&str, _>("SourceFilter").map(String::from);
+                    let notes_label = r.get::<&str, _>("NotesLabel").ok_or("NotesLabel missing")?.to_string();
+                    let include_prerelease = r.get::<bool, _>("IncludePrerelease").unwrap_or(false);
+
+                    out.push(crate::tech::ReleaseProject {
+                        id,
+                        slug,
+                        name,
+                        kind,
+                        source_kind,
+                        source_url,
+                        source_filter,
+                        notes_label,
+                        include_prerelease,
+                    });
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Upsert a release item into dbo.TechReleases without deleting history.
+    pub fn upsert_tech_release(&mut self, rel: &crate::tech::ReleaseItem) -> Result<()> {
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.TechReleases WITH(UPDLOCK, HOLDLOCK) WHERE ProjectId = @P1 AND Version = @P2)
+                   BEGIN
+                       INSERT INTO dbo.TechReleases (ProjectId, Version, ReleasedAt, NotesUrl, Title, IsPrerelease)
+                       VALUES (@P1, @P2, @P3, @P4, @P5, @P6);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.TechReleases
+                       SET ReleasedAt = @P3, NotesUrl = @P4, Title = @P5, IsPrerelease = @P6
+                       WHERE ProjectId = @P1 AND Version = @P2;
+                   END;";
+        let is_pre = rel.is_prerelease;
+        self.rt.block_on(bounded(
+            async {
+                self.client.execute(sql, &[
+                    &rel.project_id,
+                    &rel.version.as_str(),
+                    &rel.released_at,
+                    &rel.notes_url.as_deref(),
+                    &rel.title.as_deref(),
+                    &is_pre,
+                ]).await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Update project status (LastCheckedAt and LastError).
+    pub fn update_tech_project_status(
+        &mut self,
+        project_id: i32,
+        last_error: Option<&str>,
+    ) -> Result<()> {
+        let sql = "UPDATE dbo.TechReleaseProjects
+                   SET LastCheckedAt = SYSUTCDATETIME(), LastError = @P2
+                   WHERE Id = @P1;";
+        self.rt.block_on(bounded(
+            async {
+                self.client.execute(sql, &[&project_id, &last_error]).await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Replace TechDevReading items for a given site (hn or lobsters) atomically in one transaction.
+    pub fn replace_tech_dev_reading(&mut self, site: &str, items: &[crate::tech::DevReadingItem]) -> Result<()> {
+        if items.is_empty() {
+            return Ok(());
+        }
+        self.rt.block_on(bounded(
+            async {
+                self.client.simple_query("BEGIN TRANSACTION;").await?.into_results().await?;
+                let del_sql = "DELETE FROM dbo.TechDevReading WHERE Site = @P1;";
+                if let Err(e) = self.client.execute(del_sql, &[&site]).await {
+                    let _ = self.client.simple_query("IF @@TRANCOUNT > 0 ROLLBACK;").await;
+                    return Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
+                }
+
+                let ins_sql = "INSERT INTO dbo.TechDevReading (Site, Rank, ExternalId, Title, Url, Domain, Points, Comments, DiscussionUrl, PostedAt, SnapshotAt)
+                               VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11);";
+                for item in items {
+                    if let Err(e) = self.client.execute(ins_sql, &[
+                        &item.site.as_str(),
+                        &item.rank,
+                        &item.external_id.as_str(),
+                        &item.title.as_str(),
+                        &item.url.as_deref(),
+                        &item.domain.as_deref(),
+                        &item.points,
+                        &item.comments,
+                        &item.discussion_url.as_str(),
+                        &item.posted_at,
+                        &item.snapshot_at,
+                    ]).await {
+                        let _ = self.client.simple_query("IF @@TRANCOUNT > 0 ROLLBACK;").await;
+                        return Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
+                    }
+                }
+
+                self.client.simple_query("COMMIT;").await?.into_results().await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Load enabled TechStatusServices.
+    pub fn load_enabled_tech_status_services(&mut self) -> Result<Vec<crate::tech::StatusService>> {
+        let sql = "SELECT Id, Slug, Name, Kind, ApiUrl, PageUrl
+                   FROM dbo.TechStatusServices
+                   WHERE Enabled = 1
+                   ORDER BY SortOrder, Id;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let mut out = Vec::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("Id").ok_or("Id missing")?;
+                    let slug = r.get::<&str, _>("Slug").ok_or("Slug missing")?.to_string();
+                    let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
+                    let kind = r.get::<&str, _>("Kind").ok_or("Kind missing")?.to_string();
+                    let api_url = r.get::<&str, _>("ApiUrl").ok_or("ApiUrl missing")?.to_string();
+                    let page_url = r.get::<&str, _>("PageUrl").ok_or("PageUrl missing")?.to_string();
+
+                    out.push(crate::tech::StatusService {
+                        id,
+                        slug,
+                        name,
+                        kind,
+                        api_url,
+                        page_url,
+                    });
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Upsert service status update.
+    pub fn upsert_tech_service_status(&mut self, st: &crate::tech::ServiceStatusUpdate) -> Result<()> {
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.TechServiceStatus WITH(UPDLOCK, HOLDLOCK) WHERE ServiceId = @P1)
+                   BEGIN
+                       INSERT INTO dbo.TechServiceStatus (ServiceId, Indicator, Description, IncidentName, IncidentComponent, IncidentStartedAt, IncidentUrl, CheckedAt, LastError)
+                       VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.TechServiceStatus
+                       SET Indicator = @P2,
+                           Description = @P3,
+                           IncidentName = @P4,
+                           IncidentComponent = @P5,
+                           IncidentStartedAt = @P6,
+                           IncidentUrl = @P7,
+                           CheckedAt = @P8,
+                           LastError = @P9
+                       WHERE ServiceId = @P1;
+                   END;";
+        self.rt.block_on(bounded(
+            async {
+                self.client.execute(sql, &[
+                    &st.service_id,
+                    &st.indicator.as_str(),
+                    &st.description.as_deref(),
+                    &st.incident_name.as_deref(),
+                    &st.incident_component.as_deref(),
+                    &st.incident_started_at,
+                    &st.incident_url.as_deref(),
+                    &st.checked_at,
+                    &st.last_error.as_deref(),
+                ]).await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Record a service check failure, setting Indicator='unknown' only after 3 consecutive failures.
+    pub fn record_tech_service_failure(&mut self, service_id: i32, err_msg: &str) -> Result<()> {
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.TechServiceStatus WITH(UPDLOCK, HOLDLOCK) WHERE ServiceId = @P1)
+                   BEGIN
+                       INSERT INTO dbo.TechServiceStatus (ServiceId, Indicator, Description, CheckedAt, LastError)
+                       VALUES (@P1, 'unknown', 'Initial check failed', SYSUTCDATETIME(), @P2);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.TechServiceStatus
+                       SET CheckedAt = SYSUTCDATETIME(),
+                           LastError = @P2,
+                           Indicator = CASE
+                               WHEN LastError IS NOT NULL THEN 'unknown'
+                               ELSE Indicator
+                           END
+                       WHERE ServiceId = @P1;
+                   END;";
+        self.rt.block_on(bounded(
+            async {
+                self.client.execute(sql, &[&service_id, &err_msg]).await?;
+                Ok(())
             },
             &self.poisoned,
         ))

@@ -2450,6 +2450,7 @@ dependencies = [
  "clap",
  "dotenvy",
  "feed-rs",
+ "regex",
  "reqwest",
  "roxmltree",
  "rss",

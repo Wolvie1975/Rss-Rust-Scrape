@@ -1,5 +1,23 @@
 # Scraper handoff
 
+## Tech section feeds (Release Tracker, Dev Reading, Service Status) — deployed November 1, 2026 CST
+
+Deployed **web-scraper:tech-20261101**, tagged as `web-scraper:latest` and healthy.
+Added three new background feeds for myNewspaper's upcoming Tech section:
+
+1. **Release tracker (`dbo.TechReleaseProjects`, `dbo.TechReleases`):**
+   - Tracks 9 enabled projects: Linux kernel mainline & LTS (`kernel_org`), Proton (`github_releases`), GNOME & Mesa (`gitlab_tags`), and Fedora, Ubuntu, KDE Plasma, and Linux Mint (`rss`).
+   - Verified live collection imports 58 unique releases with zero errors. Upserts on `(ProjectId, Version)` preserve history; failures update `LastError` per project without blocking others.
+2. **What developers are reading (`dbo.TechDevReading`):**
+   - Collects top 10 stories from Hacker News (Firebase API) and Lobsters (`hottest.json`).
+   - Atomic replacement per site in a single transaction; failed fetches preserve last good snapshot.
+3. **Service status (`dbo.TechStatusServices`, `dbo.TechServiceStatus`):**
+   - Tracks GitHub, Cloudflare, and Discord using Atlassian Statuspage `summary.json`.
+   - Records indicator, description, active incidents, components, and links. Flipping to `unknown` requires 3 consecutive check failures.
+
+Applied repeatable migrations [`sql/tech_schema.sql`](sql/tech_schema.sql), [`sql/tech_seed.sql`](sql/tech_seed.sql), and [`sql/tech_permissions.sql`](sql/tech_permissions.sql) granting `SELECT` to the web application and ingest permissions to `WebScraperIngest`.
+Included in hourly collection via `--tech-from-db` in `docker-compose.yml`.
+
 ## KCTV5 and KMBC in Kansas City News — October 28, 2026 CDT
 
 Added enabled sources **12137 (KCTV5)** and **12138 (KMBC 9)** to Kansas City News

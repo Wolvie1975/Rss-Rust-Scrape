@@ -29,6 +29,7 @@ pub mod scoreboard;
 pub mod sports_boxscores;
 pub mod sports_periods;
 pub mod standings;
+pub mod tech;
 pub mod tvmaze;
 pub mod wnba;
 pub mod youtube;
