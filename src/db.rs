@@ -2610,7 +2610,7 @@ END CATCH;
 
     /// Load enabled TechReleaseProjects.
     pub fn load_enabled_tech_projects(&mut self) -> Result<Vec<crate::tech::ReleaseProject>> {
-        let sql = "SELECT Id, Slug, Name, Kind, SourceKind, SourceUrl, SourceFilter, NotesLabel, IncludePrerelease
+        let sql = "SELECT Id, Slug, Name, Kind, SourceKind, SourceUrl, SourceFilter, NotesLabel, IncludePrerelease, InYourStack
                    FROM dbo.TechReleaseProjects
                    WHERE Enabled = 1
                    ORDER BY SortOrder, Id;";
@@ -2628,6 +2628,7 @@ END CATCH;
                     let source_filter = r.get::<&str, _>("SourceFilter").map(String::from);
                     let notes_label = r.get::<&str, _>("NotesLabel").ok_or("NotesLabel missing")?.to_string();
                     let include_prerelease = r.get::<bool, _>("IncludePrerelease").unwrap_or(false);
+                    let in_your_stack = r.get::<bool, _>("InYourStack").unwrap_or(false);
 
                     out.push(crate::tech::ReleaseProject {
                         id,
@@ -2639,6 +2640,7 @@ END CATCH;
                         source_filter,
                         notes_label,
                         include_prerelease,
+                        in_your_stack,
                     });
                 }
                 Ok(out)
@@ -2830,6 +2832,290 @@ END CATCH;
         self.rt.block_on(bounded(
             async {
                 self.client.execute(sql, &[&service_id, &err_msg]).await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Load enabled HomelabServices.
+    pub fn load_enabled_homelab_services(&mut self) -> Result<Vec<crate::tech::HomelabService>> {
+        let sql = "SELECT ID, Slug, Name, CheckKind, CheckUrl, ExpectBody, SecretEnv, SlowMs, LinkUrl, Enabled, SortOrder
+                   FROM dbo.HomelabServices
+                   WHERE Enabled = 1
+                   ORDER BY SortOrder, ID;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let mut out = Vec::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("ID").ok_or("ID missing")?;
+                    let slug = r.get::<&str, _>("Slug").ok_or("Slug missing")?.to_string();
+                    let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
+                    let check_kind = r.get::<&str, _>("CheckKind").ok_or("CheckKind missing")?.to_string();
+                    let check_url = r.get::<&str, _>("CheckUrl").map(String::from);
+                    let expect_body = r.get::<&str, _>("ExpectBody").map(String::from);
+                    let secret_env = r.get::<&str, _>("SecretEnv").map(String::from);
+                    let slow_ms = r.get::<i32, _>("SlowMs").unwrap_or(1500);
+                    let link_url = r.get::<&str, _>("LinkUrl").map(String::from);
+                    let enabled = r.get::<bool, _>("Enabled").unwrap_or(true);
+                    let sort_order = r.get::<i32, _>("SortOrder").unwrap_or(0);
+
+                    out.push(crate::tech::HomelabService {
+                        id,
+                        slug,
+                        name,
+                        check_kind,
+                        check_url,
+                        expect_body,
+                        secret_env,
+                        slow_ms,
+                        link_url,
+                        enabled,
+                        sort_order,
+                    });
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Load the current statuses for all HomelabServices.
+    pub fn load_homelab_service_statuses(&mut self) -> Result<std::collections::HashMap<i32, (String, chrono::NaiveDateTime, i32)>> {
+        let sql = "SELECT ServiceId, State, StateSince, FailCount
+                   FROM dbo.HomelabServiceStatus;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let mut out = std::collections::HashMap::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("ServiceId").ok_or("ServiceId missing")?;
+                    let state = r.get::<&str, _>("State").ok_or("State missing")?.to_string();
+                    let since = r.get::<chrono::NaiveDateTime, _>("StateSince").ok_or("StateSince missing")?;
+                    let fail_count = r.get::<i32, _>("FailCount").unwrap_or(0);
+                    out.insert(id, (state, since, fail_count));
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Upsert status into dbo.HomelabServiceStatus.
+    pub fn upsert_homelab_service_status(&mut self, st: &crate::tech::HomelabServiceStatusUpdate) -> Result<()> {
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.HomelabServiceStatus WITH(UPDLOCK, HOLDLOCK) WHERE ServiceId = @P1)
+                   BEGIN
+                       INSERT INTO dbo.HomelabServiceStatus (ServiceId, State, LatencyMs, Detail, StateSince, CheckedAt, FailCount)
+                       VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.HomelabServiceStatus
+                       SET State = @P2, LatencyMs = @P3, Detail = @P4, StateSince = @P5, CheckedAt = @P6, FailCount = @P7
+                       WHERE ServiceId = @P1;
+                   END;";
+        self.rt.block_on(bounded(
+            async {
+                self.client.execute(sql, &[
+                    &st.service_id,
+                    &st.state.as_str(),
+                    &st.latency_ms,
+                    &st.detail.as_deref(),
+                    &st.state_since,
+                    &st.checked_at,
+                    &st.fail_count,
+                ]).await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Get the newest successful feed run timestamp.
+    pub fn get_last_successful_feed_run(&mut self) -> Result<Option<chrono::NaiveDateTime>> {
+        let sql = "SELECT TOP 1 FinishedAt
+                   FROM dbo.ScraperRuns
+                   WHERE Status = 'succeeded' AND FinishedAt IS NOT NULL
+                   ORDER BY FinishedAt DESC;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                if let Some(r) = rows.first() {
+                    Ok(r.get::<chrono::NaiveDateTime, _>(0))
+                } else {
+                    Ok(None)
+                }
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Load all models from dbo.OllamaLibraryModels.
+    pub fn load_ollama_library_models(&mut self) -> Result<Vec<crate::tech::OllamaModelSummary>> {
+        let sql = "SELECT ID, Name, Description, Change, ChangedAt, UpdatedText, LibraryUrl, FirstSeenAt, SnapshotAt
+                   FROM dbo.OllamaLibraryModels
+                   ORDER BY ID;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let mut out = Vec::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("ID").ok_or("ID missing")?;
+                    let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
+                    let description = r.get::<&str, _>("Description").map(String::from);
+                    let change = r.get::<&str, _>("Change").ok_or("Change missing")?.to_string();
+                    let changed_at = r.get::<chrono::NaiveDateTime, _>("ChangedAt").ok_or("ChangedAt missing")?;
+                    let updated_text = r.get::<&str, _>("UpdatedText").map(String::from);
+                    let library_url = r.get::<&str, _>("LibraryUrl").ok_or("LibraryUrl missing")?.to_string();
+                    let first_seen_at = r.get::<chrono::NaiveDateTime, _>("FirstSeenAt").ok_or("FirstSeenAt missing")?;
+                    let snapshot_at = r.get::<chrono::NaiveDateTime, _>("SnapshotAt").ok_or("SnapshotAt missing")?;
+
+                    out.push(crate::tech::OllamaModelSummary {
+                        id,
+                        name,
+                        description,
+                        change,
+                        changed_at,
+                        updated_text,
+                        library_url,
+                        first_seen_at,
+                        snapshot_at,
+                    });
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Upsert model into dbo.OllamaLibraryModels and return its ID.
+    pub fn upsert_ollama_library_model(
+        &mut self,
+        m: &crate::tech::OllamaModelUpsert<'_>,
+    ) -> Result<i32> {
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.OllamaLibraryModels WITH(UPDLOCK, HOLDLOCK) WHERE Name = @P1)
+                   BEGIN
+                       INSERT INTO dbo.OllamaLibraryModels (Name, Description, Change, ChangedAt, UpdatedText, LibraryUrl, FirstSeenAt, SnapshotAt)
+                       OUTPUT INSERTED.ID
+                       VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P7);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.OllamaLibraryModels
+                       SET Description = @P2, Change = @P3, ChangedAt = @P4, UpdatedText = @P5, LibraryUrl = @P6, SnapshotAt = @P7
+                       OUTPUT INSERTED.ID
+                       WHERE Name = @P1;
+                   END;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self.client.query(sql, &[
+                    &m.name,
+                    &m.description,
+                    &m.change,
+                    &m.changed_at,
+                    &m.updated_text,
+                    &m.library_url,
+                    &m.now,
+                ]).await?.into_first_result().await?;
+                let id = rows.first().and_then(|r| r.get::<i32, _>(0)).ok_or("inserted ID missing")?;
+                Ok(id)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Load tags for an Ollama model.
+    pub fn load_ollama_library_tags(&mut self, model_id: i32) -> Result<Vec<crate::tech::OllamaTag>> {
+        let sql = "SELECT ID, ModelId, Tag, CONVERT(float, SizeGb) AS SizeGb, Fits, Installed, SortOrder
+                   FROM dbo.OllamaLibraryTags
+                   WHERE ModelId = @P1
+                   ORDER BY SortOrder, ID;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self.client.query(sql, &[&model_id]).await?.into_first_result().await?;
+                let mut out = Vec::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("ID");
+                    let mid = r.get::<i32, _>("ModelId").unwrap_or(model_id);
+                    let tag = r.get::<&str, _>("Tag").ok_or("Tag missing")?.to_string();
+                    let size_gb = r.get::<f64, _>("SizeGb");
+                    let fits = r.get::<bool, _>("Fits").unwrap_or(false);
+                    let installed = r.get::<bool, _>("Installed").unwrap_or(false);
+                    let sort_order = r.get::<i32, _>("SortOrder").unwrap_or(0);
+                    out.push(crate::tech::OllamaTag {
+                        id,
+                        model_id: mid,
+                        tag,
+                        size_gb,
+                        fits,
+                        installed,
+                        sort_order,
+                    });
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Upsert a single tag into dbo.OllamaLibraryTags.
+    pub fn upsert_ollama_library_tag(
+        &mut self,
+        model_id: i32,
+        tag: &str,
+        size_gb: Option<f64>,
+        fits: bool,
+        installed: bool,
+        sort_order: i32,
+    ) -> Result<()> {
+        let size_str = size_gb.map(|s| format!("{s:.1}"));
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.OllamaLibraryTags WITH(UPDLOCK, HOLDLOCK) WHERE ModelId = @P1 AND Tag = @P2)
+                   BEGIN
+                       INSERT INTO dbo.OllamaLibraryTags (ModelId, Tag, SizeGb, Fits, Installed, SortOrder)
+                       VALUES (@P1, @P2, CONVERT(decimal(6,1), @P3), @P4, @P5, @P6);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.OllamaLibraryTags
+                       SET SizeGb = CONVERT(decimal(6,1), @P3), Fits = @P4, Installed = @P5, SortOrder = @P6
+                       WHERE ModelId = @P1 AND Tag = @P2;
+                   END;";
+        self.rt.block_on(bounded(
+            async {
+                self.client.execute(sql, &[
+                    &model_id,
+                    &tag,
+                    &size_str.as_deref(),
+                    &fits,
+                    &installed,
+                    &sort_order,
+                ]).await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Update Installed and Fits for an Ollama tag.
+    pub fn update_ollama_tag_installed_and_fits(
+        &mut self,
+        model_id: i32,
+        tag: &str,
+        installed: bool,
+        fits: bool,
+    ) -> Result<()> {
+        let sql = "UPDATE dbo.OllamaLibraryTags
+                   SET Installed = @P1, Fits = @P2
+                   WHERE ModelId = @P3 AND Tag = @P4;";
+        self.rt.block_on(bounded(
+            async {
+                self.client.execute(sql, &[
+                    &installed,
+                    &fits,
+                    &model_id,
+                    &tag,
+                ]).await?;
                 Ok(())
             },
             &self.poisoned,

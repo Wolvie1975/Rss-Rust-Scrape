@@ -21,6 +21,8 @@ services:
     volumes:
       - scraper-data:/data
       - ./certs/sql-ca.crt:/data/certs/sql-ca.crt:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - dev-bridge
   scoreboard:

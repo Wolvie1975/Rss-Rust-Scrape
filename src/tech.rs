@@ -26,6 +26,7 @@ pub struct ReleaseProject {
     pub source_filter: Option<String>,
     pub notes_label: String,
     pub include_prerelease: bool,
+    pub in_your_stack: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -427,6 +428,66 @@ pub fn collect_rss_releases(
     Ok(out)
 }
 
+pub fn collect_dotnet_releases(
+    _client: &Client,
+    body: &str,
+    project: &ReleaseProject,
+) -> Result<Vec<ReleaseItem>> {
+    let json: Value = serde_json::from_str(body)?;
+    let releases_idx = json["releases-index"]
+        .as_array()
+        .ok_or("dotnet releases-index is not an array")?;
+
+    let now = Utc::now().naive_utc();
+    let mut out = Vec::new();
+
+    for ch in releases_idx {
+        let phase = ch["support-phase"].as_str().unwrap_or("");
+        let latest_rel = match ch["latest-release"].as_str() {
+            Some(r) if !r.is_empty() => r,
+            _ => continue,
+        };
+
+        let ver = strip_version_prefix(latest_rel);
+        if ver.is_empty() {
+            continue;
+        }
+
+        let ver_lower = ver.to_ascii_lowercase();
+        let is_pre = phase.eq_ignore_ascii_case("preview")
+            || phase.eq_ignore_ascii_case("go-live")
+            || ver_lower.contains("preview")
+            || ver_lower.contains("rc")
+            || ver_lower.contains("alpha")
+            || ver_lower.contains("beta");
+
+        if is_pre && !project.include_prerelease {
+            continue;
+        }
+
+        let released_at = ch["latest-release-date"]
+            .as_str()
+            .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+            .and_then(|d| d.and_hms_opt(0, 0, 0))
+            .unwrap_or(now);
+
+        let notes_url = Some(format!(
+            "https://github.com/dotnet/core/releases/tag/v{ver}"
+        ));
+
+        out.push(ReleaseItem {
+            project_id: project.id,
+            version: ver.clone(),
+            released_at,
+            notes_url,
+            title: Some(format!(".NET {ver}")),
+            is_prerelease: is_pre,
+        });
+    }
+
+    Ok(out)
+}
+
 // ==========================================
 // 2. Dev Reading
 // ==========================================
@@ -679,6 +740,449 @@ pub fn parse_statuspage_summary(
     })
 }
 
+// ==========================================
+// 4. Homelab Services
+// ==========================================
+
+#[derive(Debug, Clone)]
+pub struct HomelabService {
+    pub id: i32,
+    pub slug: String,
+    pub name: String,
+    pub check_kind: String, // http | http-body | tautulli | self
+    pub check_url: Option<String>,
+    pub expect_body: Option<String>,
+    pub secret_env: Option<String>,
+    pub slow_ms: i32,
+    pub link_url: Option<String>,
+    pub enabled: bool,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone)]
+pub struct HomelabServiceStatusUpdate {
+    pub service_id: i32,
+    pub state: String, // ok | slow | down | unknown
+    pub latency_ms: Option<i32>,
+    pub detail: Option<String>,
+    pub state_since: NaiveDateTime,
+    pub checked_at: NaiveDateTime,
+    pub fail_count: i32,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TautulliActivity {
+    pub is_success: bool,
+    pub latency_ms: i32,
+    pub stream_count: Option<String>,
+}
+
+pub struct HomelabCheckContext<'a> {
+    pub prev_state: Option<&'a str>,
+    pub prev_state_since: Option<NaiveDateTime>,
+    pub prev_fail_count: i32,
+    pub now: NaiveDateTime,
+    pub last_feed_run_utc: Option<NaiveDateTime>,
+    pub shared_tautulli: Option<&'a TautulliActivity>,
+}
+
+pub fn check_homelab_service(
+    client: &Client,
+    service: &HomelabService,
+    cx: &HomelabCheckContext<'_>,
+) -> HomelabServiceStatusUpdate {
+    let now = cx.now;
+    if service.check_kind == "self" {
+        let (state, detail) = if let Some(last_run) = cx.last_feed_run_utc {
+            let diff_mins = (now - last_run).num_minutes().max(0);
+            let detail_str = format!("last run {diff_mins} min ago");
+            if diff_mins <= 30 {
+                ("ok".to_string(), Some(detail_str))
+            } else {
+                ("slow".to_string(), Some(detail_str))
+            }
+        } else {
+            ("ok".to_string(), Some("no runs recorded".to_string()))
+        };
+        let state_since = if cx.prev_state == Some(state.as_str()) {
+            cx.prev_state_since.unwrap_or(now)
+        } else {
+            now
+        };
+        return HomelabServiceStatusUpdate {
+            service_id: service.id,
+            state,
+            latency_ms: None,
+            detail,
+            state_since,
+            checked_at: now,
+            fail_count: 0,
+        };
+    }
+
+    if service.check_kind == "tautulli" && service.slug == "plex" {
+        if let Some(t) = cx.shared_tautulli
+            && t.is_success {
+                let detail = t.stream_count.as_ref().map(|c| format!("{c} streaming"));
+                let state = if t.latency_ms > service.slow_ms { "slow" } else { "ok" };
+                let state_since = if cx.prev_state == Some(state) {
+                    cx.prev_state_since.unwrap_or(now)
+                } else {
+                    now
+                };
+                return HomelabServiceStatusUpdate {
+                    service_id: service.id,
+                    state: state.to_string(),
+                    latency_ms: Some(t.latency_ms),
+                    detail,
+                    state_since,
+                    checked_at: now,
+                    fail_count: 0,
+                };
+        }
+        let plex_identity_url = service.link_url.as_deref()
+            .and_then(|u| u.strip_suffix("/web"))
+            .map(|u| format!("{u}/identity"))
+            .unwrap_or_else(|| "http://host.docker.internal:32400/identity".to_string());
+        return perform_http_check(
+            client,
+            service,
+            &plex_identity_url,
+            None,
+            cx,
+        );
+    }
+
+    if service.check_kind == "tautulli" {
+        let mut url = match &service.check_url {
+            Some(u) => u.clone(),
+            None => return make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some("missing URL".to_string())),
+        };
+        if let Some(ref sec_var) = service.secret_env {
+            if let Ok(val) = std::env::var(sec_var) {
+                if !val.trim().is_empty() {
+                    let sep = if url.contains('?') { "&" } else { "?" };
+                    url.push_str(&format!("{sep}apikey={}", val.trim()));
+                }
+            } else {
+                return make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some("unconfigured".to_string()));
+            }
+        }
+        let start = std::time::Instant::now();
+        match client.get(&url).send() {
+            Ok(resp) => {
+                let latency = start.elapsed().as_millis() as i32;
+                if resp.status().is_success() {
+                    let body = resp.text().unwrap_or_default();
+                    if let Ok(v) = serde_json::from_str::<Value>(&body)
+                        && v["response"]["result"].as_str() == Some("success") {
+                            let state = if latency > service.slow_ms { "slow" } else { "ok" };
+                            let state_since = if cx.prev_state == Some(state) {
+                                cx.prev_state_since.unwrap_or(now)
+                            } else {
+                                now
+                            };
+                            return HomelabServiceStatusUpdate {
+                                service_id: service.id,
+                                state: state.to_string(),
+                                latency_ms: Some(latency),
+                                detail: None,
+                                state_since,
+                                checked_at: now,
+                                fail_count: 0,
+                            };
+                    }
+                    make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some("invalid response".to_string()))
+                } else {
+                    let code = resp.status().as_u16();
+                    make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some(format!("HTTP {code}")))
+                }
+            }
+            Err(e) => {
+                let detail = if e.is_timeout() {
+                    "timeout"
+                } else if e.is_connect() {
+                    "connection refused"
+                } else {
+                    "network error"
+                };
+                make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some(detail.to_string()))
+            }
+        }
+    } else {
+        let url = match &service.check_url {
+            Some(u) => u.as_str(),
+            None => return make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some("missing URL".to_string())),
+        };
+        perform_http_check(
+            client,
+            service,
+            url,
+            service.expect_body.as_deref(),
+            cx,
+        )
+    }
+}
+
+fn perform_http_check(
+    client: &Client,
+    service: &HomelabService,
+    url: &str,
+    expect_body: Option<&str>,
+    cx: &HomelabCheckContext<'_>,
+) -> HomelabServiceStatusUpdate {
+    let now = cx.now;
+    let start = std::time::Instant::now();
+    match client.get(url).send() {
+        Ok(resp) => {
+            let latency = start.elapsed().as_millis() as i32;
+            if resp.status().is_success() {
+                if let Some(exp) = expect_body {
+                    let body = resp.text().unwrap_or_default();
+                    if !body.contains(exp) {
+                        return make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some("unexpected body".to_string()));
+                    }
+                }
+                let state = if latency > service.slow_ms { "slow" } else { "ok" };
+                let state_since = if cx.prev_state == Some(state) {
+                    cx.prev_state_since.unwrap_or(now)
+                } else {
+                    now
+                };
+                HomelabServiceStatusUpdate {
+                    service_id: service.id,
+                    state: state.to_string(),
+                    latency_ms: Some(latency),
+                    detail: None,
+                    state_since,
+                    checked_at: now,
+                    fail_count: 0,
+                }
+            } else {
+                let code = resp.status().as_u16();
+                make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some(format!("HTTP {code}")))
+            }
+        }
+        Err(e) => {
+            let detail = if e.is_timeout() {
+                "timeout"
+            } else if e.is_connect() {
+                "connection refused"
+            } else {
+                "network error"
+            };
+            make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some(detail.to_string()))
+        }
+    }
+}
+
+fn make_failed_update(
+    service: &HomelabService,
+    prev_state: Option<&str>,
+    prev_state_since: Option<NaiveDateTime>,
+    prev_fail_count: i32,
+    now: NaiveDateTime,
+    detail: Option<String>,
+) -> HomelabServiceStatusUpdate {
+    let fail_count = prev_fail_count + 1;
+    let state = if fail_count >= 2 {
+        "down".to_string()
+    } else {
+        prev_state.unwrap_or("unknown").to_string()
+    };
+    let state_since = if prev_state == Some(state.as_str()) {
+        prev_state_since.unwrap_or(now)
+    } else {
+        now
+    };
+    HomelabServiceStatusUpdate {
+        service_id: service.id,
+        state,
+        latency_ms: None,
+        detail,
+        state_since,
+        checked_at: now,
+        fail_count,
+    }
+}
+
+// ==========================================
+// 5. Ollama Library
+// ==========================================
+
+#[derive(Debug, Clone)]
+pub struct OllamaScrapedModel {
+    pub name: String,
+    pub description: Option<String>,
+    pub updated_text: Option<String>,
+    pub library_url: String,
+    pub card_tags: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct OllamaScrapedTag {
+    pub tag: String,
+    pub size_gb: Option<f64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct OllamaModelSummary {
+    pub id: i32,
+    pub name: String,
+    pub description: Option<String>,
+    pub change: String,
+    pub changed_at: NaiveDateTime,
+    pub updated_text: Option<String>,
+    pub library_url: String,
+    pub first_seen_at: NaiveDateTime,
+    pub snapshot_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone)]
+pub struct OllamaModelUpsert<'a> {
+    pub name: &'a str,
+    pub description: Option<&'a str>,
+    pub change: &'a str,
+    pub changed_at: NaiveDateTime,
+    pub updated_text: Option<&'a str>,
+    pub library_url: &'a str,
+    pub now: NaiveDateTime,
+}
+
+#[derive(Debug, Clone)]
+pub struct OllamaTag {
+    pub id: Option<i32>,
+    pub model_id: i32,
+    pub tag: String,
+    pub size_gb: Option<f64>,
+    pub fits: bool,
+    pub installed: bool,
+    pub sort_order: i32,
+}
+
+pub fn parse_ollama_search_page(html_body: &str) -> Result<Vec<OllamaScrapedModel>> {
+    let doc = scraper::Html::parse_document(html_body);
+    let a_sel = scraper::Selector::parse("a[href^='/library/']").map_err(|e| format!("{e:?}"))?;
+    let p_sel = scraper::Selector::parse("p").map_err(|e| format!("{e:?}"))?;
+    let span_sel = scraper::Selector::parse("span").map_err(|e| format!("{e:?}"))?;
+
+    let tag_re = Regex::new(r"(?i)^(\d+(?:\.\d+)?)[bmt]$")?;
+    let mut out = Vec::new();
+    let mut seen_names = std::collections::HashSet::new();
+
+    for a in doc.select(&a_sel) {
+        let href = match a.value().attr("href") {
+            Some(h) if h.starts_with("/library/") => h,
+            _ => continue,
+        };
+        let raw_name = href.trim_start_matches("/library/");
+        if raw_name.is_empty() || raw_name.contains(':') || !seen_names.insert(raw_name.to_string()) {
+            continue;
+        }
+
+        let name = raw_name.to_string();
+        let library_url = format!("https://ollama.com/library/{name}");
+
+        let description = a.select(&p_sel).next().map(|p| {
+            p.text().collect::<Vec<_>>().join(" ").trim().to_string()
+        }).filter(|s| !s.is_empty());
+
+        let mut updated_text = None;
+        let mut card_tags = Vec::new();
+
+        for span in a.select(&span_sel) {
+            if let Some(title) = span.value().attr("title")
+                && title.starts_with("Updated ") {
+                    updated_text = Some(title.to_string());
+            }
+            let txt = span.text().collect::<Vec<_>>().join(" ").trim().to_string();
+            if updated_text.is_none() && span.value().classes().any(|c| c == "text-muted") && !txt.is_empty() {
+                updated_text = Some(txt.clone());
+            }
+            if tag_re.is_match(&txt) {
+                card_tags.push(txt.to_ascii_lowercase());
+            }
+        }
+
+        out.push(OllamaScrapedModel {
+            name,
+            description,
+            updated_text,
+            library_url,
+            card_tags,
+        });
+    }
+
+    Ok(out)
+}
+
+pub fn parse_ollama_tags_page(model_name: &str, html_body: &str) -> Result<Vec<OllamaScrapedTag>> {
+    let doc = scraper::Html::parse_document(html_body);
+    let prefix = format!("/library/{model_name}:");
+    let a_sel = scraper::Selector::parse("a[href]").map_err(|e| format!("{e:?}"))?;
+
+    let size_re = Regex::new(r"(?i)([0-9]+(?:\.[0-9]+)?)\s*(GB|MB|KB)")?;
+    let mut out = Vec::new();
+    let mut seen_tags = std::collections::HashSet::new();
+
+    for a in doc.select(&a_sel) {
+        let href = match a.value().attr("href") {
+            Some(h) if h.starts_with(&prefix) => h,
+            _ => continue,
+        };
+        let tag = href.strip_prefix(&prefix).unwrap_or("").trim();
+        if tag.is_empty() || !seen_tags.insert(tag.to_string()) {
+            continue;
+        }
+
+        let mut size_gb = None;
+        if let Some(parent) = a.parent().and_then(|p| p.parent()) {
+            let container_html = scraper::ElementRef::wrap(parent)
+                .map(|e| e.html())
+                .unwrap_or_default();
+
+            if let Some(caps) = size_re.captures(&container_html)
+                && let (Some(num_m), Some(unit_m)) = (caps.get(1), caps.get(2))
+                && let Ok(num) = num_m.as_str().parse::<f64>() {
+                    let unit = unit_m.as_str().to_ascii_uppercase();
+                    let in_gb = match unit.as_str() {
+                        "GB" => num,
+                        "MB" => num / 1024.0,
+                        "KB" => num / (1024.0 * 1024.0),
+                        _ => num,
+                    };
+                    size_gb = Some(((in_gb * 10.0).round()) / 10.0);
+            }
+        }
+
+        out.push(OllamaScrapedTag {
+            tag: tag.to_string(),
+            size_gb,
+        });
+    }
+
+    Ok(out)
+}
+
+pub fn calculate_ollama_fits(size_gb: Option<f64>, tag: &str, memory_gb: f64) -> bool {
+    let usable_gb = (memory_gb - 1.5).max(0.0);
+    if usable_gb <= 0.0 {
+        return false;
+    }
+    if let Some(s) = size_gb {
+        return s <= usable_gb;
+    }
+    let tag_lower = tag.to_ascii_lowercase();
+    if let Some(b_pos) = tag_lower.find('b') {
+        let num_part = &tag_lower[..b_pos];
+        if let Ok(billions) = num_part.parse::<f64>() {
+            let est_gb = billions * 0.6 + 1.0;
+            return est_gb <= usable_gb;
+        }
+    }
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -719,5 +1223,107 @@ mod tests {
         assert_eq!(res.incident_name.as_deref(), Some("Degraded Performance"));
         assert_eq!(res.incident_component.as_deref(), Some("Actions"));
         assert_eq!(res.incident_url.as_deref(), Some("https://stspg.io/xyz"));
+    }
+
+    #[test]
+    fn test_dotnet_releases_parser() {
+        let fixture = r#"{
+            "releases-index": [
+                {
+                    "channel-version": "10.0",
+                    "latest-release": "10.0.14",
+                    "latest-release-date": "2026-10-25",
+                    "support-phase": "active"
+                },
+                {
+                    "channel-version": "11.0",
+                    "latest-release": "11.0.0-rc.3",
+                    "latest-release-date": "2026-10-25",
+                    "support-phase": "preview"
+                }
+            ]
+        }"#;
+
+        let proj = ReleaseProject {
+            id: 10,
+            slug: "dotnet".into(),
+            name: ".NET".into(),
+            kind: "sdk".into(),
+            source_kind: "dotnet_releases".into(),
+            source_url: "https://example.com/releases-index.json".into(),
+            source_filter: None,
+            notes_label: "Release notes".into(),
+            include_prerelease: true,
+            in_your_stack: true,
+        };
+
+        let client = Client::new();
+        let items = collect_dotnet_releases(&client, fixture, &proj).unwrap();
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].version, "10.0.14");
+        assert!(!items[0].is_prerelease);
+        assert_eq!(items[1].version, "11.0.0-rc.3");
+        assert!(items[1].is_prerelease);
+    }
+
+    #[test]
+    fn test_ollama_fits_calculation() {
+        // 16 GB memory: usable is 16 - 1.5 = 14.5 GB
+        assert!(calculate_ollama_fits(Some(1.1), "1.7b", 16.0));
+        assert!(calculate_ollama_fits(Some(14.0), "14b", 16.0));
+        assert!(!calculate_ollama_fits(Some(15.0), "20b", 16.0));
+
+        // Unknown size, estimated by tag: "8b" -> 8 * 0.6 + 1.0 = 5.8 GB -> fits
+        assert!(calculate_ollama_fits(None, "8b", 16.0));
+        // "70b" -> 70 * 0.6 + 1.0 = 43.0 GB -> does not fit in 14.5 GB
+        assert!(!calculate_ollama_fits(None, "70b", 16.0));
+        // "70b" fits in 64 GB
+        assert!(calculate_ollama_fits(None, "70b", 64.0));
+        // non-b tag with no size does not fit
+        assert!(!calculate_ollama_fits(None, "latest", 16.0));
+    }
+
+    #[test]
+    fn test_homelab_self_check() {
+        let client = Client::new();
+        let svc = HomelabService {
+            id: 7,
+            slug: "scraper".into(),
+            name: "myNewspaper scraper".into(),
+            check_kind: "self".into(),
+            check_url: None,
+            expect_body: None,
+            secret_env: None,
+            slow_ms: 1500,
+            link_url: None,
+            enabled: true,
+            sort_order: 70,
+        };
+        let now = chrono::NaiveDate::from_ymd_opt(2026, 11, 1).unwrap().and_hms_opt(12, 0, 0).unwrap();
+        let ten_min_ago = now - chrono::Duration::minutes(10);
+        let cx1 = HomelabCheckContext {
+            prev_state: None,
+            prev_state_since: None,
+            prev_fail_count: 0,
+            now,
+            last_feed_run_utc: Some(ten_min_ago),
+            shared_tautulli: None,
+        };
+        let res = check_homelab_service(&client, &svc, &cx1);
+        assert_eq!(res.state, "ok");
+        assert_eq!(res.detail.as_deref(), Some("last run 10 min ago"));
+
+        let forty_min_ago = now - chrono::Duration::minutes(40);
+        let cx2 = HomelabCheckContext {
+            prev_state: Some("ok"),
+            prev_state_since: Some(now),
+            prev_fail_count: 0,
+            now,
+            last_feed_run_utc: Some(forty_min_ago),
+            shared_tautulli: None,
+        };
+        let res_slow = check_homelab_service(&client, &svc, &cx2);
+        assert_eq!(res_slow.state, "slow");
+        assert_eq!(res_slow.detail.as_deref(), Some("last run 40 min ago"));
     }
 }

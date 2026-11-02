@@ -1,5 +1,34 @@
 # Scraper handoff
 
+## Tech front panels (Your Stack, Homelab Services, Ollama Library) — deployed November 1, 2026 CST
+
+Deployed **web-scraper:tech-panels-20261101**, tagged as `web-scraper:latest` and healthy.
+Added scraper support for the three new panels on the Tech front page:
+
+1. **Your stack (`InYourStack = 1`):**
+   - Added column `InYourStack BIT NOT NULL DEFAULT 0` to `dbo.TechReleaseProjects`.
+   - Expanded project types (`sdk`, `toolchain`, `framework`, `runtime`, `compiler`) and source types (`dotnet_releases`).
+   - Flagged existing projects with `InYourStack = 1`: `linux-mainline`, `fedora`, `mesa`, `proton`.
+   - Added and seeded 5 new projects: `.NET` (official Microsoft `releases-index.json`), `Rust` (GitHub releases), `Qt` (Atom RSS), `Node.js` (GitHub releases), and `TypeScript` (GitHub releases).
+   - 135 releases tracked across all enabled stack projects.
+2. **Homelab service monitoring (`dbo.HomelabServices`, `dbo.HomelabServiceStatus`):**
+   - Schema and status tables for homelab services with tracking for status, latency, detail, consecutive failures, and check timestamps.
+   - Supports check types: `http`, `http_body`, `tautulli` (Plex stream parsing via API key from environment), and `self` (scraper heartbeat verifying last successful feed run < 120m).
+   - Robust debouncing: requires 2 consecutive failures before reporting `down`; single timeouts report `slow`.
+   - Seeded services: `plex`, `jellyfin`, `tautulli`, `ollama`, `open-webui`, `portainer`, `scraper`.
+   - High-cadence monitoring: dedicated background daemon thread runs a 60-second checking loop alongside the hourly scraper, plus on-demand check via `--homelab`.
+3. **Ollama library tracker (`dbo.OllamaLibraryModels`, `dbo.OllamaLibraryTags`):**
+   - Scrapes newest Ollama models from `https://ollama.com/search?o=newest` and tag metadata/sizes from `/library/<name>/tags`.
+   - Baseline seed of 20 models populated with `Change = 'new'` and `ScrapedAt = '2000-01-01'`.
+   - Local Ollama verification against `OLLAMA_URL` (defaults to `http://ai-machine.local:11434`): marks installed tags; preserves flags if Ollama host is unreachable.
+   - Hardware fit calculation: compares tag sizes and parameter counts against `OLLAMA_MEMORY_GB` (default 16GB) to set `Fits = 1`.
+   - Supported via CLI flag `--ollama-library` and integrated into `--tech-from-db`.
+4. **Permissions & Migration:**
+   - Created and executed repeatable [`sql/tech_panels_migration.sql`](sql/tech_panels_migration.sql).
+   - Updated canonical [`sql/tech_schema.sql`](sql/tech_schema.sql), [`sql/tech_seed.sql`](sql/tech_seed.sql), and [`sql/tech_permissions.sql`](sql/tech_permissions.sql).
+   - Granted read permissions to `[WebScraperReader]`, `[WebScraperScoreboardReader]`, `[web_reader]`, and `[mynewspaper]`, and ingest to `[WebScraperIngest]`.
+   - Added `extra_hosts: ["host.docker.internal:host-gateway"]` to `docker-compose.yml`.
+
 ## Top 25 scoreboard and upcoming ranked games — deployed November 1, 2026 CST
 
 Deployed **web-scoreboard:top25-20261101**, tagged as `web-scoreboard:latest` and healthy.
