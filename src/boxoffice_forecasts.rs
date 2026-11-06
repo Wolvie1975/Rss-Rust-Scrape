@@ -25,7 +25,46 @@ fn date(s: &str) -> Result<NaiveDate> {
     }
     Err(format!("unrecognized forecast date: {s}").into())
 }
-fn range(s: &str) -> Result<(i64, i64)> {
+/// A forecast's standard 3-day weekend range plus an optional longer holiday window.
+#[derive(Debug, PartialEq)]
+struct Range {
+    low: i64,
+    high: i64,
+    /// `(days, low, high)` for holiday openings, e.g. a 5-day Thanksgiving frame.
+    extended: Option<(u8, i64, i64)>,
+}
+/// Holiday openings list labelled windows, e.g. `$35M – $45M (3-Day), $50M – $70M (5-Day)`.
+/// The 3-day range stays the primary figure so every row describes the same window.
+fn range(s: &str) -> Result<Range> {
+    if !s.contains('(') {
+        let (low, high) = plain_range(s)?;
+        return Ok(Range { low, high, extended: None });
+    }
+    let mut three_day = None;
+    let mut extended = None;
+    for part in s.split(',') {
+        let (value, label) = part
+            .trim()
+            .strip_suffix(')')
+            .and_then(|p| p.rsplit_once('('))
+            .ok_or("unlabelled forecast range")?;
+        let label = label.trim().replace(['–', '—'], "-").to_lowercase();
+        let days = label
+            .strip_suffix("-day")
+            .and_then(|d| d.parse::<u8>().ok())
+            .ok_or_else(|| format!("unrecognized forecast window: {label}"))?;
+        let (low, high) = plain_range(value)?;
+        match days {
+            3 if three_day.is_none() => three_day = Some((low, high)),
+            4..=7 if extended.is_none() => extended = Some((days, low, high)),
+            3 | 4..=7 => return Err("duplicate forecast window".into()),
+            _ => return Err(format!("unsupported forecast window: {label}").into()),
+        }
+    }
+    let (low, high) = three_day.ok_or("3-day forecast range missing")?;
+    Ok(Range { low, high, extended })
+}
+fn plain_range(s: &str) -> Result<(i64, i64)> {
     let normalized = s.replace(['–', '—'], "-");
     let (a, b) = normalized
         .trim()
@@ -155,7 +194,7 @@ pub fn parse(body: &str, kind: &str, source: &str, today: NaiveDate) -> Result<S
                    value: &str,
                    as_of: NaiveDate|
      -> Result<()> {
-        let (low, high) = range(value)?;
+        let Range { low, high, extended } = range(value)?;
         if title.is_empty()
             || title.chars().count() > 300
             || distributor.chars().count() > 300
@@ -170,7 +209,7 @@ pub fn parse(body: &str, kind: &str, source: &str, today: NaiveDate) -> Result<S
             return Err("forecast date too far in future".into());
         }
         let key = (target, title.to_lowercase());
-        rows.insert(key,json!({"title":title,"distributor":distributor,"targetDate":target.to_string(),"endDate":end.to_string(),"rank":rank,"low":low,"high":high,"asOf":as_of.to_string(),"sourceUrl":source,"publishedAt":published.format("%Y-%m-%dT%H:%M:%S").to_string(),"updatedAt":modified.format("%Y-%m-%dT%H:%M:%S").to_string()}));
+        rows.insert(key,json!({"title":title,"distributor":distributor,"targetDate":target.to_string(),"endDate":end.to_string(),"rank":rank,"low":low,"high":high,"extendedDays":extended.map(|e| e.0),"extendedLow":extended.map(|e| e.1),"extendedHigh":extended.map(|e| e.2),"asOf":as_of.to_string(),"sourceUrl":source,"publishedAt":published.format("%Y-%m-%dT%H:%M:%S").to_string(),"updatedAt":modified.format("%Y-%m-%dT%H:%M:%S").to_string()}));
         Ok(())
     };
     if kind == "weekend-preview" {
@@ -363,10 +402,27 @@ mod tests {
     use super::*;
     #[test]
     fn amounts_reject_non_usd_and_reversed() {
-        assert_eq!(range("$1.5M – $2M").unwrap(), (1_500_000, 2_000_000));
+        let plain = |s| range(s).map(|r| (r.low, r.high, r.extended));
+        assert_eq!(plain("$1.5M – $2M").unwrap(), (1_500_000, 2_000_000, None));
         assert!(range("£1M – £2M").is_err());
         assert!(range("$2M - $1M").is_err());
         assert!(range("$NaNM - $2M").is_err());
+    }
+    #[test]
+    fn holiday_ranges_keep_three_day_and_extended_window() {
+        let holiday = Range {
+            low: 35_000_000,
+            high: 45_000_000,
+            extended: Some((5, 50_000_000, 70_000_000)),
+        };
+        assert_eq!(range("$35M – $45M (3-Day), $50M – $70M (5-Day)").unwrap(), holiday);
+        assert_eq!(range("$50M – $70M (5-Day), $35M – $45M (3-Day)").unwrap(), holiday);
+        assert!(range("$50M – $70M (5-Day)").is_err());
+        assert!(range("$35M – $45M (3-Day), $50M – $70M (Opening Week)").is_err());
+        assert!(range("$35M – $45M, $50M – $70M (5-Day)").is_err());
+        assert!(range("$35M – $45M (3-Day), $50M – $70M (5-Day), $60M – $80M (4-Day)").is_err());
+        assert!(range("$35M – $45M (3-Day), $70M – $50M (5-Day)").is_err());
+        assert!(range("$35M – $45M (3-Day), $50M – $70M (10-Day)").is_err());
     }
     fn page(content: &str, title: &str) -> String {
         format!(
@@ -417,6 +473,18 @@ mod tests {
         assert_eq!(s.rows.len(), 1);
         assert_eq!(s.rows[0]["low"], 2_000_000);
         assert_eq!(s.rows[0]["asOf"], "2026-10-09");
+        assert!(s.rows[0]["extendedDays"].is_null());
+        let holiday = page(
+            "<h2>Long Range Forecast – Nov. 25, 2026</h2><h2><em>Film</em> | Studio</h2><h2>Domestic Opening Weekend Range: $35M – $45M (3-Day), $50M – $70M (5-Day)</h2>",
+            "Long Range Forecast: Film",
+        );
+        let row = &parse(&holiday, "long-range", INDEX, date("October 13, 2026").unwrap())
+            .unwrap()
+            .rows[0];
+        assert_eq!(
+            (&row["low"], &row["high"], &row["extendedDays"], &row["extendedLow"], &row["extendedHigh"]),
+            (&json!(35_000_000), &json!(45_000_000), &json!(5), &json!(50_000_000), &json!(70_000_000))
+        );
     }
     #[test]
     fn malformed_page_is_not_empty_success() {
