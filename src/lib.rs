@@ -20,6 +20,7 @@ pub mod mls;
 pub mod movie_commerce;
 pub mod movie_metadata;
 pub mod movies;
+pub mod nfl;
 pub mod nhl;
 pub mod nwsl;
 pub mod pages;

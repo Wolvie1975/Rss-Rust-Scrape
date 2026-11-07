@@ -10,8 +10,8 @@ use web_scraper::Result;
 use web_scraper::pages::{self, PageMeta};
 use web_scraper::{
     article_identity, big12, boxoffice, boxoffice_forecasts, championship, cinema_posters, db, epl,
-    espn_schedule, events, f1, http, metrics, mlb, mls, movie_commerce, movies, nhl, nwsl, posters,
-    rankings, sports_boxscores, sports_periods, standings, tvmaze, wnba, youtube,
+    espn_schedule, events, f1, http, metrics, mlb, mls, movie_commerce, movies, nfl, nhl, nwsl,
+    posters, rankings, sports_boxscores, sports_periods, standings, tvmaze, wnba, youtube,
 };
 
 /// Build an RSS feed from the metadata of scraped web pages.
@@ -71,6 +71,9 @@ struct Cli {
     /// Register NHL fixtures/results and division standings disabled.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_nhl: bool,
+    /// Register the NFL league schedule disabled; preserve existing settings.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_nfl: bool,
     /// Configure F1 calendar, race/sprint results and championships disabled.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_f1: bool,
@@ -260,6 +263,7 @@ impl Cli {
             || self.configure_boxoffice
             || self.configure_mls
             || self.configure_nhl
+            || self.configure_nfl
             || self.configure_boxscores
             || self.repair_boxscore_periods
             || self.boxscores_from_db
@@ -284,7 +288,7 @@ impl Cli {
             || self.db
             || self.from_db
             || self.save_sources
-            || !self.events_feed.is_empty()
+            || (!self.events_feed.is_empty() && !self.dry_run)
             || self.events_from_db
             || !self.youtube_feed.is_empty()
             || self.youtube_from_db
@@ -303,6 +307,7 @@ impl Cli {
             || self.configure_boxoffice
             || self.configure_mls
             || self.configure_nhl
+            || self.configure_nfl
             || self.configure_f1
             || self.configure_epl
             || self.configure_nwsl
@@ -329,8 +334,11 @@ fn connect_db(cli: &Cli) -> Result<Option<db::Db>> {
         std::env::var("MSSQL_CONNECTION_STRING")
     }
     .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
-    // F1 and box-score setup apply their own additive migrations to an existing database.
-    let db = if setup && !cli.configure_f1 && !cli.configure_boxscores {
+    // F1, box-office and box-score setup apply their own additive migrations to an existing database.
+    let db = if cli.configure_nfl || cli.configure_boxoffice {
+        db::Db::connect_named(&ado, &cli.database)
+            .or_else(|_| db::Db::open_named(&ado, &cli.database))?
+    } else if setup && !cli.configure_f1 && !cli.configure_boxscores {
         db::Db::open_named(&ado, &cli.database)?
     } else {
         db::Db::connect_named(&ado, &cli.database)?
@@ -374,6 +382,9 @@ fn run_setup(cli: &Cli, db: Option<&mut db::Db>) -> Result<bool> {
     } else if cli.configure_nhl {
         require(db)?.configure_nhl()?;
         "NHL schedule/results and standings registered disabled"
+    } else if cli.configure_nfl {
+        require(db)?.configure_nfl()?;
+        "NFL schedule registered; enable it in SportsEventsType to import"
     } else if cli.configure_mls {
         require(db)?.configure_mls()?;
         "MLS schedule/results registered disabled"
@@ -1340,7 +1351,11 @@ impl Run<'_> {
         if cli.events_feed.is_empty() && !cli.events_from_db {
             return Ok(feeds);
         }
-        let known = self.db()?.sports_event_feeds()?;
+        let known = if cli.events_from_db || self.db.is_some() {
+            self.db()?.sports_event_feeds()?
+        } else {
+            Vec::new()
+        };
         for url in &cli.events_feed {
             let row = known.iter().find(|f| f.url == *url);
             feeds.push(EventFeedRef {
@@ -1656,7 +1671,9 @@ impl Run<'_> {
                 },
             );
         }
-        let league = if mlb::is_feed(url) {
+        let league = if nfl::is_feed(url) {
+            Some(("nfl_schedule", "NFL", nfl::fetch as FixtureFetch))
+        } else if mlb::is_feed(url) {
             Some(("mlb_schedule", "MLB", mlb::fetch as FixtureFetch))
         } else if wnba::is_feed(url) {
             Some(("wnba_schedule", "WNBA", wnba::fetch as FixtureFetch))

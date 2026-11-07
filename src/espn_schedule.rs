@@ -16,6 +16,7 @@ pub enum League {
     Epl,
     Mls,
     Nhl,
+    Nfl,
 }
 impl League {
     pub fn path(self) -> &'static str {
@@ -27,6 +28,7 @@ impl League {
             Self::Epl => "/apis/site/v2/sports/soccer/eng.1/scoreboard",
             Self::Mls => "/apis/site/v2/sports/soccer/usa.1/scoreboard",
             Self::Nhl => "/apis/site/v2/sports/hockey/nhl/scoreboard",
+            Self::Nfl => "/apis/site/v2/sports/football/nfl/scoreboard",
         }
     }
     pub fn provider_key(self) -> &'static str {
@@ -38,6 +40,7 @@ impl League {
             Self::Epl => "espn-epl",
             Self::Mls => "espn-mls",
             Self::Nhl => "espn-nhl",
+            Self::Nfl => "espn-nfl",
         }
     }
     pub fn canonical_key(self, id: i32) -> String {
@@ -51,6 +54,7 @@ impl League {
                 Self::Epl => "eng.1",
                 Self::Mls => "usa.1",
                 Self::Nhl => "nhl",
+                Self::Nfl => "nfl",
             }
         )
     }
@@ -62,6 +66,7 @@ impl League {
             Self::Wnba => format!("https://www.espn.com/wnba/game/_/gameId/{id}"),
             Self::Mlb => format!("https://www.espn.com/mlb/game/_/gameId/{id}"),
             Self::Nhl => format!("https://www.espn.com/nhl/game/_/gameId/{id}"),
+            Self::Nfl => format!("https://www.espn.com/nfl/game/_/gameId/{id}"),
         }
     }
     fn sport(self) -> &'static str {
@@ -70,6 +75,7 @@ impl League {
             Self::Wnba => "Basketball",
             Self::Mlb => "Baseball",
             Self::Nhl => "Hockey",
+            Self::Nfl => "Football",
         }
     }
 }
@@ -292,6 +298,22 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
             );
         let opponent = text(&opp["team"], "displayName").ok_or("missing opponent name")?;
         let name = text(&own["team"], "displayName").ok_or("missing team name")?;
+        if league == League::Nfl {
+            let valid_team = |id: i32, display: &str, team: &Value| {
+                id > 0
+                    && !matches!(id, 31 | 32)
+                    && !matches!(display, "TBD" | "AFC" | "NFC")
+                    && !matches!(
+                        team["abbreviation"].as_str(),
+                        Some("TBD" | "AFC" | "NFC")
+                    )
+            };
+            if !valid_team(team_id, &name, &own["team"])
+                || !valid_team(opponent_id, &opponent, &opp["team"])
+            {
+                continue;
+            }
+        }
         let tv = c["broadcasts"]
             .as_array()
             .map(|bs| {
@@ -348,7 +370,11 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
                 ),
                 sport: Some(league.sport().into()),
                 opponent: Some(opponent),
-                is_away: if neutral { None } else { away },
+                is_away: if neutral && league != League::Nfl {
+                    None
+                } else {
+                    away
+                },
                 location: text(&c["venue"], "fullName")
                     .or_else(|| text(&raw["venue"], "displayName")),
                 event_date,

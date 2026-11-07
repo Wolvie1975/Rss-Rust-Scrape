@@ -93,7 +93,7 @@ impl Db {
         Self::open_named(ado, DB_NAME)
     }
 
-    const CONNECT_NAMED_SQL: &str = "SELECT CASE WHEN OBJECT_ID('dbo.ScraperRuns','U') IS NOT NULL AND COL_LENGTH('dbo.SportsEvents','ScheduleStatus') IS NOT NULL AND OBJECT_ID('dbo.UpsertArticleIdentity','P') IS NOT NULL THEN 1 ELSE 0 END";
+    const CONNECT_NAMED_SQL: &str = "SELECT CASE WHEN OBJECT_ID('dbo.ScraperRuns','U') IS NOT NULL AND COL_LENGTH('dbo.SportsEvents','ScheduleStatus') IS NOT NULL AND (OBJECT_ID('dbo.UpsertArticleIdentity','P') IS NOT NULL OR OBJECT_ID('dbo.ArticleUrlAliases','U') IS NOT NULL) THEN 1 ELSE 0 END";
     /// Ingestion only: no master connection, DDL or automatic migrations.
     pub fn connect_named(ado: &str, database: &str) -> Result<Db> {
         if database.is_empty()
@@ -2187,6 +2187,20 @@ END CATCH;
             async {
                 self.client
                     .simple_query(include_str!("../sql/mlb_seed.sql"))
+                    .await?
+                    .into_results()
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    pub fn configure_nfl(&mut self) -> Result<()> {
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .simple_query(include_str!("../sql/nfl_seed.sql"))
                     .await?
                     .into_results()
                     .await?;

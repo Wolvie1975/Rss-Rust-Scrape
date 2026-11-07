@@ -354,7 +354,7 @@ mod tests {
         .unwrap();
         let actual: Value = serde_json::from_str(&labeled).unwrap();
         let expected: Value = serde_json::from_str(include_str!(
-            "../New Development/mens-college-basketball-boxscore-example.json"
+            "../New Development/Archive/mens-college-basketball-boxscore-example.json"
         ))
         .unwrap();
         assert_eq!(actual, expected);

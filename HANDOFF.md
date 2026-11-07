@@ -1,5 +1,25 @@
 # Scraper handoff
 
+## NFL schedule scraper (`espn-nfl`) — deployed November 7, 2026 CST
+
+Deployed **web-scraper:nfl-20261107**, tagged as `web-scraper:latest` and healthy.
+Added league-wide NFL schedule collection:
+
+1. **Schedule Registration (`--configure-nfl`):**
+   - Registered enabled source `8503` in `dbo.SportsEventsType` (`EventsTypeName = 'NFL'`, `ProviderKey = 'espn-nfl'`, `ProviderSchoolId = 0`, `SchoolName = NULL`).
+   - Idempotent configuration preserves edited URLs and `Enabled` flags.
+2. **Weekly League Coverage & Perspective:**
+   - Scoreboard weekly loop queries `dates=<season>&seasontype=<2|3>&week=<n>&limit=1000` across regular season weeks 1–18 and postseason weeks 1–5.
+   - Handled season rollover across the new year (`season_for` uses year - 1 for January–June).
+   - Saved with `IsAway = 0`, `Sport = 'Football'`, `CanonicalKey = 'espn:nfl:<id>'`, `Url = 'https://www.espn.com/nfl/game/_/gameId/<id>'`, and `CalendarTimeZone = 'America/Chicago'`.
+   - International neutral-site games maintain `IsAway = 0` and `IsNeutral = 1`.
+   - Postseason placeholder matchups (`team_id <= 0` or `"TBD"`) and the Pro Bowl are skipped.
+3. **Production Data:**
+   - 150 upcoming games populated in `dbo.SportsEvents`.
+   - Initial run completed with 1 source success, 0 errors, 2 SQL batches.
+   - Retained rollback container: `web-scraper-before-nfl-20261107`.
+   - Full deployment report: [`reports/nfl-production-20261107.md`](reports/nfl-production-20261107.md).
+
 ## Tech front panels (Your Stack, Homelab Services, Ollama Library) — deployed November 1, 2026 CST
 
 Deployed **web-scraper:tech-panels-20261101**, tagged as `web-scraper:latest` and healthy.

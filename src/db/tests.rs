@@ -2122,3 +2122,140 @@ mod f1_sql_tests {
         Ok(())
     }
 }
+
+mod nfl_tests {
+    use crate::db::*;
+    #[test]
+    #[ignore = "requires MSSQL_CONNECTION_STRING and NFL_TEST_DATABASE (isolated staging); fixture writes roll back"]
+    fn nfl_configuration_reimport_failed_fetch_and_disabled_source_are_safe() -> Result<()> {
+        let _ = dotenvy::dotenv();
+        let name = std::env::var("NFL_TEST_DATABASE")?;
+        if name != "WebScraper_Test" && !name.starts_with("WebScraper_Nfl_Validation") {
+            return Err("use an isolated WebScraper_Test or WebScraper_Nfl_Validation database".into());
+        }
+        let ado = std::env::var("MSSQL_MIGRATION_CONNECTION_STRING")
+            .or_else(|_| std::env::var("MSSQL_CONNECTION_STRING"))?;
+        let mut db = Db::connect_named(&ado, &name).or_else(|_| Db::open_named(&ado, &name))?;
+        db.rt.block_on(async {
+            db.client
+                .simple_query("BEGIN TRANSACTION")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, crate::Error>(())
+        })?;
+        let result = (|| -> Result<()> {
+            db.configure_nfl()?;
+            let id = db.ensure_sports_events_type(
+                "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
+                "NFL",
+            )?;
+            let mut fixtures = crate::nfl::parse(&crate::nfl::tests::sample(), 2026)?;
+            for f in &mut fixtures {
+                f.completed = false;
+                f.status = "STATUS_SCHEDULED".into();
+                f.event.event_date = Utc::now()
+                    .with_timezone(&chrono_tz::America::Chicago)
+                    .date_naive()
+                    + chrono::Duration::days(1);
+            }
+            // Disabled source collects/saves nothing.
+            assert_eq!(db.save_espn_schedule(id, &fixtures)?, 0);
+            assert!(
+                !db.sports_event_feeds()?
+                    .iter()
+                    .any(|f| f.id == id)
+            );
+            // Enable and edit URL; running --configure-nfl again preserves both and doesn't duplicate.
+            db.rt.block_on(async {
+                db.client
+                    .execute(
+                        "UPDATE dbo.SportsEventsType SET Enabled=1,RssUrl=RssUrl+'?season=2026' WHERE ID=@P1",
+                        &[&id],
+                    )
+                    .await?;
+                Ok::<_, crate::Error>(())
+            })?;
+            db.configure_nfl()?;
+            assert_eq!(
+                db.sports_event_feeds()?
+                    .iter()
+                    .filter(|f| f.id == id)
+                    .count(),
+                1
+            );
+            assert_eq!(
+                db.sports_event_feeds()?
+                    .iter()
+                    .find(|f| f.id == id)
+                    .unwrap()
+                    .url,
+                "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?season=2026"
+            );
+            assert_eq!(db.save_espn_schedule(id, &fixtures)?, 4);
+            db.event_result(id, true, 4, 0, None)?;
+            let read = |db: &mut Db| -> Result<Vec<tiberius::Row>> {
+                Ok(db.rt.block_on(async {
+                    db.client
+                        .query(
+                            "SELECT ID,FirstSeenAt,GameId,ProviderKey,CanonicalKey,ScheduleStatus,EventDate,StartsAtUtc,TimeTbd,IsAway,IsNeutral,SchoolName,Opponent,Sport FROM dbo.SportsEvents WHERE SportsEventsTypeId=@P1 ORDER BY GameId",
+                            &[&id],
+                        )
+                        .await?
+                        .into_first_result()
+                        .await
+                })?)
+            };
+            let before = read(&mut db)?;
+            assert_eq!(before.len(), 4);
+            // Re-import after a flex/time change keeps ID and FirstSeenAt.
+            fixtures[0].event.event_date = chrono::NaiveDate::from_ymd_opt(2026, 11, 15).unwrap();
+            fixtures[0].event.starts_at = Some(
+                chrono::DateTime::parse_from_rfc3339("2026-11-16T01:20:00Z")?.with_timezone(&Utc),
+            );
+            fixtures[0].event.tv = Some("NBC".into());
+            db.save_espn_schedule(id, &fixtures)?;
+            // A failed fetch records LastError and keeps the last good rows.
+            db.event_attempt(id)?;
+            db.event_result(id, false, 0, 1, Some("NFL scoreboard HTTP 503"))?;
+            let after = read(&mut db)?;
+            assert_eq!(after.len(), 4);
+            for (a, b) in before.iter().zip(&after) {
+                assert_eq!(a.get::<i32, _>("ID"), b.get::<i32, _>("ID"));
+                assert_eq!(
+                    a.get::<chrono::NaiveDateTime, _>("FirstSeenAt"),
+                    b.get::<chrono::NaiveDateTime, _>("FirstSeenAt")
+                );
+                assert_eq!(b.get::<&str, _>("ProviderKey"), Some("espn-nfl"));
+                assert_eq!(b.get::<&str, _>("Sport"), Some("Football"));
+                assert_eq!(b.get::<bool, _>("IsAway"), Some(false));
+            }
+            let status = db.rt.block_on(async {
+                db.client
+                    .query(
+                        "SELECT LastAttemptAt,LastSuccessAt,LastError FROM dbo.SportsEventsType WHERE ID=@P1",
+                        &[&id],
+                    )
+                    .await?
+                    .into_first_result()
+                    .await
+            })?;
+            assert!(status[0].get::<chrono::NaiveDateTime, _>(0).is_some());
+            assert!(status[0].get::<chrono::NaiveDateTime, _>(1).is_some());
+            assert_eq!(
+                status[0].get::<&str, _>(2),
+                Some("NFL scoreboard HTTP 503")
+            );
+            Ok(())
+        })();
+        db.rt.block_on(async {
+            db.client
+                .simple_query("IF @@TRANCOUNT>0 ROLLBACK TRANSACTION")
+                .await?
+                .into_results()
+                .await?;
+            Ok::<_, crate::Error>(())
+        })?;
+        result
+    }
+}
