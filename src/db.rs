@@ -1829,7 +1829,10 @@ END CATCH
                 }
                 .await;
                 if let Err(e) = result {
-                    let _ = self.client.simple_query("IF @@TRANCOUNT > 0 ROLLBACK").await;
+                    let _ = self
+                        .client
+                        .simple_query("IF @@TRANCOUNT > 0 ROLLBACK")
+                        .await;
                     return Err(e);
                 }
                 self.client
@@ -2630,17 +2633,31 @@ END CATCH;
                    ORDER BY SortOrder, Id;";
         self.rt.block_on(bounded(
             async {
-                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
                 let mut out = Vec::new();
                 for r in rows {
                     let id = r.get::<i32, _>("Id").ok_or("Id missing")?;
                     let slug = r.get::<&str, _>("Slug").ok_or("Slug missing")?.to_string();
                     let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
                     let kind = r.get::<&str, _>("Kind").ok_or("Kind missing")?.to_string();
-                    let source_kind = r.get::<&str, _>("SourceKind").ok_or("SourceKind missing")?.to_string();
-                    let source_url = r.get::<&str, _>("SourceUrl").ok_or("SourceUrl missing")?.to_string();
+                    let source_kind = r
+                        .get::<&str, _>("SourceKind")
+                        .ok_or("SourceKind missing")?
+                        .to_string();
+                    let source_url = r
+                        .get::<&str, _>("SourceUrl")
+                        .ok_or("SourceUrl missing")?
+                        .to_string();
                     let source_filter = r.get::<&str, _>("SourceFilter").map(String::from);
-                    let notes_label = r.get::<&str, _>("NotesLabel").ok_or("NotesLabel missing")?.to_string();
+                    let notes_label = r
+                        .get::<&str, _>("NotesLabel")
+                        .ok_or("NotesLabel missing")?
+                        .to_string();
                     let include_prerelease = r.get::<bool, _>("IncludePrerelease").unwrap_or(false);
                     let in_your_stack = r.get::<bool, _>("InYourStack").unwrap_or(false);
 
@@ -2679,14 +2696,19 @@ END CATCH;
         let is_pre = rel.is_prerelease;
         self.rt.block_on(bounded(
             async {
-                self.client.execute(sql, &[
-                    &rel.project_id,
-                    &rel.version.as_str(),
-                    &rel.released_at,
-                    &rel.notes_url.as_deref(),
-                    &rel.title.as_deref(),
-                    &is_pre,
-                ]).await?;
+                self.client
+                    .execute(
+                        sql,
+                        &[
+                            &rel.project_id,
+                            &rel.version.as_str(),
+                            &rel.released_at,
+                            &rel.notes_url.as_deref(),
+                            &rel.title.as_deref(),
+                            &is_pre,
+                        ],
+                    )
+                    .await?;
                 Ok(())
             },
             &self.poisoned,
@@ -2704,7 +2726,9 @@ END CATCH;
                    WHERE Id = @P1;";
         self.rt.block_on(bounded(
             async {
-                self.client.execute(sql, &[&project_id, &last_error]).await?;
+                self.client
+                    .execute(sql, &[&project_id, &last_error])
+                    .await?;
                 Ok(())
             },
             &self.poisoned,
@@ -2712,7 +2736,11 @@ END CATCH;
     }
 
     /// Replace TechDevReading items for a given site (hn or lobsters) atomically in one transaction.
-    pub fn replace_tech_dev_reading(&mut self, site: &str, items: &[crate::tech::DevReadingItem]) -> Result<()> {
+    pub fn replace_tech_dev_reading(
+        &mut self,
+        site: &str,
+        items: &[crate::tech::DevReadingItem],
+    ) -> Result<()> {
         if items.is_empty() {
             return Ok(());
         }
@@ -2761,15 +2789,26 @@ END CATCH;
                    ORDER BY SortOrder, Id;";
         self.rt.block_on(bounded(
             async {
-                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
                 let mut out = Vec::new();
                 for r in rows {
                     let id = r.get::<i32, _>("Id").ok_or("Id missing")?;
                     let slug = r.get::<&str, _>("Slug").ok_or("Slug missing")?.to_string();
                     let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
                     let kind = r.get::<&str, _>("Kind").ok_or("Kind missing")?.to_string();
-                    let api_url = r.get::<&str, _>("ApiUrl").ok_or("ApiUrl missing")?.to_string();
-                    let page_url = r.get::<&str, _>("PageUrl").ok_or("PageUrl missing")?.to_string();
+                    let api_url = r
+                        .get::<&str, _>("ApiUrl")
+                        .ok_or("ApiUrl missing")?
+                        .to_string();
+                    let page_url = r
+                        .get::<&str, _>("PageUrl")
+                        .ok_or("PageUrl missing")?
+                        .to_string();
 
                     out.push(crate::tech::StatusService {
                         id,
@@ -2787,7 +2826,10 @@ END CATCH;
     }
 
     /// Upsert service status update.
-    pub fn upsert_tech_service_status(&mut self, st: &crate::tech::ServiceStatusUpdate) -> Result<()> {
+    pub fn upsert_tech_service_status(
+        &mut self,
+        st: &crate::tech::ServiceStatusUpdate,
+    ) -> Result<()> {
         let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.TechServiceStatus WITH(UPDLOCK, HOLDLOCK) WHERE ServiceId = @P1)
                    BEGIN
                        INSERT INTO dbo.TechServiceStatus (ServiceId, Indicator, Description, IncidentName, IncidentComponent, IncidentStartedAt, IncidentUrl, CheckedAt, LastError)
@@ -2808,17 +2850,22 @@ END CATCH;
                    END;";
         self.rt.block_on(bounded(
             async {
-                self.client.execute(sql, &[
-                    &st.service_id,
-                    &st.indicator.as_str(),
-                    &st.description.as_deref(),
-                    &st.incident_name.as_deref(),
-                    &st.incident_component.as_deref(),
-                    &st.incident_started_at,
-                    &st.incident_url.as_deref(),
-                    &st.checked_at,
-                    &st.last_error.as_deref(),
-                ]).await?;
+                self.client
+                    .execute(
+                        sql,
+                        &[
+                            &st.service_id,
+                            &st.indicator.as_str(),
+                            &st.description.as_deref(),
+                            &st.incident_name.as_deref(),
+                            &st.incident_component.as_deref(),
+                            &st.incident_started_at,
+                            &st.incident_url.as_deref(),
+                            &st.checked_at,
+                            &st.last_error.as_deref(),
+                        ],
+                    )
+                    .await?;
                 Ok(())
             },
             &self.poisoned,
@@ -2860,13 +2907,21 @@ END CATCH;
                    ORDER BY SortOrder, ID;";
         self.rt.block_on(bounded(
             async {
-                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
                 let mut out = Vec::new();
                 for r in rows {
                     let id = r.get::<i32, _>("ID").ok_or("ID missing")?;
                     let slug = r.get::<&str, _>("Slug").ok_or("Slug missing")?.to_string();
                     let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
-                    let check_kind = r.get::<&str, _>("CheckKind").ok_or("CheckKind missing")?.to_string();
+                    let check_kind = r
+                        .get::<&str, _>("CheckKind")
+                        .ok_or("CheckKind missing")?
+                        .to_string();
                     let check_url = r.get::<&str, _>("CheckUrl").map(String::from);
                     let expect_body = r.get::<&str, _>("ExpectBody").map(String::from);
                     let secret_env = r.get::<&str, _>("SecretEnv").map(String::from);
@@ -2896,17 +2951,29 @@ END CATCH;
     }
 
     /// Load the current statuses for all HomelabServices.
-    pub fn load_homelab_service_statuses(&mut self) -> Result<std::collections::HashMap<i32, (String, chrono::NaiveDateTime, i32)>> {
+    pub fn load_homelab_service_statuses(
+        &mut self,
+    ) -> Result<std::collections::HashMap<i32, (String, chrono::NaiveDateTime, i32)>> {
         let sql = "SELECT ServiceId, State, StateSince, FailCount
                    FROM dbo.HomelabServiceStatus;";
         self.rt.block_on(bounded(
             async {
-                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
                 let mut out = std::collections::HashMap::new();
                 for r in rows {
                     let id = r.get::<i32, _>("ServiceId").ok_or("ServiceId missing")?;
-                    let state = r.get::<&str, _>("State").ok_or("State missing")?.to_string();
-                    let since = r.get::<chrono::NaiveDateTime, _>("StateSince").ok_or("StateSince missing")?;
+                    let state = r
+                        .get::<&str, _>("State")
+                        .ok_or("State missing")?
+                        .to_string();
+                    let since = r
+                        .get::<chrono::NaiveDateTime, _>("StateSince")
+                        .ok_or("StateSince missing")?;
                     let fail_count = r.get::<i32, _>("FailCount").unwrap_or(0);
                     out.insert(id, (state, since, fail_count));
                 }
@@ -2917,7 +2984,10 @@ END CATCH;
     }
 
     /// Upsert status into dbo.HomelabServiceStatus.
-    pub fn upsert_homelab_service_status(&mut self, st: &crate::tech::HomelabServiceStatusUpdate) -> Result<()> {
+    pub fn upsert_homelab_service_status(
+        &mut self,
+        st: &crate::tech::HomelabServiceStatusUpdate,
+    ) -> Result<()> {
         let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.HomelabServiceStatus WITH(UPDLOCK, HOLDLOCK) WHERE ServiceId = @P1)
                    BEGIN
                        INSERT INTO dbo.HomelabServiceStatus (ServiceId, State, LatencyMs, Detail, StateSince, CheckedAt, FailCount)
@@ -2931,15 +3001,20 @@ END CATCH;
                    END;";
         self.rt.block_on(bounded(
             async {
-                self.client.execute(sql, &[
-                    &st.service_id,
-                    &st.state.as_str(),
-                    &st.latency_ms,
-                    &st.detail.as_deref(),
-                    &st.state_since,
-                    &st.checked_at,
-                    &st.fail_count,
-                ]).await?;
+                self.client
+                    .execute(
+                        sql,
+                        &[
+                            &st.service_id,
+                            &st.state.as_str(),
+                            &st.latency_ms,
+                            &st.detail.as_deref(),
+                            &st.state_since,
+                            &st.checked_at,
+                            &st.fail_count,
+                        ],
+                    )
+                    .await?;
                 Ok(())
             },
             &self.poisoned,
@@ -2954,7 +3029,12 @@ END CATCH;
                    ORDER BY FinishedAt DESC;";
         self.rt.block_on(bounded(
             async {
-                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
                 if let Some(r) = rows.first() {
                     Ok(r.get::<chrono::NaiveDateTime, _>(0))
                 } else {
@@ -2972,18 +3052,35 @@ END CATCH;
                    ORDER BY ID;";
         self.rt.block_on(bounded(
             async {
-                let rows = self.client.query(sql, &[]).await?.into_first_result().await?;
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
                 let mut out = Vec::new();
                 for r in rows {
                     let id = r.get::<i32, _>("ID").ok_or("ID missing")?;
                     let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
                     let description = r.get::<&str, _>("Description").map(String::from);
-                    let change = r.get::<&str, _>("Change").ok_or("Change missing")?.to_string();
-                    let changed_at = r.get::<chrono::NaiveDateTime, _>("ChangedAt").ok_or("ChangedAt missing")?;
+                    let change = r
+                        .get::<&str, _>("Change")
+                        .ok_or("Change missing")?
+                        .to_string();
+                    let changed_at = r
+                        .get::<chrono::NaiveDateTime, _>("ChangedAt")
+                        .ok_or("ChangedAt missing")?;
                     let updated_text = r.get::<&str, _>("UpdatedText").map(String::from);
-                    let library_url = r.get::<&str, _>("LibraryUrl").ok_or("LibraryUrl missing")?.to_string();
-                    let first_seen_at = r.get::<chrono::NaiveDateTime, _>("FirstSeenAt").ok_or("FirstSeenAt missing")?;
-                    let snapshot_at = r.get::<chrono::NaiveDateTime, _>("SnapshotAt").ok_or("SnapshotAt missing")?;
+                    let library_url = r
+                        .get::<&str, _>("LibraryUrl")
+                        .ok_or("LibraryUrl missing")?
+                        .to_string();
+                    let first_seen_at = r
+                        .get::<chrono::NaiveDateTime, _>("FirstSeenAt")
+                        .ok_or("FirstSeenAt missing")?;
+                    let snapshot_at = r
+                        .get::<chrono::NaiveDateTime, _>("SnapshotAt")
+                        .ok_or("SnapshotAt missing")?;
 
                     out.push(crate::tech::OllamaModelSummary {
                         id,
@@ -3023,16 +3120,27 @@ END CATCH;
                    END;";
         self.rt.block_on(bounded(
             async {
-                let rows = self.client.query(sql, &[
-                    &m.name,
-                    &m.description,
-                    &m.change,
-                    &m.changed_at,
-                    &m.updated_text,
-                    &m.library_url,
-                    &m.now,
-                ]).await?.into_first_result().await?;
-                let id = rows.first().and_then(|r| r.get::<i32, _>(0)).ok_or("inserted ID missing")?;
+                let rows = self
+                    .client
+                    .query(
+                        sql,
+                        &[
+                            &m.name,
+                            &m.description,
+                            &m.change,
+                            &m.changed_at,
+                            &m.updated_text,
+                            &m.library_url,
+                            &m.now,
+                        ],
+                    )
+                    .await?
+                    .into_first_result()
+                    .await?;
+                let id = rows
+                    .first()
+                    .and_then(|r| r.get::<i32, _>(0))
+                    .ok_or("inserted ID missing")?;
                 Ok(id)
             },
             &self.poisoned,
@@ -3040,14 +3148,23 @@ END CATCH;
     }
 
     /// Load tags for an Ollama model.
-    pub fn load_ollama_library_tags(&mut self, model_id: i32) -> Result<Vec<crate::tech::OllamaTag>> {
-        let sql = "SELECT ID, ModelId, Tag, CONVERT(float, SizeGb) AS SizeGb, Fits, Installed, SortOrder
+    pub fn load_ollama_library_tags(
+        &mut self,
+        model_id: i32,
+    ) -> Result<Vec<crate::tech::OllamaTag>> {
+        let sql =
+            "SELECT ID, ModelId, Tag, CONVERT(float, SizeGb) AS SizeGb, Fits, Installed, SortOrder
                    FROM dbo.OllamaLibraryTags
                    WHERE ModelId = @P1
                    ORDER BY SortOrder, ID;";
         self.rt.block_on(bounded(
             async {
-                let rows = self.client.query(sql, &[&model_id]).await?.into_first_result().await?;
+                let rows = self
+                    .client
+                    .query(sql, &[&model_id])
+                    .await?
+                    .into_first_result()
+                    .await?;
                 let mut out = Vec::new();
                 for r in rows {
                     let id = r.get::<i32, _>("ID");
@@ -3097,14 +3214,19 @@ END CATCH;
                    END;";
         self.rt.block_on(bounded(
             async {
-                self.client.execute(sql, &[
-                    &model_id,
-                    &tag,
-                    &size_str.as_deref(),
-                    &fits,
-                    &installed,
-                    &sort_order,
-                ]).await?;
+                self.client
+                    .execute(
+                        sql,
+                        &[
+                            &model_id,
+                            &tag,
+                            &size_str.as_deref(),
+                            &fits,
+                            &installed,
+                            &sort_order,
+                        ],
+                    )
+                    .await?;
                 Ok(())
             },
             &self.poisoned,
@@ -3124,12 +3246,9 @@ END CATCH;
                    WHERE ModelId = @P3 AND Tag = @P4;";
         self.rt.block_on(bounded(
             async {
-                self.client.execute(sql, &[
-                    &installed,
-                    &fits,
-                    &model_id,
-                    &tag,
-                ]).await?;
+                self.client
+                    .execute(sql, &[&installed, &fits, &model_id, &tag])
+                    .await?;
                 Ok(())
             },
             &self.poisoned,

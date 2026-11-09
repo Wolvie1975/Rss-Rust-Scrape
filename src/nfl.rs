@@ -65,9 +65,7 @@ pub(crate) fn fetch_from(client: &Client, raw: &str, today: NaiveDate) -> Result
     };
     let reconcile_from = today - chrono::Duration::days(7);
     let mut games = BTreeMap::new();
-    let weeks = (1..=18)
-        .map(|w| (2, w))
-        .chain((1..=5).map(|w| (3, w)));
+    let weeks = (1..=18).map(|w| (2, w)).chain((1..=5).map(|w| (3, w)));
     for (season_type, week) in weeks {
         let mut url = base.clone();
         url.set_query(None);
@@ -166,10 +164,7 @@ pub mod tests {
         // Sunday night game: 2026-11-16T01:20Z -> 2026-11-15 in America/Chicago
         let snf = &games[2];
         assert_eq!(snf.team_name, "Cincinnati Bengals");
-        assert_eq!(
-            snf.event.opponent.as_deref(),
-            Some("Pittsburgh Steelers")
-        );
+        assert_eq!(snf.event.opponent.as_deref(), Some("Pittsburgh Steelers"));
         assert_eq!(snf.event.event_date.to_string(), "2026-11-15");
         assert_eq!(
             snf.event.starts_at.unwrap().to_rfc3339(),
@@ -191,10 +186,7 @@ pub mod tests {
         );
         assert!(munich.neutral);
         assert_eq!(munich.event.is_away, Some(false));
-        assert_eq!(
-            munich.event.title,
-            "Detroit Lions vs New England Patriots"
-        );
+        assert_eq!(munich.event.title, "Detroit Lions vs New England Patriots");
         assert_eq!(
             munich.event.location.as_deref(),
             Some("FC Bayern Munich Stadium")
@@ -233,7 +225,11 @@ pub mod tests {
         });
         root["events"].as_array_mut().unwrap().push(pro_bowl);
         let with_pro_bowl = parse(&root, 2026).unwrap();
-        assert!(!with_pro_bowl.iter().any(|g| g.event.game_id == Some(401831718)));
+        assert!(
+            !with_pro_bowl
+                .iter()
+                .any(|g| g.event.game_id == Some(401831718))
+        );
 
         // Once the postseason matchup is decided with two real NFL teams, it is stored.
         let c = &mut root["events"][4]["competitions"][0];

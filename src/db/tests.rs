@@ -2131,7 +2131,9 @@ mod nfl_tests {
         let _ = dotenvy::dotenv();
         let name = std::env::var("NFL_TEST_DATABASE")?;
         if name != "WebScraper_Test" && !name.starts_with("WebScraper_Nfl_Validation") {
-            return Err("use an isolated WebScraper_Test or WebScraper_Nfl_Validation database".into());
+            return Err(
+                "use an isolated WebScraper_Test or WebScraper_Nfl_Validation database".into(),
+            );
         }
         let ado = std::env::var("MSSQL_MIGRATION_CONNECTION_STRING")
             .or_else(|_| std::env::var("MSSQL_CONNECTION_STRING"))?;
@@ -2161,11 +2163,7 @@ mod nfl_tests {
             }
             // Disabled source collects/saves nothing.
             assert_eq!(db.save_espn_schedule(id, &fixtures)?, 0);
-            assert!(
-                !db.sports_event_feeds()?
-                    .iter()
-                    .any(|f| f.id == id)
-            );
+            assert!(!db.sports_event_feeds()?.iter().any(|f| f.id == id));
             // Enable and edit URL; running --configure-nfl again preserves both and doesn't duplicate.
             db.rt.block_on(async {
                 db.client
@@ -2242,10 +2240,7 @@ mod nfl_tests {
             })?;
             assert!(status[0].get::<chrono::NaiveDateTime, _>(0).is_some());
             assert!(status[0].get::<chrono::NaiveDateTime, _>(1).is_some());
-            assert_eq!(
-                status[0].get::<&str, _>(2),
-                Some("NFL scoreboard HTTP 503")
-            );
+            assert_eq!(status[0].get::<&str, _>(2), Some("NFL scoreboard HTTP 503"));
             Ok(())
         })();
         db.rt.block_on(async {

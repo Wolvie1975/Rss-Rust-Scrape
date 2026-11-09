@@ -303,10 +303,7 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
                 id > 0
                     && !matches!(id, 31 | 32)
                     && !matches!(display, "TBD" | "AFC" | "NFC")
-                    && !matches!(
-                        team["abbreviation"].as_str(),
-                        Some("TBD" | "AFC" | "NFC")
-                    )
+                    && !matches!(team["abbreviation"].as_str(), Some("TBD" | "AFC" | "NFC"))
             };
             if !valid_team(team_id, &name, &own["team"])
                 || !valid_team(opponent_id, &opponent, &opp["team"])

@@ -41,8 +41,7 @@ pub struct ReleaseItem {
 
 pub fn strip_version_prefix(raw: &str) -> String {
     let s = raw.trim();
-    if let Some(stripped) = s.strip_prefix('v')
-        .or_else(|| s.strip_prefix('V')) {
+    if let Some(stripped) = s.strip_prefix('v').or_else(|| s.strip_prefix('V')) {
         stripped.trim().to_string()
     } else {
         s.to_string()
@@ -148,63 +147,72 @@ pub fn collect_github_releases(
 
     // Check if body is JSON (e.g. GitHub Releases API)
     if let Ok(json) = serde_json::from_str::<Value>(body)
-        && let Some(arr) = json.as_array() {
-            for r in arr {
-                let is_pre = r["prerelease"].as_bool().unwrap_or(false);
-                let is_draft = r["draft"].as_bool().unwrap_or(false);
-                if is_draft || (is_pre && !project.include_prerelease) {
-                    continue;
-                }
-
-                let tag_raw = r["tag_name"].as_str().unwrap_or("");
-                let name_raw = r["name"].as_str().unwrap_or("");
-                let ver_str = if !tag_raw.is_empty() { tag_raw } else { name_raw };
-
-                let tag_lower = ver_str.to_ascii_lowercase();
-                let is_pre_name = tag_lower.contains("rc")
-                    || tag_lower.contains("beta")
-                    || tag_lower.contains("alpha")
-                    || tag_lower.contains("pre")
-                    || tag_lower.contains("bleeding-edge")
-                    || tag_lower.contains("experimental");
-
-                if is_pre_name && !project.include_prerelease {
-                    continue;
-                }
-
-                let mut ver = ver_str.to_string();
-                if let Some(stripped) = ver.strip_prefix(&project.name) {
-                    ver = stripped.trim_start_matches(['-', '_', ' ']).to_string();
-                }
-                if let Some(stripped) = ver.strip_prefix(&project.slug) {
-                    ver = stripped.trim_start_matches(['-', '_', ' ']).to_string();
-                }
-                ver = strip_version_prefix(&ver);
-
-                if ver.is_empty() {
-                    continue;
-                }
-
-                let released_at = r["published_at"]
-                    .as_str()
-                    .or_else(|| r["created_at"].as_str())
-                    .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-                    .map(|dt| dt.naive_utc())
-                    .unwrap_or(now);
-
-                let notes_url = r["html_url"].as_str().map(String::from);
-                let title = if name_raw.is_empty() { None } else { Some(name_raw.to_string()) };
-
-                out.push(ReleaseItem {
-                    project_id: project.id,
-                    version: ver,
-                    released_at,
-                    notes_url,
-                    title,
-                    is_prerelease: is_pre || is_pre_name,
-                });
+        && let Some(arr) = json.as_array()
+    {
+        for r in arr {
+            let is_pre = r["prerelease"].as_bool().unwrap_or(false);
+            let is_draft = r["draft"].as_bool().unwrap_or(false);
+            if is_draft || (is_pre && !project.include_prerelease) {
+                continue;
             }
-            return Ok(out);
+
+            let tag_raw = r["tag_name"].as_str().unwrap_or("");
+            let name_raw = r["name"].as_str().unwrap_or("");
+            let ver_str = if !tag_raw.is_empty() {
+                tag_raw
+            } else {
+                name_raw
+            };
+
+            let tag_lower = ver_str.to_ascii_lowercase();
+            let is_pre_name = tag_lower.contains("rc")
+                || tag_lower.contains("beta")
+                || tag_lower.contains("alpha")
+                || tag_lower.contains("pre")
+                || tag_lower.contains("bleeding-edge")
+                || tag_lower.contains("experimental");
+
+            if is_pre_name && !project.include_prerelease {
+                continue;
+            }
+
+            let mut ver = ver_str.to_string();
+            if let Some(stripped) = ver.strip_prefix(&project.name) {
+                ver = stripped.trim_start_matches(['-', '_', ' ']).to_string();
+            }
+            if let Some(stripped) = ver.strip_prefix(&project.slug) {
+                ver = stripped.trim_start_matches(['-', '_', ' ']).to_string();
+            }
+            ver = strip_version_prefix(&ver);
+
+            if ver.is_empty() {
+                continue;
+            }
+
+            let released_at = r["published_at"]
+                .as_str()
+                .or_else(|| r["created_at"].as_str())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.naive_utc())
+                .unwrap_or(now);
+
+            let notes_url = r["html_url"].as_str().map(String::from);
+            let title = if name_raw.is_empty() {
+                None
+            } else {
+                Some(name_raw.to_string())
+            };
+
+            out.push(ReleaseItem {
+                project_id: project.id,
+                version: ver,
+                released_at,
+                notes_url,
+                title,
+                is_prerelease: is_pre || is_pre_name,
+            });
+        }
+        return Ok(out);
     }
 
     let doc = roxmltree::Document::parse(body)?;
@@ -276,7 +284,11 @@ pub fn collect_github_releases(
             version: ver,
             released_at,
             notes_url: href,
-            title: if title.is_empty() { None } else { Some(title.to_string()) },
+            title: if title.is_empty() {
+                None
+            } else {
+                Some(title.to_string())
+            },
             is_prerelease: is_pre,
         });
     }
@@ -290,7 +302,9 @@ pub fn collect_gitlab_tags(
     project: &ReleaseProject,
 ) -> Result<Vec<ReleaseItem>> {
     let json: Value = serde_json::from_str(body)?;
-    let tags = json.as_array().ok_or("gitlab tags response is not an array")?;
+    let tags = json
+        .as_array()
+        .ok_or("gitlab tags response is not an array")?;
     let mut out = Vec::new();
     let now = Utc::now().naive_utc();
 
@@ -366,7 +380,9 @@ pub fn collect_rss_releases(
     body: &str,
     project: &ReleaseProject,
 ) -> Result<Vec<ReleaseItem>> {
-    let feed = feed_rs::parser::Builder::new().build().parse(body.as_bytes())?;
+    let feed = feed_rs::parser::Builder::new()
+        .build()
+        .parse(body.as_bytes())?;
     let mut out = Vec::new();
     let now = Utc::now().naive_utc();
 
@@ -377,7 +393,11 @@ pub fn collect_rss_releases(
     };
 
     for entry in feed.entries {
-        let title = entry.title.as_ref().map(|t| t.content.as_str()).unwrap_or("");
+        let title = entry
+            .title
+            .as_ref()
+            .map(|t| t.content.as_str())
+            .unwrap_or("");
         let ver = if let Some(ref r) = re {
             if let Some(caps) = r.captures(title) {
                 if let Some(m) = caps.get(1) {
@@ -420,7 +440,11 @@ pub fn collect_rss_releases(
             version: ver,
             released_at,
             notes_url: link,
-            title: if title.is_empty() { None } else { Some(title.to_string()) },
+            title: if title.is_empty() {
+                None
+            } else {
+                Some(title.to_string())
+            },
             is_prerelease: is_pre,
         });
     }
@@ -509,7 +533,8 @@ pub struct DevReadingItem {
 
 pub fn extract_domain(raw_url: &str) -> Option<String> {
     let u = Url::parse(raw_url).ok()?;
-    u.host_str().map(|h| h.trim_start_matches("www.").to_string())
+    u.host_str()
+        .map(|h| h.trim_start_matches("www.").to_string())
 }
 
 pub fn collect_hn_top10(client: &Client) -> Result<Vec<DevReadingItem>> {
@@ -699,8 +724,11 @@ pub fn parse_statuspage_summary(
     // Check if any component is under_maintenance
     if indicator == "none"
         && let Some(comps) = json["components"].as_array()
-        && comps.iter().any(|c| c["status"].as_str() == Some("under_maintenance")) {
-            indicator = "maintenance".to_string();
+        && comps
+            .iter()
+            .any(|c| c["status"].as_str() == Some("under_maintenance"))
+    {
+        indicator = "maintenance".to_string();
     }
 
     let mut inc_name = None;
@@ -720,7 +748,10 @@ pub fn parse_statuspage_summary(
                 inc_url = inc["shortlink"].as_str().map(String::from);
 
                 if let Some(comps) = inc["components"].as_array() {
-                    inc_component = comps.first().and_then(|c| c["name"].as_str()).map(String::from);
+                    inc_component = comps
+                        .first()
+                        .and_then(|c| c["name"].as_str())
+                        .map(String::from);
                 }
                 break;
             }
@@ -822,41 +853,51 @@ pub fn check_homelab_service(
 
     if service.check_kind == "tautulli" && service.slug == "plex" {
         if let Some(t) = cx.shared_tautulli
-            && t.is_success {
-                let detail = t.stream_count.as_ref().map(|c| format!("{c} streaming"));
-                let state = if t.latency_ms > service.slow_ms { "slow" } else { "ok" };
-                let state_since = if cx.prev_state == Some(state) {
-                    cx.prev_state_since.unwrap_or(now)
-                } else {
-                    now
-                };
-                return HomelabServiceStatusUpdate {
-                    service_id: service.id,
-                    state: state.to_string(),
-                    latency_ms: Some(t.latency_ms),
-                    detail,
-                    state_since,
-                    checked_at: now,
-                    fail_count: 0,
-                };
+            && t.is_success
+        {
+            let detail = t.stream_count.as_ref().map(|c| format!("{c} streaming"));
+            let state = if t.latency_ms > service.slow_ms {
+                "slow"
+            } else {
+                "ok"
+            };
+            let state_since = if cx.prev_state == Some(state) {
+                cx.prev_state_since.unwrap_or(now)
+            } else {
+                now
+            };
+            return HomelabServiceStatusUpdate {
+                service_id: service.id,
+                state: state.to_string(),
+                latency_ms: Some(t.latency_ms),
+                detail,
+                state_since,
+                checked_at: now,
+                fail_count: 0,
+            };
         }
-        let plex_identity_url = service.link_url.as_deref()
+        let plex_identity_url = service
+            .link_url
+            .as_deref()
             .and_then(|u| u.strip_suffix("/web"))
             .map(|u| format!("{u}/identity"))
             .unwrap_or_else(|| "http://host.docker.internal:32400/identity".to_string());
-        return perform_http_check(
-            client,
-            service,
-            &plex_identity_url,
-            None,
-            cx,
-        );
+        return perform_http_check(client, service, &plex_identity_url, None, cx);
     }
 
     if service.check_kind == "tautulli" {
         let mut url = match &service.check_url {
             Some(u) => u.clone(),
-            None => return make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some("missing URL".to_string())),
+            None => {
+                return make_failed_update(
+                    service,
+                    cx.prev_state,
+                    cx.prev_state_since,
+                    cx.prev_fail_count,
+                    now,
+                    Some("missing URL".to_string()),
+                );
+            }
         };
         if let Some(ref sec_var) = service.secret_env {
             if let Ok(val) = std::env::var(sec_var) {
@@ -865,7 +906,14 @@ pub fn check_homelab_service(
                     url.push_str(&format!("{sep}apikey={}", val.trim()));
                 }
             } else {
-                return make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some("unconfigured".to_string()));
+                return make_failed_update(
+                    service,
+                    cx.prev_state,
+                    cx.prev_state_since,
+                    cx.prev_fail_count,
+                    now,
+                    Some("unconfigured".to_string()),
+                );
             }
         }
         let start = std::time::Instant::now();
@@ -875,27 +923,46 @@ pub fn check_homelab_service(
                 if resp.status().is_success() {
                     let body = resp.text().unwrap_or_default();
                     if let Ok(v) = serde_json::from_str::<Value>(&body)
-                        && v["response"]["result"].as_str() == Some("success") {
-                            let state = if latency > service.slow_ms { "slow" } else { "ok" };
-                            let state_since = if cx.prev_state == Some(state) {
-                                cx.prev_state_since.unwrap_or(now)
-                            } else {
-                                now
-                            };
-                            return HomelabServiceStatusUpdate {
-                                service_id: service.id,
-                                state: state.to_string(),
-                                latency_ms: Some(latency),
-                                detail: None,
-                                state_since,
-                                checked_at: now,
-                                fail_count: 0,
-                            };
+                        && v["response"]["result"].as_str() == Some("success")
+                    {
+                        let state = if latency > service.slow_ms {
+                            "slow"
+                        } else {
+                            "ok"
+                        };
+                        let state_since = if cx.prev_state == Some(state) {
+                            cx.prev_state_since.unwrap_or(now)
+                        } else {
+                            now
+                        };
+                        return HomelabServiceStatusUpdate {
+                            service_id: service.id,
+                            state: state.to_string(),
+                            latency_ms: Some(latency),
+                            detail: None,
+                            state_since,
+                            checked_at: now,
+                            fail_count: 0,
+                        };
                     }
-                    make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some("invalid response".to_string()))
+                    make_failed_update(
+                        service,
+                        cx.prev_state,
+                        cx.prev_state_since,
+                        cx.prev_fail_count,
+                        now,
+                        Some("invalid response".to_string()),
+                    )
                 } else {
                     let code = resp.status().as_u16();
-                    make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some(format!("HTTP {code}")))
+                    make_failed_update(
+                        service,
+                        cx.prev_state,
+                        cx.prev_state_since,
+                        cx.prev_fail_count,
+                        now,
+                        Some(format!("HTTP {code}")),
+                    )
                 }
             }
             Err(e) => {
@@ -906,21 +973,31 @@ pub fn check_homelab_service(
                 } else {
                     "network error"
                 };
-                make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some(detail.to_string()))
+                make_failed_update(
+                    service,
+                    cx.prev_state,
+                    cx.prev_state_since,
+                    cx.prev_fail_count,
+                    now,
+                    Some(detail.to_string()),
+                )
             }
         }
     } else {
         let url = match &service.check_url {
             Some(u) => u.as_str(),
-            None => return make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some("missing URL".to_string())),
+            None => {
+                return make_failed_update(
+                    service,
+                    cx.prev_state,
+                    cx.prev_state_since,
+                    cx.prev_fail_count,
+                    now,
+                    Some("missing URL".to_string()),
+                );
+            }
         };
-        perform_http_check(
-            client,
-            service,
-            url,
-            service.expect_body.as_deref(),
-            cx,
-        )
+        perform_http_check(client, service, url, service.expect_body.as_deref(), cx)
     }
 }
 
@@ -940,10 +1017,21 @@ fn perform_http_check(
                 if let Some(exp) = expect_body {
                     let body = resp.text().unwrap_or_default();
                     if !body.contains(exp) {
-                        return make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some("unexpected body".to_string()));
+                        return make_failed_update(
+                            service,
+                            cx.prev_state,
+                            cx.prev_state_since,
+                            cx.prev_fail_count,
+                            now,
+                            Some("unexpected body".to_string()),
+                        );
                     }
                 }
-                let state = if latency > service.slow_ms { "slow" } else { "ok" };
+                let state = if latency > service.slow_ms {
+                    "slow"
+                } else {
+                    "ok"
+                };
                 let state_since = if cx.prev_state == Some(state) {
                     cx.prev_state_since.unwrap_or(now)
                 } else {
@@ -960,7 +1048,14 @@ fn perform_http_check(
                 }
             } else {
                 let code = resp.status().as_u16();
-                make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some(format!("HTTP {code}")))
+                make_failed_update(
+                    service,
+                    cx.prev_state,
+                    cx.prev_state_since,
+                    cx.prev_fail_count,
+                    now,
+                    Some(format!("HTTP {code}")),
+                )
             }
         }
         Err(e) => {
@@ -971,7 +1066,14 @@ fn perform_http_check(
             } else {
                 "network error"
             };
-            make_failed_update(service, cx.prev_state, cx.prev_state_since, cx.prev_fail_count, now, Some(detail.to_string()))
+            make_failed_update(
+                service,
+                cx.prev_state,
+                cx.prev_state_since,
+                cx.prev_fail_count,
+                now,
+                Some(detail.to_string()),
+            )
         }
     }
 }
@@ -1076,27 +1178,34 @@ pub fn parse_ollama_search_page(html_body: &str) -> Result<Vec<OllamaScrapedMode
             _ => continue,
         };
         let raw_name = href.trim_start_matches("/library/");
-        if raw_name.is_empty() || raw_name.contains(':') || !seen_names.insert(raw_name.to_string()) {
+        if raw_name.is_empty() || raw_name.contains(':') || !seen_names.insert(raw_name.to_string())
+        {
             continue;
         }
 
         let name = raw_name.to_string();
         let library_url = format!("https://ollama.com/library/{name}");
 
-        let description = a.select(&p_sel).next().map(|p| {
-            p.text().collect::<Vec<_>>().join(" ").trim().to_string()
-        }).filter(|s| !s.is_empty());
+        let description = a
+            .select(&p_sel)
+            .next()
+            .map(|p| p.text().collect::<Vec<_>>().join(" ").trim().to_string())
+            .filter(|s| !s.is_empty());
 
         let mut updated_text = None;
         let mut card_tags = Vec::new();
 
         for span in a.select(&span_sel) {
             if let Some(title) = span.value().attr("title")
-                && title.starts_with("Updated ") {
-                    updated_text = Some(title.to_string());
+                && title.starts_with("Updated ")
+            {
+                updated_text = Some(title.to_string());
             }
             let txt = span.text().collect::<Vec<_>>().join(" ").trim().to_string();
-            if updated_text.is_none() && span.value().classes().any(|c| c == "text-muted") && !txt.is_empty() {
+            if updated_text.is_none()
+                && span.value().classes().any(|c| c == "text-muted")
+                && !txt.is_empty()
+            {
                 updated_text = Some(txt.clone());
             }
             if tag_re.is_match(&txt) {
@@ -1143,15 +1252,16 @@ pub fn parse_ollama_tags_page(model_name: &str, html_body: &str) -> Result<Vec<O
 
             if let Some(caps) = size_re.captures(&container_html)
                 && let (Some(num_m), Some(unit_m)) = (caps.get(1), caps.get(2))
-                && let Ok(num) = num_m.as_str().parse::<f64>() {
-                    let unit = unit_m.as_str().to_ascii_uppercase();
-                    let in_gb = match unit.as_str() {
-                        "GB" => num,
-                        "MB" => num / 1024.0,
-                        "KB" => num / (1024.0 * 1024.0),
-                        _ => num,
-                    };
-                    size_gb = Some(((in_gb * 10.0).round()) / 10.0);
+                && let Ok(num) = num_m.as_str().parse::<f64>()
+            {
+                let unit = unit_m.as_str().to_ascii_uppercase();
+                let in_gb = match unit.as_str() {
+                    "GB" => num,
+                    "MB" => num / 1024.0,
+                    "KB" => num / (1024.0 * 1024.0),
+                    _ => num,
+                };
+                size_gb = Some(((in_gb * 10.0).round()) / 10.0);
             }
         }
 
@@ -1189,14 +1299,23 @@ mod tests {
 
     #[test]
     fn test_extract_domain() {
-        assert_eq!(extract_domain("https://www.github.com/torvalds/linux"), Some("github.com".into()));
-        assert_eq!(extract_domain("http://example.com/item?id=1"), Some("example.com".into()));
+        assert_eq!(
+            extract_domain("https://www.github.com/torvalds/linux"),
+            Some("github.com".into())
+        );
+        assert_eq!(
+            extract_domain("http://example.com/item?id=1"),
+            Some("example.com".into())
+        );
         assert_eq!(extract_domain("not a url"), None);
     }
 
     #[test]
     fn test_compare_semver() {
-        assert_eq!(compare_semver("6.18.60", "6.12.115"), std::cmp::Ordering::Less);
+        assert_eq!(
+            compare_semver("6.18.60", "6.12.115"),
+            std::cmp::Ordering::Less
+        );
         assert_eq!(compare_semver("6.1.1", "6.1.1"), std::cmp::Ordering::Equal);
     }
 
@@ -1299,7 +1418,10 @@ mod tests {
             enabled: true,
             sort_order: 70,
         };
-        let now = chrono::NaiveDate::from_ymd_opt(2026, 11, 1).unwrap().and_hms_opt(12, 0, 0).unwrap();
+        let now = chrono::NaiveDate::from_ymd_opt(2026, 11, 1)
+            .unwrap()
+            .and_hms_opt(12, 0, 0)
+            .unwrap();
         let ten_min_ago = now - chrono::Duration::minutes(10);
         let cx1 = HomelabCheckContext {
             prev_state: None,

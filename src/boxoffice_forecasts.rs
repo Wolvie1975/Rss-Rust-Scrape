@@ -38,7 +38,11 @@ struct Range {
 fn range(s: &str) -> Result<Range> {
     if !s.contains('(') {
         let (low, high) = plain_range(s)?;
-        return Ok(Range { low, high, extended: None });
+        return Ok(Range {
+            low,
+            high,
+            extended: None,
+        });
     }
     let mut three_day = None;
     let mut extended = None;
@@ -62,7 +66,11 @@ fn range(s: &str) -> Result<Range> {
         }
     }
     let (low, high) = three_day.ok_or("3-day forecast range missing")?;
-    Ok(Range { low, high, extended })
+    Ok(Range {
+        low,
+        high,
+        extended,
+    })
 }
 fn plain_range(s: &str) -> Result<(i64, i64)> {
     let normalized = s.replace(['–', '—'], "-");
@@ -194,7 +202,11 @@ pub fn parse(body: &str, kind: &str, source: &str, today: NaiveDate) -> Result<S
                    value: &str,
                    as_of: NaiveDate|
      -> Result<()> {
-        let Range { low, high, extended } = range(value)?;
+        let Range {
+            low,
+            high,
+            extended,
+        } = range(value)?;
         if title.is_empty()
             || title.chars().count() > 300
             || distributor.chars().count() > 300
@@ -415,8 +427,14 @@ mod tests {
             high: 45_000_000,
             extended: Some((5, 50_000_000, 70_000_000)),
         };
-        assert_eq!(range("$35M – $45M (3-Day), $50M – $70M (5-Day)").unwrap(), holiday);
-        assert_eq!(range("$50M – $70M (5-Day), $35M – $45M (3-Day)").unwrap(), holiday);
+        assert_eq!(
+            range("$35M – $45M (3-Day), $50M – $70M (5-Day)").unwrap(),
+            holiday
+        );
+        assert_eq!(
+            range("$50M – $70M (5-Day), $35M – $45M (3-Day)").unwrap(),
+            holiday
+        );
         assert!(range("$50M – $70M (5-Day)").is_err());
         assert!(range("$35M – $45M (3-Day), $50M – $70M (Opening Week)").is_err());
         assert!(range("$35M – $45M, $50M – $70M (5-Day)").is_err());
@@ -478,12 +496,29 @@ mod tests {
             "<h2>Long Range Forecast – Nov. 25, 2026</h2><h2><em>Film</em> | Studio</h2><h2>Domestic Opening Weekend Range: $35M – $45M (3-Day), $50M – $70M (5-Day)</h2>",
             "Long Range Forecast: Film",
         );
-        let row = &parse(&holiday, "long-range", INDEX, date("October 13, 2026").unwrap())
-            .unwrap()
-            .rows[0];
+        let row = &parse(
+            &holiday,
+            "long-range",
+            INDEX,
+            date("October 13, 2026").unwrap(),
+        )
+        .unwrap()
+        .rows[0];
         assert_eq!(
-            (&row["low"], &row["high"], &row["extendedDays"], &row["extendedLow"], &row["extendedHigh"]),
-            (&json!(35_000_000), &json!(45_000_000), &json!(5), &json!(50_000_000), &json!(70_000_000))
+            (
+                &row["low"],
+                &row["high"],
+                &row["extendedDays"],
+                &row["extendedLow"],
+                &row["extendedHigh"]
+            ),
+            (
+                &json!(35_000_000),
+                &json!(45_000_000),
+                &json!(5),
+                &json!(50_000_000),
+                &json!(70_000_000)
+            )
         );
     }
     #[test]

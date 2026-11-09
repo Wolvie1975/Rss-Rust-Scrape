@@ -659,7 +659,10 @@ impl Run<'_> {
         let _timer = metrics::Stage::new("tech_releases");
         let dry = self.cli.dry_run;
         let projects = self.db()?.load_enabled_tech_projects()?;
-        eprintln!("tech releases: checking {} enabled projects", projects.len());
+        eprintln!(
+            "tech releases: checking {} enabled projects",
+            projects.len()
+        );
 
         let mut kernel_cache: Option<String> = None;
         let mut total_saved = 0;
@@ -681,13 +684,20 @@ impl Run<'_> {
                                 b
                             }
                         };
-                        web_scraper::tech::collect_kernel_org(client, &body, std::slice::from_ref(p))?
+                        web_scraper::tech::collect_kernel_org(
+                            client,
+                            &body,
+                            std::slice::from_ref(p),
+                        )?
                     }
                     "github_releases" => {
                         let body = client
                             .get(&p.source_url)
                             .header("User-Agent", web_scraper::tech::USER_AGENT)
-                            .header("Accept", "application/vnd.github+json, application/atom+xml, */*")
+                            .header(
+                                "Accept",
+                                "application/vnd.github+json, application/atom+xml, */*",
+                            )
                             .timeout(Duration::from_secs(30))
                             .send()?
                             .error_for_status()?
@@ -734,7 +744,12 @@ impl Run<'_> {
                     }
                     self.db()?.update_tech_project_status(p.id, None)?;
                 }
-                eprintln!("tech release project {}: {} releases found{}", p.slug, count, self.cli.dry_suffix());
+                eprintln!(
+                    "tech release project {}: {} releases found{}",
+                    p.slug,
+                    count,
+                    self.cli.dry_suffix()
+                );
                 Ok(count)
             })();
 
@@ -746,7 +761,8 @@ impl Run<'_> {
                 Err(e) => {
                     let err_msg = e.to_string();
                     eprintln!("tech release project {} failed: {}", p.slug, err_msg);
-                    self.failures.push(format!("tech release {}: {err_msg}", p.slug));
+                    self.failures
+                        .push(format!("tech release {}: {err_msg}", p.slug));
                     if !dry {
                         let _ = self.db()?.update_tech_project_status(p.id, Some(&err_msg));
                     }
@@ -765,7 +781,11 @@ impl Run<'_> {
         // HN
         match web_scraper::tech::collect_hn_top10(client) {
             Ok(items) => {
-                eprintln!("tech reading (HN): {} stories collected{}", items.len(), self.cli.dry_suffix());
+                eprintln!(
+                    "tech reading (HN): {} stories collected{}",
+                    items.len(),
+                    self.cli.dry_suffix()
+                );
                 if !dry {
                     self.db()?.replace_tech_dev_reading("hn", &items)?;
                 }
@@ -781,7 +801,11 @@ impl Run<'_> {
         // Lobsters
         match web_scraper::tech::collect_lobsters_top10(client) {
             Ok(items) => {
-                eprintln!("tech reading (Lobsters): {} stories collected{}", items.len(), self.cli.dry_suffix());
+                eprintln!(
+                    "tech reading (Lobsters): {} stories collected{}",
+                    items.len(),
+                    self.cli.dry_suffix()
+                );
                 if !dry {
                     self.db()?.replace_tech_dev_reading("lobsters", &items)?;
                 }
@@ -818,7 +842,13 @@ impl Run<'_> {
 
             match s_res {
                 Ok(st) => {
-                    eprintln!("tech status {}: indicator={} desc={:?}{}", s.slug, st.indicator, st.description, self.cli.dry_suffix());
+                    eprintln!(
+                        "tech status {}: indicator={} desc={:?}{}",
+                        s.slug,
+                        st.indicator,
+                        st.description,
+                        self.cli.dry_suffix()
+                    );
                     if !dry {
                         self.db()?.upsert_tech_service_status(&st)?;
                     }
@@ -827,7 +857,8 @@ impl Run<'_> {
                 Err(e) => {
                     let err_msg = e.to_string();
                     eprintln!("tech status {} failed: {}", s.slug, err_msg);
-                    self.failures.push(format!("tech status {}: {err_msg}", s.slug));
+                    self.failures
+                        .push(format!("tech status {}: {err_msg}", s.slug));
                     if !dry {
                         let _ = self.db()?.record_tech_service_failure(s.id, &err_msg);
                     }
@@ -851,30 +882,38 @@ impl Run<'_> {
 
         let mut shared_tautulli = None;
         if let Some(ts) = services.iter().find(|s| s.slug == "tautulli")
-            && let Some(ref u) = ts.check_url {
-                let mut url = u.clone();
-                if let Some(ref sec_var) = ts.secret_env
-                    && let Ok(val) = std::env::var(sec_var) {
-                        let sep = if url.contains('?') { "&" } else { "?" };
-                        url.push_str(&format!("{sep}apikey={}", val.trim()));
+            && let Some(ref u) = ts.check_url
+        {
+            let mut url = u.clone();
+            if let Some(ref sec_var) = ts.secret_env
+                && let Ok(val) = std::env::var(sec_var)
+            {
+                let sep = if url.contains('?') { "&" } else { "?" };
+                url.push_str(&format!("{sep}apikey={}", val.trim()));
+            }
+            let start = std::time::Instant::now();
+            if let Ok(resp) = client.get(&url).send() {
+                let lat = start.elapsed().as_millis() as i32;
+                if resp.status().is_success()
+                    && let Ok(val) =
+                        serde_json::from_str::<serde_json::Value>(&resp.text().unwrap_or_default())
+                    && val["response"]["result"].as_str() == Some("success")
+                {
+                    let sc = val["response"]["data"]["stream_count"]
+                        .as_str()
+                        .map(|s| s.to_string())
+                        .or_else(|| {
+                            val["response"]["data"]["stream_count"]
+                                .as_i64()
+                                .map(|v| v.to_string())
+                        });
+                    shared_tautulli = Some(web_scraper::tech::TautulliActivity {
+                        is_success: true,
+                        latency_ms: lat,
+                        stream_count: sc,
+                    });
                 }
-                let start = std::time::Instant::now();
-                if let Ok(resp) = client.get(&url).send() {
-                    let lat = start.elapsed().as_millis() as i32;
-                    if resp.status().is_success()
-                        && let Ok(val) = serde_json::from_str::<serde_json::Value>(&resp.text().unwrap_or_default())
-                        && val["response"]["result"].as_str() == Some("success") {
-                            let sc = val["response"]["data"]["stream_count"]
-                                .as_str()
-                                .map(|s| s.to_string())
-                                .or_else(|| val["response"]["data"]["stream_count"].as_i64().map(|v| v.to_string()));
-                            shared_tautulli = Some(web_scraper::tech::TautulliActivity {
-                                is_success: true,
-                                latency_ms: lat,
-                                stream_count: sc,
-                            });
-                    }
-                }
+            }
         }
 
         for s in &services {
@@ -892,11 +931,7 @@ impl Run<'_> {
                 shared_tautulli: shared_tautulli.as_ref(),
             };
 
-            let update = web_scraper::tech::check_homelab_service(
-                client,
-                s,
-                &cx,
-            );
+            let update = web_scraper::tech::check_homelab_service(client, s, &cx);
 
             eprintln!(
                 "homelab {}: state={} latency={:?}ms detail={:?}{}",
@@ -920,7 +955,11 @@ impl Run<'_> {
         Ok(())
     }
 
-    fn collect_ollama_library(&mut self, client: &reqwest::blocking::Client, force_search: bool) -> Result<()> {
+    fn collect_ollama_library(
+        &mut self,
+        client: &reqwest::blocking::Client,
+        force_search: bool,
+    ) -> Result<()> {
         let _timer = metrics::Stage::new("ollama_library");
         let dry = self.cli.dry_run;
         let ollama_url = std::env::var("OLLAMA_URL")
@@ -955,28 +994,36 @@ impl Run<'_> {
                 Ok(r) if r.status().is_success() => {
                     let html = r.text().unwrap_or_default();
                     if let Ok(scraped_models) = web_scraper::tech::parse_ollama_search_page(&html) {
-                        eprintln!("ollama library: parsed {} models from search", scraped_models.len());
+                        eprintln!(
+                            "ollama library: parsed {} models from search",
+                            scraped_models.len()
+                        );
                         let existing_map: std::collections::HashMap<_, _> = existing_models
                             .into_iter()
                             .map(|m| (m.name.clone(), m))
                             .collect();
 
                         for sm in scraped_models {
-                            let (change, changed_at, needs_tags_fetch) = if let Some(em) = existing_map.get(&sm.name) {
-                                let updated_changed = sm.updated_text.is_some() && sm.updated_text != em.updated_text;
-                                if updated_changed {
-                                    ("updated", now, true)
+                            let (change, changed_at, needs_tags_fetch) =
+                                if let Some(em) = existing_map.get(&sm.name) {
+                                    let updated_changed = sm.updated_text.is_some()
+                                        && sm.updated_text != em.updated_text;
+                                    if updated_changed {
+                                        ("updated", now, true)
+                                    } else {
+                                        (em.change.as_str(), em.changed_at, false)
+                                    }
                                 } else {
-                                    (em.change.as_str(), em.changed_at, false)
-                                }
-                            } else {
-                                let c_at = if is_baseline {
-                                    chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()
-                                } else {
-                                    now
+                                    let c_at = if is_baseline {
+                                        chrono::NaiveDate::from_ymd_opt(2000, 1, 1)
+                                            .unwrap()
+                                            .and_hms_opt(0, 0, 0)
+                                            .unwrap()
+                                    } else {
+                                        now
+                                    };
+                                    ("new", c_at, true)
                                 };
-                                ("new", c_at, true)
-                            };
 
                             let model_id = if !dry {
                                 let upsert_req = web_scraper::tech::OllamaModelUpsert {
@@ -994,23 +1041,37 @@ impl Run<'_> {
                             };
 
                             if needs_tags_fetch && !dry {
-                                let tags_url = format!("https://ollama.com/library/{}/tags", sm.name);
-                                if let Ok(t_resp) = client.get(&tags_url).header("User-Agent", web_scraper::tech::USER_AGENT).timeout(Duration::from_secs(15)).send()
-                                    && t_resp.status().is_success() {
-                                        let tags_html = t_resp.text().unwrap_or_default();
-                                        if let Ok(scraped_tags) = web_scraper::tech::parse_ollama_tags_page(&sm.name, &tags_html) {
-                                            for (idx, st) in scraped_tags.into_iter().enumerate() {
-                                                let fits = web_scraper::tech::calculate_ollama_fits(st.size_gb, &st.tag, ollama_mem_gb);
-                                                let _ = self.db()?.upsert_ollama_library_tag(
-                                                    model_id,
-                                                    &st.tag,
-                                                    st.size_gb,
-                                                    fits,
-                                                    false,
-                                                    (idx + 1) as i32,
-                                                );
-                                            }
+                                let tags_url =
+                                    format!("https://ollama.com/library/{}/tags", sm.name);
+                                if let Ok(t_resp) = client
+                                    .get(&tags_url)
+                                    .header("User-Agent", web_scraper::tech::USER_AGENT)
+                                    .timeout(Duration::from_secs(15))
+                                    .send()
+                                    && t_resp.status().is_success()
+                                {
+                                    let tags_html = t_resp.text().unwrap_or_default();
+                                    if let Ok(scraped_tags) =
+                                        web_scraper::tech::parse_ollama_tags_page(
+                                            &sm.name, &tags_html,
+                                        )
+                                    {
+                                        for (idx, st) in scraped_tags.into_iter().enumerate() {
+                                            let fits = web_scraper::tech::calculate_ollama_fits(
+                                                st.size_gb,
+                                                &st.tag,
+                                                ollama_mem_gb,
+                                            );
+                                            let _ = self.db()?.upsert_ollama_library_tag(
+                                                model_id,
+                                                &st.tag,
+                                                st.size_gb,
+                                                fits,
+                                                false,
+                                                (idx + 1) as i32,
+                                            );
                                         }
+                                    }
                                 }
                             }
                         }
@@ -1044,14 +1105,17 @@ impl Run<'_> {
             for m in models {
                 let tags = self.db()?.load_ollama_library_tags(m.id)?;
                 for t in tags {
-                    let fits = web_scraper::tech::calculate_ollama_fits(t.size_gb, &t.tag, ollama_mem_gb);
+                    let fits =
+                        web_scraper::tech::calculate_ollama_fits(t.size_gb, &t.tag, ollama_mem_gb);
                     let installed = if let Some(ref local) = local_models {
                         local.contains(&format!("{}:{}", m.name, t.tag))
                             || (t.tag == "latest" && local.contains(&m.name))
                     } else {
                         t.installed
                     };
-                    let _ = self.db()?.update_ollama_tag_installed_and_fits(m.id, &t.tag, installed, fits);
+                    let _ = self
+                        .db()?
+                        .update_ollama_tag_installed_and_fits(m.id, &t.tag, installed, fits);
                 }
             }
         }
@@ -2227,30 +2291,39 @@ fn main() -> Result<()> {
 
                     let mut shared_tautulli = None;
                     if let Some(ts) = services.iter().find(|s| s.slug == "tautulli")
-                        && let Some(ref u) = ts.check_url {
-                            let mut url = u.clone();
-                            if let Some(ref sec_var) = ts.secret_env
-                                && let Ok(val) = std::env::var(sec_var) {
-                                    let sep = if url.contains('?') { "&" } else { "?" };
-                                    url.push_str(&format!("{sep}apikey={}", val.trim()));
+                        && let Some(ref u) = ts.check_url
+                    {
+                        let mut url = u.clone();
+                        if let Some(ref sec_var) = ts.secret_env
+                            && let Ok(val) = std::env::var(sec_var)
+                        {
+                            let sep = if url.contains('?') { "&" } else { "?" };
+                            url.push_str(&format!("{sep}apikey={}", val.trim()));
+                        }
+                        let start = std::time::Instant::now();
+                        if let Ok(resp) = client.get(&url).send() {
+                            let lat = start.elapsed().as_millis() as i32;
+                            if resp.status().is_success()
+                                && let Ok(val) = serde_json::from_str::<serde_json::Value>(
+                                    &resp.text().unwrap_or_default(),
+                                )
+                                && val["response"]["result"].as_str() == Some("success")
+                            {
+                                let sc = val["response"]["data"]["stream_count"]
+                                    .as_str()
+                                    .map(|s| s.to_string())
+                                    .or_else(|| {
+                                        val["response"]["data"]["stream_count"]
+                                            .as_i64()
+                                            .map(|v| v.to_string())
+                                    });
+                                shared_tautulli = Some(web_scraper::tech::TautulliActivity {
+                                    is_success: true,
+                                    latency_ms: lat,
+                                    stream_count: sc,
+                                });
                             }
-                            let start = std::time::Instant::now();
-                            if let Ok(resp) = client.get(&url).send() {
-                                let lat = start.elapsed().as_millis() as i32;
-                                if resp.status().is_success()
-                                    && let Ok(val) = serde_json::from_str::<serde_json::Value>(&resp.text().unwrap_or_default())
-                                    && val["response"]["result"].as_str() == Some("success") {
-                                        let sc = val["response"]["data"]["stream_count"]
-                                            .as_str()
-                                            .map(|s| s.to_string())
-                                            .or_else(|| val["response"]["data"]["stream_count"].as_i64().map(|v| v.to_string()));
-                                        shared_tautulli = Some(web_scraper::tech::TautulliActivity {
-                                            is_success: true,
-                                            latency_ms: lat,
-                                            stream_count: sc,
-                                        });
-                                }
-                            }
+                        }
                     }
 
                     for s in &services {
@@ -2268,11 +2341,7 @@ fn main() -> Result<()> {
                             shared_tautulli: shared_tautulli.as_ref(),
                         };
 
-                        let update = web_scraper::tech::check_homelab_service(
-                            &client,
-                            s,
-                            &cx,
-                        );
+                        let update = web_scraper::tech::check_homelab_service(&client, s, &cx);
                         let _ = db.upsert_homelab_service_status(&update);
                     }
                     Ok(())
