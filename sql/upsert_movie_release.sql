@@ -4,7 +4,7 @@ BEGIN TRY
     BEGIN TRANSACTION;
     DECLARE @source INT, @movie INT, @link INT, @written INT = 0;
     SELECT @source=ID FROM dbo.MovieReleaseSources WITH (UPDLOCK,HOLDLOCK)
-        WHERE SourceKey=@P1 AND Enabled=1;
+        WHERE SourceKey=@P1 AND Enabled=1 AND (@P6<>'disc' OR CollectDisc=1);
     IF @source IS NOT NULL
     BEGIN
         SELECT @link=ID, @movie=MovieId FROM dbo.MovieSourceLinks WITH (UPDLOCK,HOLDLOCK)

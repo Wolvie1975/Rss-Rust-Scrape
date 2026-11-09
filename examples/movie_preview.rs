@@ -1,13 +1,5 @@
 //! Preview live movie releases without opening SQL Server.
-#[allow(dead_code)]
-#[path = "../src/http.rs"]
-mod http;
-#[allow(dead_code)]
-#[path = "../src/movie_metadata.rs"]
-mod movie_metadata;
-#[allow(dead_code)] // This example uses only the read-only portion of the shared module.
-#[path = "../src/movies.rs"]
-mod movies;
+use web_scraper::movies;
 
 use chrono::{Datelike, Duration, NaiveDate, Utc};
 use clap::Parser;
@@ -18,14 +10,20 @@ struct Args {
     /// Any date in the desired Monday-Sunday week (YYYY-MM-DD).
     #[arg(long)]
     week_of: Option<NaiveDate>,
+    /// Number of Monday-Sunday weeks to preview, starting with that week.
+    #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=12))]
+    weeks: u32,
     /// Restrict preview to selected sources (repeat for multiple sources).
     #[arg(long,value_parser=["dvdsreleasedates","whentostream","movieinsider"])]
     source: Vec<String>,
+    /// Exclude physical discs while preserving theatrical and digital releases.
+    #[arg(long)]
+    exclude_discs: bool,
     /// Save a JSON report, including failures and exclusions.
     #[arg(long)]
     output: Option<PathBuf>,
 }
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), web_scraper::Error> {
     let args = Args::parse();
     let day = args.week_of.unwrap_or_else(|| {
         Utc::now()
@@ -33,10 +31,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .date_naive()
     });
     let start = day - Duration::days(day.weekday().num_days_from_monday().into());
-    let report = if args.source.is_empty() {
-        movies::preview(start)?
+    let window = movies::Window {
+        start,
+        weeks: args.weeks,
+    };
+    let report = if args.exclude_discs {
+        let enabled = if args.source.is_empty() {
+            vec![
+                "dvdsreleasedates".into(),
+                "whentostream".into(),
+                "movieinsider".into(),
+            ]
+        } else {
+            args.source.clone()
+        };
+        movies::ingest_with_disc_policy(window, &[], &enabled, &["dvdsreleasedates".into()])?
+    } else if args.source.is_empty() {
+        movies::preview(window)?
     } else {
-        movies::ingest(start, &[], &args.source)?
+        movies::ingest(window, &[], &args.source)?
     };
     let json = serde_json::to_string_pretty(&report)?;
     if let Some(path) = args.output {

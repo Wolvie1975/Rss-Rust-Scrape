@@ -17,12 +17,45 @@ services:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}
     command: ["--from-db", "--per-source", "10", "--every-hours", "1",
-              "-o", "/data/feed.xml", "--events-from-db", "--standings-from-db", "--rankings-from-db", "--youtube-from-db", "--youtube-latest", "10", "--movies", "--tv-from-db", "--boxoffice", "--boxoffice-forecasts"]
+              "-o", "/data/feed.xml", "--events-from-db", "--standings-from-db", "--rankings-from-db", "--youtube-from-db", "--youtube-latest", "10", "--movies", "--tv-from-db", "--boxoffice", "--boxoffice-forecasts", "--tech-from-db"]
     volumes:
       - scraper-data:/data
       - ./certs/sql-ca.crt:/data/certs/sql-ca.crt:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - dev-bridge
+  scoreboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.scoreboard
+    image: web-scoreboard:latest
+    container_name: web-scoreboard
+    restart: unless-stopped
+    env_file: .env
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=32m"]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    entrypoint: ["scoreboard"]
+    command: ["--watch", "--live-minutes", "10", "--lookback-days", "1", "--lookahead-days", "7", "--retention-days", "1"]
+    healthcheck:
+      test: ["CMD", "scoreboard", "--health-check"]
+      interval: 5m
+      timeout: 30s
+      start_period: 5m
+      retries: 2
+    volumes:
+      - ./certs/sql-ca.crt:/data/certs/sql-ca.crt:ro
+    networks:
+      - dev-bridge
+
 networks:
   dev-bridge:
     external: true

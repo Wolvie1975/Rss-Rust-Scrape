@@ -5,7 +5,7 @@ use tiberius::{Client, Config};
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), web_scraper::Error> {
     let args: Vec<_> = std::env::args().skip(1).collect();
     if !args.is_empty() && args != ["--verify"] {
         return Err("usage: setup_movie_schema [--verify]".into());
@@ -28,15 +28,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await?
                 .into_results()
                 .await?;
-            println!("Movie release schema ready in WebScraper (4 tables).");
+            client
+                .simple_query(include_str!("../sql/movie_commerce.sql"))
+                .await?
+                .into_results()
+                .await?;
+            client
+                .simple_query(include_str!("../sql/movie_commerce_view.sql"))
+                .await?
+                .into_results()
+                .await?;
+            println!("Movie release schema and retailer links ready in WebScraper.");
             if verify {
                 client
                     .simple_query(include_str!("../tests/sql/movie_releases.sql"))
                     .await?
                     .into_results()
                     .await?;
+                client
+                    .simple_query(include_str!("../tests/sql/movie_commerce.sql"))
+                    .await?
+                    .into_results()
+                    .await?;
                 println!("SQL integration checks passed; test rows rolled back.");
             }
-            Ok::<_, Box<dyn std::error::Error>>(())
+            Ok::<_, web_scraper::Error>(())
         })
 }

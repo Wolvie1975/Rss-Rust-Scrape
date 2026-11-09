@@ -1,0 +1,164 @@
+{
+  "header": {
+    "id": "401854026",
+    "links": [
+      {
+        "rel": [
+          "summary",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/soccer/match/_/gameId/401854026/seattle-reign-fc-chicago-stars-fc",
+        "text": "Summary",
+        "shortText": "Summary",
+        "isExternal": false,
+        "isPremium": false
+      },
+      {
+        "rel": [
+          "commentary",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/soccer/commentary/_/gameId/401854026",
+        "text": "Commentary",
+        "shortText": "Commentary",
+        "isExternal": false,
+        "isPremium": false
+      },
+      {
+        "rel": [
+          "videos",
+          "desktop",
+          "event"
+        ],
+        "href": "https://www.espn.com/soccer/video/_/gameId/401854026",
+        "text": "Videos",
+        "shortText": "Videos",
+        "isExternal": false,
+        "isPremium": false
+      }
+    ],
+    "competitions": [
+      {
+        "id": "401854026",
+        "status": {
+          "type": {
+            "id": "28",
+            "name": "STATUS_FULL_TIME",
+            "state": "post",
+            "completed": true,
+            "description": "Full Time",
+            "detail": "FT",
+            "shortDetail": "FT"
+          }
+        },
+        "competitors": [
+          {
+            "id": "15360",
+            "homeAway": "home",
+            "team": {
+              "id": "15360",
+              "displayName": "Chicago Stars FC"
+            },
+            "score": "1",
+            "linescores": [
+              {
+                "displayValue": "0"
+              },
+              {
+                "displayValue": "1"
+              }
+            ]
+          },
+          {
+            "id": "15363",
+            "homeAway": "away",
+            "team": {
+              "id": "15363",
+              "displayName": "Seattle Reign FC"
+            },
+            "score": "3",
+            "linescores": [
+              {
+                "displayValue": "1"
+              },
+              {
+                "displayValue": "2"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "boxscore": {
+    "teams": [
+      {
+        "team": {
+          "id": "15360"
+        },
+        "statistics": [
+          {
+            "name": "foulsCommitted",
+            "displayValue": "10",
+            "label": "Fouls"
+          },
+          {
+            "name": "yellowCards",
+            "displayValue": "0",
+            "label": "Yellow Cards"
+          },
+          {
+            "name": "redCards",
+            "displayValue": "0",
+            "label": "Red Cards"
+          },
+          {
+            "name": "offsides",
+            "displayValue": "0",
+            "label": "Offsides"
+          },
+          {
+            "name": "wonCorners",
+            "displayValue": "1",
+            "label": "Corner Kicks"
+          }
+        ]
+      },
+      {
+        "team": {
+          "id": "15363"
+        },
+        "statistics": [
+          {
+            "name": "foulsCommitted",
+            "displayValue": "6",
+            "label": "Fouls"
+          },
+          {
+            "name": "yellowCards",
+            "displayValue": "0",
+            "label": "Yellow Cards"
+          },
+          {
+            "name": "redCards",
+            "displayValue": "0",
+            "label": "Red Cards"
+          },
+          {
+            "name": "offsides",
+            "displayValue": "5",
+            "label": "Offsides"
+          },
+          {
+            "name": "wonCorners",
+            "displayValue": "2",
+            "label": "Corner Kicks"
+          }
+        ]
+      }
+    ],
+    "players": []
+  }
+}

@@ -1,9 +1,23 @@
 # Sports schedules and match results
 
-Current fixtures use the existing SportsEvents model. MLS and Championship final results use SportsMatchResults, separately from schedule retention; shootout tallies are separate from match goals. MLS source 5525, Championship 5326 and EPL 5357 are enabled. Past/canceled schedules are removed. The provider design proposal at the end is historical; deployed implementation and current retention take precedence.
+Current fixtures use the existing SportsEvents model. NHL, MLS and Championship final results use SportsMatchResults, separately from schedule retention; shootout tallies are separate from match goals. MLS source 5525, Championship 5326 and EPL 5357 and NHL 5637 are enabled. Past/canceled schedules are removed. The provider design proposal at the end is historical; deployed implementation and current retention take precedence.
+
+The college sports hub can also use the **Big 12 News** article category;
+see its [news frontend contract](big12-news-frontend-integration.md). This is
+independent of the structured sports data described below.
+
+Optional ESPN game details now enrich both stored results models independently
+of final scores. Read `dbo.SportsBoxScores` with a LEFT JOIN and keep existing
+fallbacks when details are unavailable. See [the frontend contract](<../New Development/sports-boxscores-frontend-handoff.md>)
+and [deployment/collection evidence](../reports/sports-boxscores-20261019.md).
 
 ## Contents
 
+- [F1 calendar and race/sprint results](#f1-schedule-results)
+
+- [2026 league-wide NWSL schedule](nwsl-league-schedule.md)
+
+- [NHL schedules and final results](#nhl-schedule-results)
 - [Big 12 calendar ingestion](#big12-sports)
 - [MLS schedule, standings and results](#mls-schedule-results-frontend-handoff)
 - [EFL Championship schedule, table and results — frontend handoff](#my-newsfeed-championship-wrexham)
@@ -12,6 +26,93 @@ Current fixtures use the existing SportsEvents model. MLS and Championship final
 - [WNBA schedule import / My-Newsfeed handoff](#wnba-schedule)
 - [Kansas City Current schedule import / My-Newsfeed handoff](#kansas-city-current-schedule)
 - [Big 12 sports calendar expansion proposal](#big12-sports-expansion-plan)
+
+<a id="f1-schedule-results"></a>
+
+## F1 calendar and race/sprint results
+
+Deployed October 18, 2026 as `web-scraper:f1-20261018`. Enabled `F1Source`
+record 1 uses Jolpica and is refreshed by the existing hourly
+`--events-from-db` collector. F1 has dedicated race data rather than home/away
+fixtures: read `dbo.F1Schedule` and `dbo.F1Results`. Source ID 1 belongs to
+`F1Source`, not `SportsEventsType`.
+
+Deployment verification recorded 23 calendar races, classifications for 17
+Grands Prix (374 driver rows) and six sprints (132 driver rows), season 2026.
+The full current-season calendar and results are retained in one atomic snapshot,
+independently of shared past-schedule pruning. Session times can be absent;
+Race and Sprint classifications remain separate. These counts are dated evidence.
+
+Use the [frontend field/query contract](f1-frontend-integration.md) for sessions,
+timezones, classification status and empty states. Driver/constructor tables are
+covered in [F1 championships](sports-tables.md#f1-standings).
+[Operations](f1-operations.md) documents setup and manual refresh;
+[deployment evidence](../reports/f1-production-20261018.md) records validation and rollback.
+
+<a id="nhl-schedule-results"></a>
+
+## NHL schedules and final results
+
+NHL schedule/results source **5637** is enabled, with provider key `espn-nhl`,
+sport `Hockey`, ESPN league ID `90`, and feed:
+`https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard`.
+The deployed hourly collector reads it through `--events-from-db`.
+
+Verification on October 14, 2026 recorded **1,239 current/future fixtures** and
+**170 final results** for ESPN season **2027 (2026–27)**. These are deployment
+snapshots, not guaranteed current counts. See the [deployment history](../reports/sports-history.md#nhl-deployment-2026-10-14).
+
+### Schedule read contract
+
+Use `dbo.SportsEvents` joined to enabled `dbo.SportsEventsType` rows. A league game
+has one row from the home team's perspective; `SchoolId`/`SchoolName` identify the
+home NHL team and opponent fields identify the away team. These ESPN team IDs
+are scoped to the NHL provider and do not map to Big 12 school metadata.
+Canonical identity is `espn:nhl:<gameId>`; links use the ESPN NHL game URL.
+UTC start time, Central calendar date, venue, broadcasts and both team logos use
+the shared event columns. Preserve TBD, postponement and cancellation handling.
+Completed observations reconcile existing rows without inserting past results
+as fixtures. Existing schedule retention removes past/canceled entries.
+
+```sql
+SELECT e.* FROM dbo.SportsEvents e
+JOIN dbo.SportsEventsType s ON s.ID=e.SportsEventsTypeId
+WHERE s.Enabled=1 AND e.ProviderKey='espn-nhl'
+ORDER BY e.EventDate,e.StartsAtUtc;
+```
+
+### Results and season handling
+
+Final scores live in `dbo.SportsMatchResults` independently of fixture retention.
+Identity is `(ProviderKey,GameId)`; corrections update scores and preserve `ID`
+and `FirstSeenAt`. Include home/away names, logos and scores in the results view.
+Render `STATUS_FINAL` as Final, `STATUS_FINAL_OT` as Final/OT, and
+`STATUS_FINAL_SO` as Final/SO. Score columns hold ESPN's final scoreboard totals,
+including the deciding shootout goal; optional shootout fields are not inferred.
+Live games and tied NHL scores never become final results.
+
+```sql
+DECLARE @Season INT=2027; -- 2026–27, using ESPN's ending year
+SELECT r.* FROM dbo.SportsMatchResults r
+JOIN dbo.SportsEventsType s ON s.ID=r.SourceId
+WHERE s.Enabled=1 AND r.ProviderKey='espn-nhl' AND r.Season=@Season
+ORDER BY r.StartsAtUtc DESC;
+```
+
+Collection covers July through June and rolls to the next season in July.
+Preseason, regular season and playoffs are included when published by ESPN.
+Each event must match the requested season; preseason league headers can lag,
+so NHL event season fields are authoritative. Empty responses do not delete
+previous results. Prior seasons are removed only after a successful nonempty
+new-season results import.
+
+Standings source **13** and its display contract are covered in the
+[NHL standings section](sports-tables.md#nhl-standings). The separate My-Newsfeed
+application can use these shared read models; scraper deployment does not
+establish whether its NHL selectors or pages have been implemented.
+
+Setup and activation: [operations guide](operations.md#nhl-operations).
+Detailed collector/reference commands: [NHL reference](nhl.md).
 
 <a id="big12-sports"></a>
 
@@ -120,7 +221,7 @@ stops polling; disabling a feed during a run also prevents subsequent source wri
 ```sh
 cargo test --locked --all-targets
 # Named staging database populated from Kansas data and configured first:
-cargo test --locked --bin web_scraper mirrored_imports -- --ignored
+cargo test --locked --lib mirrored_imports -- --ignored
 ```
 
 Fixtures cover membership, linked Kansas/Utah IDs, primary/secondary perspective,
@@ -607,7 +708,7 @@ against isolated staging; no production events/configuration were written.
 ```sh
 cargo test --locked --all-targets
 MLB_TEST_DATABASE=WebScraper_Mlb_Validation_20261009 \
-  cargo test --locked --bin web_scraper db::mlb_tests -- --ignored --nocapture
+  cargo test --locked --lib db::tests::mlb_tests -- --ignored --nocapture
 ```
 
 Coverage includes MLB home/away/venue/link mapping, playoff placeholder resolution,
@@ -759,7 +860,7 @@ last-good stored games if a request or parser check fails.
 cargo test --locked --all-targets
 # Separate database only; fixture writes roll back.
 WNBA_TEST_DATABASE=WebScraper_Wnba_Validation_20261009 \
-  cargo test --locked --bin web_scraper db::wnba_tests -- --ignored --nocapture
+  cargo test --locked --lib db::tests::wnba_tests -- --ignored --nocapture
 ```
 
 Coverage includes home/away participants and links, team filters, games shared by
@@ -803,6 +904,12 @@ The live web app still needs its separate Schedule-selector deployment.
 <a id="kansas-city-current-schedule"></a>
 
 ## Kansas City Current schedule import / My-Newsfeed handoff
+
+**October 16 update:** NWSL schedule collection is now league-wide. The old
+Kansas City-only description below is historical. Read the [current league-wide
+contract and frontend compatibility notes](nwsl-league-schedule.md). Existing
+Current game/source IDs and the upcoming-only policy are preserved.
+
 
 `src/nwsl.rs` now wraps shared ESPN parsing in `src/espn_schedule.rs`, also used
 by WNBA. Kansas City filtering and event identity remain unchanged.
@@ -922,7 +1029,7 @@ host deployment and scheduler restart were not performed.
 cargo test --locked --all-targets
 # SQL test initializes only a separate staging database; fixture writes roll back.
 NWSL_TEST_DATABASE=WebScraper_Nwsl_Validation_20261009 \
-  cargo test --locked --bin web_scraper db::nwsl_tests -- --ignored --nocapture
+  cargo test --locked --lib db::tests::nwsl_tests -- --ignored --nocapture
 ```
 
 Tests cover live home/away fixtures, missing/malformed payloads, Central date/DST

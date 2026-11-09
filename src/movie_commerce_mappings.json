@@ -1,0 +1,74 @@
+[
+  {
+    "provider": "fandango",
+    "title": "Street Fighter",
+    "original_year": 2026,
+    "url": "https://www.fandango.com/street-fighter-2026-246472/movie-overview",
+    "reviewed_at": "2026-10-16T18:23:38Z",
+    "expires_at": "2026-11-15T18:23:38Z",
+    "evidence": "Fandango movie detail page: title and original year reviewed through web reader; ticket availability not asserted."
+  },
+  {
+    "provider": "fandango",
+    "title": "Whalefall",
+    "original_year": 2026,
+    "url": "https://www.fandango.com/whalefall-2026-246280/movie-overview",
+    "reviewed_at": "2026-10-16T18:23:38Z",
+    "expires_at": "2026-11-15T18:23:38Z",
+    "evidence": "Fandango movie detail page: title and original year reviewed through web reader; ticket availability not asserted."
+  },
+  {
+    "provider": "fandango",
+    "title": "Sense and Sensibility",
+    "original_year": 2026,
+    "url": "https://www.fandango.com/sense-and-sensibility-2026-244998/movie-overview",
+    "reviewed_at": "2026-10-16T18:23:38Z",
+    "expires_at": "2026-11-15T18:23:38Z",
+    "evidence": "Fandango movie detail page: title and original year reviewed through web reader; ticket availability not asserted."
+  },
+  {
+    "provider": "fandango",
+    "title": "Crawlers",
+    "original_year": 2026,
+    "url": "https://www.fandango.com/crawlers-2026-247540/movie-overview",
+    "reviewed_at": "2026-10-16T18:23:38Z",
+    "expires_at": "2026-11-15T18:23:38Z",
+    "evidence": "Fandango movie detail page: title and original year reviewed through web reader; ticket availability not asserted."
+  },
+  {
+    "provider": "fandango",
+    "title": "Musk",
+    "original_year": 2026,
+    "url": "https://www.fandango.com/musk-2026-247586/movie-overview",
+    "reviewed_at": "2026-10-16T18:23:38Z",
+    "expires_at": "2026-11-15T18:23:38Z",
+    "evidence": "Fandango movie detail page: title and original year reviewed through web reader; ticket availability not asserted."
+  },
+  {
+    "provider": "fandango",
+    "title": "Trust Me, I'm a Doctor",
+    "original_year": 2026,
+    "url": "https://www.fandango.com/trust-me-im-a-doctor-2026-247112/movie-overview",
+    "reviewed_at": "2026-10-16T18:23:38Z",
+    "expires_at": "2026-11-15T18:23:38Z",
+    "evidence": "Fandango movie detail page: title and original year reviewed through web reader; ticket availability not asserted."
+  },
+  {
+    "provider": "fandango",
+    "title": "You Can See Everything",
+    "original_year": 2026,
+    "url": "https://www.fandango.com/you-can-see-everything-2026-247346/movie-overview",
+    "reviewed_at": "2026-10-16T18:23:38Z",
+    "expires_at": "2026-11-15T18:23:38Z",
+    "evidence": "Fandango movie detail page: title and original year reviewed through web reader; ticket availability not asserted."
+  },
+  {
+    "provider": "fandango",
+    "title": "Your Mother Your Mother Your Mother",
+    "original_year": 2026,
+    "url": "https://www.fandango.com/your-mother-your-mother-your-mother-2026-246407/movie-overview",
+    "reviewed_at": "2026-10-16T18:23:38Z",
+    "expires_at": "2026-11-15T18:23:38Z",
+    "evidence": "Fandango movie detail page: title and original year reviewed through web reader; ticket availability not asserted."
+  }
+]

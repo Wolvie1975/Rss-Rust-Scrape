@@ -1,0 +1,151 @@
+{
+  "provenance": {
+    "summary": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/summary?event=761889",
+    "scoreboard": "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/scoreboard?dates=20261018&limit=1000",
+    "captured": "2026-10-19",
+    "core": [
+      "https://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.1/events/761889/competitions/761889/competitors/18267/linescores?lang=en&region=us&limit=100",
+      "https://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.1/events/761889/competitions/761889/competitors/183/linescores?lang=en&region=us&limit=100"
+    ]
+  },
+  "game": {
+    "sport": "soccer",
+    "league": "usa.1",
+    "eventId": "761889",
+    "date": "20261018"
+  },
+  "format": {
+    "regulation": {
+      "periods": 2,
+      "displayName": "Half",
+      "slug": "half",
+      "clock": 2700.0
+    }
+  },
+  "summaryTeams": [
+    {
+      "id": "18267",
+      "team": {
+        "id": "18267",
+        "displayName": "FC Cincinnati"
+      },
+      "homeAway": "home",
+      "score": "0",
+      "linescores": [
+        {
+          "displayValue": "0"
+        },
+        {
+          "displayValue": "0"
+        }
+      ]
+    },
+    {
+      "id": "183",
+      "team": {
+        "id": "183",
+        "displayName": "Columbus Crew"
+      },
+      "homeAway": "away",
+      "score": "2",
+      "linescores": [
+        {
+          "displayValue": "1"
+        },
+        {
+          "displayValue": "1"
+        }
+      ]
+    }
+  ],
+  "scoreboard": {
+    "events": [
+      {
+        "id": "761889",
+        "season": {
+          "year": 2026,
+          "type": 13846,
+          "slug": "regular-season"
+        },
+        "competitions": [
+          {
+            "id": "761889",
+            "status": {
+              "type": {
+                "id": "28",
+                "name": "STATUS_FULL_TIME",
+                "state": "post",
+                "completed": true,
+                "description": "Full Time",
+                "detail": "FT",
+                "shortDetail": "FT"
+              },
+              "period": 2
+            },
+            "competitors": [
+              {
+                "homeAway": "home",
+                "score": "0",
+                "team": {
+                  "id": "18267"
+                },
+                "linescores": [
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.1/events/761889/competitions/761889/competitors/18267/linescores/38/1?lang=en&region=us",
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 1
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.1/events/761889/competitions/761889/competitors/18267/linescores/38/2?lang=en&region=us",
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 2
+                  }
+                ]
+              },
+              {
+                "homeAway": "away",
+                "score": "2",
+                "team": {
+                  "id": "183"
+                },
+                "linescores": [
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.1/events/761889/competitions/761889/competitors/183/linescores/38/1?lang=en&region=us",
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 1
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.1/events/761889/competitions/761889/competitors/183/linescores/38/2?lang=en&region=us",
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 2
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "periodCoreMetadata": true
+      }
+    ]
+  }
+}

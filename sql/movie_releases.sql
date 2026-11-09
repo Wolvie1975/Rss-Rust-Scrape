@@ -15,6 +15,10 @@ BEGIN TRY
         CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_MovieReleaseSources_Created DEFAULT SYSUTCDATETIME()
     );
 
+    IF COL_LENGTH('dbo.MovieReleaseSources', 'CollectDisc') IS NULL
+        ALTER TABLE dbo.MovieReleaseSources ADD CollectDisc BIT NOT NULL
+            CONSTRAINT DF_MovieReleaseSources_CollectDisc DEFAULT 1 WITH VALUES;
+
     IF OBJECT_ID('dbo.Movies', 'U') IS NULL
     CREATE TABLE dbo.Movies (
         ID INT IDENTITY(1,1) CONSTRAINT PK_Movies PRIMARY KEY,

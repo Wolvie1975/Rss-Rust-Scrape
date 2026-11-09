@@ -4,11 +4,316 @@ This is the canonical guide for retention, SQL backups, credentials/security and
 
 ## Contents
 
+- [Optional sports box scores](#optional-sports-box-scores)
+
+- [Kansas City local news](#kansas-city-local-news)
+
+- [Indie video game news](#indie-video-game-news--october-19-2026)
+
+- [Big 12 news sources](#big12-news-sources)
+
+- [F1 production operation](#f1-operations)
+- [Top Headlines sources](#top-headlines-sources)
+
+- [Movie retailer links](#movie-retailer-links)
+
+- [News article URL identity](#article-url-identity)
+- [NHL production setup and operation](#nhl-operations)
 - [Database schema snapshot](#database-schema-snapshot)
 - [Production data retention](#data-retention)
 - [WebScraper SQL backup maintenance](#sql-backups)
 - [Scraper hardening and SQL credential split](#scraper-security-and-sql-credentials)
 - [Scraper performance instrumentation and optimizations](#scraper-performance)
+
+## Box-score period labels
+
+Release `web-scraper:period-labels-20261019` labels innings, quarters, halves,
+overtime and explicitly identified shootouts in the existing version-1 cache.
+`--repair-boxscore-periods` performs bounded historical label-only repair;
+`--dry-run` previews it. Normal optional enrichment labels new snapshots through
+the existing hourly schedule. No schema or frontend deployment is required.
+[Mapping evidence, preservation checks and rollback](../reports/sports-period-labels-20261019.md).
+
+## Men's college basketball news
+
+Four enabled sources supply **Men's College Basketball News**: national ESPN,
+CBS Sports and ZAGSBLOG, plus Heartland's Big 12 basketball feed. Initial production
+import saved 37 articles with no failures and preserved existing URL ownership.
+Live category rendering/pagination passed. No rebuild/restart was required.
+[Source IDs, URLs and registration workflow](mens-college-basketball-news.md).
+
+## Database review and statistics maintenance
+
+[October 19 review](../reports/database-review-20261019.md): CHECKDB passed;
+38 stale optimizer statistics were refreshed across 13 tables. Retention and
+orphan checks found no application-data cleanup candidates. See the report for
+storage, backup-history verification limits and the frontend login hardening
+follow-up. [Targeted statistics maintenance](../sql/maintenance_refresh_stale_statistics.sql)
+defaults to preview mode; no new maintenance schedule was installed.
+
+## Optional sports box scores
+
+Release `web-scraper:boxscores-20261019` adds bounded, cached ESPN game detail
+through the existing hourly `--events-from-db` path. Explicit refresh:
+`web_scraper --boxscores-from-db`; preview adds `--dry-run`. Migration setup is
+`--configure-boxscores` with migration credentials and explicit WebScraper targeting;
+runtime does no DDL. The collector writes only its new optional statistics cache,
+never result scores. Missing detail leaves existing fallbacks intact and failed
+refreshes retain last-good snapshots. See [limits, deployment evidence and
+rollback](../reports/sports-boxscores-20261019.md) and [the frontend handoff](<../New Development/sports-boxscores-frontend-handoff.md>).
+
+## YouTube channel categories
+
+YouTube channels have their own category lookup, separate from news
+`SourceCategories`, so YouTube-only categories never appear as empty news
+categories. `dbo.YoutubeCategories` (`ID`, `Category_Name`) is referenced by the
+nullable `dbo.YoutubeVideoFeed.YoutubeCategoryId`; videos inherit their channel's
+category through `YouTubeVideos.YoutubeVideoFeedId`. Channels the collector adds
+later stay uncategorized (NULL) until assigned.
+
+| Category | Channels (October 26, 2026) |
+| --- | --- |
+| Sports | Field of 68, BYU Sports Nation, Locked On Big 12, Locked on BYU, Big 12 Sports, CBS - Eye on College Basketball, Open For Business, Sleepers Media, Awful Announcing, Robin Lundberg |
+| Video Games | Destin, Indie Games Hub, Xbox Nation, ID@Xbox, Xbox, MrMatty Plays, Colton Eastwood, CultOfMush |
+| Tech | WaveForm Podcast, The Verge, Android, Marques Brownlee, iJustine, MrMobile, ShortCircuit, C. Scott Brown, Shane Craig, Auto Focus, CodingBite, The Linux Experiment, Paul J Lipsky |
+| News & Politics | Bulwark |
+
+Schema: [`sql/youtube_categories.sql`](../sql/youtube_categories.sql) (additive, also
+run by `--initialize-db`). Assignments: [`sql/youtube_categories_seed.sql`](../sql/youtube_categories_seed.sql),
+keyed by `ChannelId`; rerunning it resets the listed channels to these categories.
+Apply both with the migration profile against **WebScraper**. Collection needs no
+rebuild or restart; the ingest role only gains `SELECT` on the lookup. Applied to
+production twice on October 26, 2026; read-back: Sports 10 channels, Video Games 8,
+Tech 13, News & Politics 1, none uncategorized, ingest grant present.
+[Frontend handoff](<../New Development/youtube-categories-frontend-handoff.md>).
+
+Frontend: join `YouTubeVideos` → `YoutubeVideoFeed` → `YoutubeCategories` by ID and
+resolve categories by name, not hardcoded IDs. Decide how to show NULL-category channels.
+
+## Kansas City local news
+
+Five enabled publishers populate **Kansas City News**: KSHB 9172, Flatland 9173,
+The Pitch Food & Drink 9174, KCUR's Kansas City topic 9175 and The Beacon's Kansas
+City category 9176. Production run 1244 collected 45 articles; live `/local`
+returned all 45 across four cursor pages. No restart or deployment was needed.
+See [feed URLs, scope, safe first collection and verification](kansas-city-news.md).
+The [repeatable seed](../sql/kansas_city_news_seed.sql) deliberately registers
+missing sources disabled; populate and verify before enabling to avoid an empty
+frontend category switch.
+
+## Indie video game news — October 19, 2026
+
+Three enabled indie-focused publishers were added to the existing **Video Games**
+category (ID 11), alongside GamingOnLinux, Pure Xbox and Eurogamer:
+
+| Publisher | Source ID | RSS feed |
+| --- | --- | --- |
+| Indie Games Plus | 9037 | https://indiegamesplus.com/feed/ |
+| The Indie Informer | 9038 | https://the-indie-in-former.com/feed/ |
+| Indie Hive | 9039 | https://indie-hive.com/feed/ |
+
+Repeatable registration: [`sql/indie_videogames_news_expand.sql`](../sql/indie_videogames_news_expand.sql).
+Apply with the migration profile, explicitly targeting **WebScraper**. Existing
+source settings are preserved on repeated execution. No rebuild, restart or
+scheduler changes were needed; normal hourly `--from-db` collection includes them.
+
+All three live RSS feeds parsed successfully. The collector dry-run reported
+three source successes and zero failures. Targeted production import run **1242**
+succeeded; database read-back verified **ten articles per source**, enabled sources
+and no `LastError`. The production exec exited zero and the scraper was healthy.
+These are dated observations, not ongoing health guarantees.
+
+The frontend uses the existing `Pages` / `Sources` / `SourceCategories` contract;
+resolve category membership dynamically and filter enabled sources. Preserve the
+ten-per-source retention, canonical verification and cross-source URL ownership
+rules. No frontend rendering change was implemented or verified.
+
+Indie Retro News also had an active feed but was not needed for this addition.
+The Indie Game Website feed was stale (latest entry December 2021), Indie Game
+Fans returned HTTP 500, and Indie Game Bundles mostly covered deals; none was added.
+
+## Xbox Wire — October 27, 2026
+
+**Xbox Wire** (source **11830**, https://news.xbox.com/en-us/feed/) was added to
+**Video Games** (ID 11), now nine enabled sources. Repeatable registration:
+[`sql/xbox_wire_news_seed.sql`](../sql/xbox_wire_news_seed.sql) registers it
+**disabled**; apply with the migration profile (`examples/scoreboard_sql`
+targets WebScraper). A repeat inserted zero rows before and after enablement.
+
+The dry-run reported one success and zero failures. Targeted `--db --per-source 10`
+collection stored **ten articles** (nine with images, from `content:encoded`) with
+no `LastError`; ID 11830 was then enabled in a transaction guarded by category,
+URL hash, clean error state and stored content. No rebuild, restart or scheduler
+change; hourly `--from-db` collection includes it.
+
+The feed is behind Cloudflare: a generic browser user agent receives HTTP 403,
+while `My-Newsfeed/1.0` receives the RSS. A future block appears as `LastError`
+on 11830; do not work around it. Xbox Wire occasionally posts off-site cross-links
+(for example minecraft.net with a `#new_tab` fragment); article identity skips
+the canonical check on failure and stores the feed link, which may lack an image.
+To stop collection, disable 11830 only.
+
+<a id="big12-news-sources"></a>
+
+## Big 12 news sources
+
+Five enabled sources in **Big 12 News** supply the college sports hub: official
+all-sports 8997, Heartland 8998, football 8999, men's basketball 9000 and baseball
+9001. The dedicated women's basketball source was omitted by request. Conference-wide
+coverage can still include women's sports. Existing hourly `--from-db` collection
+handles these sources without rebuilding or restarting the scraper.
+
+The migration-profile script [`sql/big12_news_seed.sql`](../sql/big12_news_seed.sql)
+was applied to WebScraper on October 18, 2026. Repeated execution preserves
+existing source settings. A production dry-run and actual import passed: five
+source successes, no failures, 46 retained articles. Four duplicate cross-source
+URLs were skipped without changing ownership. Read-back verified enablement,
+refresh timestamps and no source errors; both production containers were healthy.
+
+See the [frontend integration contract](big12-news-frontend-integration.md) for
+URLs, source IDs, category queries, overlap handling and UI acceptance. Disable
+only these source IDs to stop their future collection; preserve other sources,
+article ownership, shared categories and the hourly configuration.
+
+<a id="f1-operations"></a>
+
+## F1 production operation
+
+F1 news is also enabled: four RSS sources in **F1 News** are collected through
+normal hourly `--from-db` news ingestion. Initial production verification saved
+ten articles per source, with four successes and zero failures. No further image
+or scheduler change was required. See [news registration](f1-operations.md#f1-news-registration)
+and the [frontend News tab contract](f1-news-frontend-integration.md).
+
+Current verified scraper release: `web-scraper:f1-20261018`, deployed October 18,
+2026. Enabled `F1Source` record 1 collects the calendar, Grand Prix/sprint
+classifications and driver/constructor championships through the existing hourly
+`--events-from-db` path. Deployment preserved the runtime environment, command,
+TLS mount, data volume, network, resource/security limits and restart policy.
+Deployed-container run 1206 succeeded; the frontend production reader could query
+all four F1 views. The next hourly slot was logged, but not awaited during verification.
+
+Follow [F1 operations](f1-operations.md) for additive migration order, source
+configuration, read-only checks, manual refresh, failure preservation and disablement.
+The baseline schema snapshot predates F1. Migration creates `F1Source`,
+`F1Snapshot` and four read views; runtime collection performs no DDL.
+[Deployment evidence and rollback](../reports/f1-production-20261018.md) identifies
+the protected host backup and retained previous container/image.
+
+<a id="top-headlines-sources"></a>
+
+## Top Headlines sources
+
+Six enabled production news sources are assigned to **Top Headlines**: NBC News
+8903, CBS News 8904, The New York Times 8905, The Guardian 8906, Al Jazeera 8907,
+and Sky News 8908. BBC News 4084 and NPR 7093 remain in General.
+These use the existing `Sources` / `SourceCategories` / `Pages` contract and the
+normal `--from-db` collector; no separate collector or scheduler arguments are
+required. Resolve category IDs from `Category_Name`, rather than hardcoding them.
+
+[`sql/top_headlines_seed.sql`](../sql/top_headlines_seed.sql) was applied to
+production. It creates the category if missing, inserts missing feeds enabled,
+and preserves existing source settings on repeated execution. It requires the
+migration profile; the runtime account cannot create categories. Source
+registration was verified, but first-collection success for each of the six feeds
+was not separately verified during registration.
+
+The [frontend handoff](top-headlines-frontend-integration.md) includes exact URLs,
+source IDs, query fields, empty states and acceptance checks. No frontend
+implementation status is inferred from source registration.
+
+<a id="movie-retailer-links"></a>
+
+## Movie retailer links
+
+Hourly `--movies` collection optionally enriches theatrical Fandango and digital
+Fandango at Home links. Apply `sql/movie_commerce.sql`, then
+`sql/movie_commerce_view.sql`, then `sql/movie_commerce_permissions.sql` with
+migration credentials; runtime ingestion performs no DDL. Existing source URLs,
+release dates and the scheduler are preserved. Match failures use labeled search
+fallbacks and do not fail the movie import. See [cache, verification and rollback
+policy](movie-purchase-links.md) and [the standalone frontend integration request](movie-commerce-frontend-integration.md).
+
+<a id="article-url-identity"></a>
+
+## News article URL identity
+
+News ingestion now uses verified, same-source redirect/canonical URL aliases to
+retain a stable article ID after a publisher changes its URL. It never merges
+from title, image or timestamp similarity. Unknown foreign references and global
+URL ownership collisions are reported without deleting/reassigning articles.
+
+Apply the separate additive migration `sql/article_identity.sql`, procedure batch
+`sql/upsert_article_identity.sql`, and `sql/article_identity_permissions.sql`
+before deploying the new collector. Runtime startup remains DDL-free. Two new
+scraper-owned tables store URL aliases and retired-ID mappings; existing article
+retention cascades to them. Retired metadata is archived during a merge.
+
+The approved existing-duplicate policy keeps the oldest ID. Browser saved IDs
+that refer to a retired row need the frontend to follow `ArticleIdRedirects`;
+recording those mappings does not itself update browser storage.
+
+Detailed matching rules, request budgets, SQL/permission contracts, saved-ID
+recovery and tests: [article URL identity](article-url-identity.md).
+Production evidence and rollback:
+[October 16 deployment](../reports/operations-history.md#article-identity-deployment-2026-10-16).
+
+<a id="nhl-operations"></a>
+
+## NHL production setup and operation
+
+NHL is deployed as `web-scraper:nhl-20261014`, verified October 14, 2026.
+Schedule/results source **5637** and standings source **13** are enabled.
+The existing hourly command already includes `--events-from-db` and
+`--standings-from-db`; preserve its environment, TLS certificate mount, persistent
+volume, network, limits, security settings, logging and restart policy.
+
+For a new installation, initialize the shared schema and provision runtime
+permissions first. Register NHL using the migration profile:
+
+```sh
+( set -a; . ./.env.migrations; set +a; cargo run --locked -- --configure-nhl )
+```
+
+Registration creates missing shared results/standings objects and seeds only NHL
+sources disabled. Repeating it preserves URLs, enabled flags and limits. Runtime
+imports use ingestion credentials; migration credentials stay out of the scheduler.
+After deploying the updated image and validating its feeds, enable the sources:
+
+```sql
+BEGIN TRANSACTION;
+UPDATE dbo.SportsEventsType SET Enabled=1
+WHERE ProviderKey='espn-nhl' AND ProviderSchoolId=0;
+UPDATE dbo.SportsStandingsSources SET Enabled=1
+WHERE ProviderKey='espn-nhl' AND Sport='Hockey';
+COMMIT;
+```
+
+Read-only feed verification:
+
+```sh
+cargo test --locked nhl::tests::live_nhl_feeds -- --ignored --nocapture
+cargo run --locked -- --events-feed https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard --dry-run
+```
+
+The SQL integration test requires a newly created isolated database named
+`WebScraper_NHL_Validation_*` selected through `NHL_TEST_DATABASE` and migration
+credentials. Never point it at production. October 14 verification passed this
+test in `WebScraper_NHL_Validation_20261014`, which was removed afterward.
+
+Production verification imported 1,239 fixtures, 170 results and 32 standings teams.
+Repeated imports retained IDs and first-seen timestamps. Real release-image run
+106 succeeded with zero source failures, and normal retention succeeded. The
+container became healthy and logged its next hourly slot for 09:00 Central that
+day; the scheduled slot was not awaited as part of deployment verification.
+
+Rollback image: `web-scraper:before-nhl-20261014`. The prior container is retained
+stopped as `web-scraper-before-nhl-20261014`. Protected host backups are under
+`.deployment-backups/20261014-nhl/`. Disable both NHL sources before restoring the
+older collector so it does not attempt unsupported feeds. Keep rollback profiles
+private. Full verification and rollback details are in the
+[deployment record](../reports/nhl-production-20261014.md) and
+[operations history](../reports/operations-history.md#nhl-operations-deployment-2026-10-14).
 
 <a id="data-retention"></a>
 
@@ -28,7 +333,7 @@ child records before parent records. Today is determined in America/Chicago.
 | Rankings | Keep only each source's current poll and current team rows; replace atomically after successful import |
 | Scraper runs | Delete finished runs started more than 7 days ago |
 | Standings | EPL retains only current rows; other leagues retain existing history |
-| Championship results | Current season, separately from schedules; old seasons removed after a successful new-season result import |
+| NHL, MLS and Championship results | Current season, separately from schedules; old seasons removed after a successful new-season result import |
 
 Today's records remain even if their start time has passed. Unknown/TBD movie
 release dates and TV episode dates remain because they cannot be classified as
@@ -140,7 +445,7 @@ Use administrator/deployment credentials for explicit schema changes:
 ( set -a; . ./.env.migrations; set +a; cargo run --locked -- --initialize-db )
 ```
 
-The --configure-tv/--configure-big12/--configure-nwsl/--configure-wnba/--configure-mlb/--configure-standings/--configure-movieinsider/--configure-rankings
+The --configure-nhl/--configure-tv/--configure-big12/--configure-nwsl/--configure-wnba/--configure-mlb/--configure-standings/--configure-movieinsider/--configure-rankings
 commands also belong to the deployment/admin path. `MSSQL_MIGRATION_CONNECTION_STRING`
 can optionally override the setup connection; ordinary collection never uses it.
 Do not inject that administrator variable into the hourly service.

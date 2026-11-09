@@ -1,9 +1,9 @@
 //! National polls, independent of standings/schedules. ESPN transports the named polls.
+use crate::Result;
 use chrono::{DateTime, Utc};
 use reqwest::blocking::Client;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Clone, Debug)]
 pub struct Source {
     pub id: i32,

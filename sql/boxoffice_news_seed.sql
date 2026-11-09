@@ -3,9 +3,9 @@
 SET XACT_ABORT ON;
 BEGIN TRY
  BEGIN TRANSACTION;
- IF NOT EXISTS(SELECT 1 FROM dbo.SourceCategories WITH(UPDLOCK,HOLDLOCK) WHERE Category_Name=N'Box Office')
-  INSERT dbo.SourceCategories(Category_Name) VALUES(N'Box Office');
- DECLARE @Category INT=(SELECT ID FROM dbo.SourceCategories WHERE Category_Name=N'Box Office');
+ IF NOT EXISTS(SELECT 1 FROM dbo.SourceCategories WITH(UPDLOCK,HOLDLOCK) WHERE Category_Name=N'Entertainment')
+  INSERT dbo.SourceCategories(Category_Name) VALUES(N'Entertainment');
+ DECLARE @Category INT=(SELECT ID FROM dbo.SourceCategories WHERE Category_Name=N'Entertainment');
  INSERT dbo.Sources(Url,Label,Enabled,SourceCategoryId)
  SELECT s.Url,s.Label,0,@Category
  FROM (VALUES

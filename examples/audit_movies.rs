@@ -2,7 +2,7 @@
 use tiberius::{Client, Config};
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), web_scraper::Error> {
     let _ = dotenvy::dotenv();
     let args: Vec<_> = std::env::args().skip(1).collect();
     let mut cfg = Config::from_ado_string(&std::env::var("MSSQL_CONNECTION_STRING")?)?;
@@ -13,6 +13,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
    let rows=client.query(sql,&[]).await?.into_first_result().await?;let s:String=rows.iter().filter_map(|r|r.get::<&str,_>(0)).collect();out.insert(key.into(),if s.is_empty(){serde_json::json!([])}else{serde_json::from_str(&s)?});
   }
   let s=serde_json::to_string_pretty(&out)?;if let Some(path)=args.get(1){std::fs::write(path,s)?;}else{println!("{s}");}
-  println!("{} movies, {} source links, {} releases, {} posters",out["movies"].as_array().unwrap().len(),out["links"].as_array().unwrap().len(),out["releases"].as_array().unwrap().len(),out["movies"].as_array().unwrap().iter().filter(|r|r["PosterUrl"].is_string()).count());Ok::<_,Box<dyn std::error::Error>>(())
+  println!("{} movies, {} source links, {} releases, {} posters",out["movies"].as_array().unwrap().len(),out["links"].as_array().unwrap().len(),out["releases"].as_array().unwrap().len(),out["movies"].as_array().unwrap().iter().filter(|r|r["PosterUrl"].is_string()).count());Ok::<_,web_scraper::Error>(())
  })
 }

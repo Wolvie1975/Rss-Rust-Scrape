@@ -1,8 +1,15 @@
 # Movies, box office and posters
 
-Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domestic previews and future-film predictions. These are separate structured tables, not news articles. Dedicated Deadline/Variety box-office news is retired; its original handoff is archived in the entertainment history. Poster fields are available across the movie sections. Current/future release and forecast dates only; the actual chart retains the latest valid weekend.
+Current theatrical policy (October 22): DVDs Release Dates is enabled for theatrical/digital coverage with physical discs excluded. See [configuration and frontend contract](theatrical-without-discs.md) and [deployment verification](../reports/theatrical-no-disc-20261022.md).
+
+Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domestic previews and future-film predictions. These are separate structured tables, not news articles. Box Office news is available alongside the structured charts through Deadline, Variety, The Hollywood Reporter and IndieWire. The older news handoff is archived in the entertainment history; the current contract is below. Poster fields are available across the movie sections. Current/future release and forecast dates only; the actual chart retains the latest valid weekend.
 
 ## Contents
+
+- [Box Office news sources](#boxoffice-news)
+
+- [Fandango tickets and Fandango at Home links](movie-purchase-links.md)
+- [Frontend integration request: movie purchase buttons](movie-commerce-frontend-integration.md)
 
 - [Latest domestic weekend box-office top 10](#boxoffice-top-10-frontend-handoff)
 - [Boxoffice Pro weekend previews and future movie forecasts](#boxoffice-forecasts-frontend-handoff)
@@ -11,6 +18,45 @@ Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domesti
 - [U.S. movie releases](#movie-releases)
 - [Movie poster enrichment](#movie-posters)
 
+<a id="boxoffice-news"></a>
+
+## Box Office news sources
+
+Box-office news is part of **Entertainment** (category ID 10) as of October 22, 2026. Its four enabled publishers are:
+
+| Source ID | Publisher | RSS URL |
+| --- | --- | --- |
+| 7094 | Deadline | https://deadline.com/v/box-office/feed/ |
+| 9034 | Variety | https://variety.com/v/film/box-office/feed/ |
+| 9035 | The Hollywood Reporter | https://www.hollywoodreporter.com/t/box-office/feed/ |
+| 9036 | IndieWire | https://www.indiewire.com/c/box-office/feed/ |
+
+Variety, The Hollywood Reporter and IndieWire were added October 19, 2026;
+existing Deadline configuration was preserved. A production dry-run and actual
+import succeeded with three source successes and zero failures; read-back verified
+ten articles per new source, refreshed timestamps and no source errors. The deployed scraper's hourly
+`--from-db` collector reads the feeds without an image rebuild or restart.
+[`sql/boxoffice_news_expand.sql`](../sql/boxoffice_news_expand.sql) records this
+registration, inserts missing URLs enabled and preserves existing source settings.
+Apply only with migration credentials targeting WebScraper. The earlier
+`boxoffice_news_seed.sql` is a historical disabled-source seed, not the current
+production source inventory.
+
+The repeatable [category merge](../sql/boxoffice_into_entertainment.sql) moved all four sources and their 40 existing articles into Entertainment, alongside Nerdist (ten articles). The empty Box Office category (5615) was removed. The merge applied twice successfully; read-back verified five enabled sources and 50 articles. Source IDs, labels and article ownership were preserved. Registration scripts now target Entertainment. Structured charts and forecasts are unchanged. Frontend rendering was not verified.
+
+Frontend news queries should join `Pages.SourceId` to `Sources.ID`, then
+`Sources.SourceCategoryId` to `SourceCategories.ID`, filtering `Enabled=1` and
+`Category_Name=N'Entertainment'`. Discover publishers dynamically rather than using
+a fixed list of source IDs. Reuse existing article cards, source filtering,
+pagination, attribution and saved-article behavior. Use Pages.Url for the article
+link; Sources.Url is the RSS feed. Summaries, images and publication dates can
+be missing; retain standard escaping, date handling and fallbacks. These feeds
+provide article metadata, not publisher paywall access or numeric chart rows.
+
+This expands news coverage; `BoxOfficeWeekend` and Boxoffice Pro forecast
+collection remain independent. Source registration does not prove frontend
+rendering, which was not changed as part of this update.
+
 <a id="boxoffice-top-10-frontend-handoff"></a>
 
 ## Latest domestic weekend box-office top 10
@@ -18,8 +64,8 @@ Use The Numbers for actual weekend top-ten results and Boxoffice Pro for domesti
 Source: https://www.the-numbers.com/weekend-box-office-chart
 
 The scraper stores the latest available three-day domestic weekend chart in
-`dbo.BoxOfficeWeekend`. This replaces the Deadline and Variety box-office news
-feeds. It is structured chart data, separate from `Pages` and the news RSS file.
+`dbo.BoxOfficeWeekend`. It is structured chart data, separate from the Box Office
+news articles in `Pages` and the news RSS file.
 The front-end needs a chart view; scraper deployment alone does not add that view.
 
 <a id="boxoffice-top-10-frontend-handoff--query-and-display"></a>
@@ -83,7 +129,8 @@ pros/cons text are copied; link readers to the original article for analysis.
 DECLARE @Today DATE = CONVERT(date, SYSUTCDATETIME() AT TIME ZONE 'UTC'
                               AT TIME ZONE 'Central Standard Time');
 SELECT Kind, TargetDate, PeriodEnd, MovieTitle, Distributor, PredictedRank,
-       ForecastLow, ForecastHigh, ForecastAsOf, PublishedAtUtc, UpdatedAtUtc,
+       ForecastLow, ForecastHigh, ExtendedForecastDays, ExtendedForecastLow,
+       ExtendedForecastHigh, ForecastAsOf, PublishedAtUtc, UpdatedAtUtc,
        SourceUrl, FetchedAtUtc
 FROM dbo.BoxOfficeForecasts
 WHERE PeriodEnd >= @Today
@@ -101,7 +148,8 @@ FROM dbo.BoxOfficeForecastSources;
 | PeriodEnd | Preview end date; equals TargetDate for long-range forecasts |
 | MovieTitle / Distributor | Provider's movie title and distributor |
 | PredictedRank | Preview rank, otherwise null |
-| ForecastLow / ForecastHigh | Predicted domestic gross range, integer USD |
+| ForecastLow / ForecastHigh | Predicted domestic gross range for the standard 3-day weekend, integer USD |
+| ExtendedForecastDays / ExtendedForecastLow / ExtendedForecastHigh | Optional longer holiday frame (4–7 days, e.g. Thanksgiving's 5-day), integer USD; all three are set or all are null |
 | ForecastAsOf | Date of this prediction; older tracking tables retain their explicit as-of date |
 | PublishedAtUtc / UpdatedAtUtc | Article publication and modification timestamps |
 | SourceUrl | Original article; attribution and analysis link |
@@ -123,7 +171,9 @@ Keep **Weekend results — Top 10** from The Numbers. Add:
 - **Upcoming movie forecasts — Predictions**: group `long-range` by release date,
   display title, distributor, predicted opening range and ForecastAsOf.
 
-Format ranges such as `$25M–$35M`. Show **Source: Boxoffice Pro** linked to each
+Format ranges such as `$25M–$35M`. When ExtendedForecastDays is set, show the
+3-day range first and the holiday frame beside it, e.g.
+`$35M–$45M (3-day) · $50M–$70M (5-day)`. Show **Source: Boxoffice Pro** linked to each
 row's SourceUrl. The preview is not necessarily a top ten; show only provider
 ranks. Do not fill missing ranks or supply your own predictions.
 
@@ -140,6 +190,8 @@ refresh warning if an import failed; LastError is diagnostic data for admins.
 `--configure-boxoffice` creates both the actuals and forecast schemas with
 migration credentials. Hourly production collection adds `--boxoffice-forecasts`.
 `--boxoffice-forecasts --dry-run` fetches and validates without database changes.
+Re-run `--configure-boxoffice` before deploying a collector that writes the
+holiday `ExtendedForecast*` columns; the migration is additive and idempotent.
 
 The collector selects the newest domestic weekend-preview article and newest
 long-range article from the category listing, using publication timestamps.
@@ -365,6 +417,10 @@ Give this document to the My-Newsfeed application along with
 
 ## U.S. movie releases
 
+October 16 deployed addition: optional Fandango theatrical and Fandango at Home digital
+links, with labeled search fallbacks. See [purchase-link implementation and frontend
+handoff](movie-purchase-links.md). Backend and existing frontend direct buttons verified; eight theatrical films now link directly to Fandango.
+
 2026-10-11 update: Movie Insider digital provider and separate When To Stream VOD
 parsing are implemented. See [the digital release correction/frontend handoff](movies-and-box-office.md#my-newsfeed-digital-releases)
 for deployment and the recommended current-week source selection. Older source
@@ -372,7 +428,12 @@ investigation notes below describe the original implementation.
 
 Scope agreed 2026-10-08: U.S. theatrical releases, digital purchase/rental,
 subscription streaming, and physical discs. The database schema, read-only preview, and main-CLI database ingestion are implemented.
-`--movies` imports the current Central-time week and refreshes tracked movie detail pages on each run.
+`--movies` discovers releases in `--movie-weeks` Monday–Sunday weeks (default 4,
+range 1–12) starting with the current Central-time week, and refreshes tracked movie
+detail pages on each run. Before October 25, 2026 discovery covered only the current
+week, so upcoming theatrical/digital/subscription dates appeared only once their
+week began. Frontend views that filter to the current week are unaffected; future
+rows are available for an upcoming-releases view.
 
 <a id="movie-releases--sources-investigated"></a>
 
@@ -556,6 +617,9 @@ verified against studios or platform catalogs. No movie data is saved to SQL Ser
 `cargo run --locked -- --movies` imports movie releases into SQL Server. Combine
 `--movies` with the existing news/events/YouTube flags and `--every-hours 1` for
 hourly collection. `--dry-run` parses movies without writing movie/source rows.
+A calendar page that lists dated headings but nothing inside the window is treated
+as empty, not as a source issue; a page with no recognizable date headings is still
+reported. Preview several weeks with `movie_preview --weeks N`.
 The standalone Docker Compose service includes `--movies` and keeps its existing
 persistent feed volume and hourly Central-time schedule.
 
@@ -571,7 +635,7 @@ The source exposes one theatrical/digital event per movie; separate reissues
 without explicit source identity cannot be distinguished automatically.
 
 Verification: `cargo test --locked --all-targets`; live rollback-only upsert test:
-`cargo test --locked --bin web_scraper movie_upserts_are_repeatable -- --ignored`.
+`cargo test --locked --lib movie_upserts_are_repeatable -- --ignored`.
 
 
 <a id="movie-releases--posters"></a>
@@ -669,7 +733,7 @@ cargo run --locked -- --movie-posters --retry-missing-posters
 cargo run --locked --example audit_movies -- WebScraper /tmp/movie-audit.json
 # Matching/parser tests, plus optional rollback-only SQL preservation test.
 cargo test --locked --all-targets
-cargo test --locked --bin web_scraper poster_backfill_preserves -- --ignored
+cargo test --locked --lib poster_backfill_preserves -- --ignored
 ```
 
 Poster-only mode cannot be combined with dry-run or scheduled mode. Regular movie

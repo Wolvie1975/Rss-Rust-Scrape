@@ -1,0 +1,153 @@
+{
+  "leagues": [
+    {
+      "slug": "nfl"
+    }
+  ],
+  "events": [
+    {
+      "id": "401873007",
+      "links": [
+        {
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/nfl/game/_/gameId/401873007/cowboys-packers",
+          "text": "Gamecast",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "rel": [
+            "recap",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/nfl/recap?gameId=401873007",
+          "text": "Recap",
+          "shortText": "Recap",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "rel": [
+            "boxscore",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/nfl/boxscore/_/gameId/401873007",
+          "text": "Box Score",
+          "shortText": "Box Score",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "rel": [
+            "pbp",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/nfl/playbyplay/_/gameId/401873007",
+          "text": "Play-by-Play",
+          "shortText": "Play-by-Play",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "rel": [
+            "teamstats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/nfl/matchup?gameId=401873007",
+          "text": "Team Stats",
+          "shortText": "Team Stats",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "rel": [
+            "videos",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/nfl/video?gameId=401873007",
+          "text": "Videos",
+          "shortText": "Videos",
+          "isExternal": false,
+          "isPremium": false
+        }
+      ],
+      "competitions": [
+        {
+          "id": "401873007",
+          "status": {
+            "type": {
+              "id": "3",
+              "name": "STATUS_FINAL",
+              "state": "post",
+              "completed": true,
+              "description": "Final",
+              "detail": "Final",
+              "shortDetail": "Final"
+            },
+            "isTBDFlex": false
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "23",
+              "linescores": [
+                {
+                  "displayValue": "7"
+                },
+                {
+                  "displayValue": "10"
+                },
+                {
+                  "displayValue": "3"
+                },
+                {
+                  "displayValue": "3"
+                }
+              ],
+              "team": {
+                "id": "9",
+                "displayName": "Green Bay Packers",
+                "name": null,
+                "logo": null
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "13",
+              "linescores": [
+                {
+                  "displayValue": "0"
+                },
+                {
+                  "displayValue": "0"
+                },
+                {
+                  "displayValue": "7"
+                },
+                {
+                  "displayValue": "6"
+                }
+              ],
+              "team": {
+                "id": "6",
+                "displayName": "Dallas Cowboys",
+                "name": null,
+                "logo": null
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -65,3 +65,17 @@ IF COL_LENGTH('dbo.BoxOfficeWeekend','PosterUrl') IS NOT NULL
  GRANT UPDATE(PosterUrl,PosterLookupStatus) ON dbo.BoxOfficeWeekend TO [WebScraperIngest];
 IF COL_LENGTH('dbo.BoxOfficeForecasts','PosterUrl') IS NOT NULL
  GRANT UPDATE(PosterUrl,PosterLookupStatus) ON dbo.BoxOfficeForecasts TO [WebScraperIngest];
+
+IF OBJECT_ID('dbo.UpsertArticleIdentity','P') IS NOT NULL
+ GRANT EXECUTE ON dbo.UpsertArticleIdentity TO [WebScraperIngest];
+IF OBJECT_ID('dbo.ArticleUrlAliases','U') IS NOT NULL BEGIN
+ GRANT SELECT ON dbo.ArticleUrlAliases TO [WebScraperIngest];
+ GRANT UPDATE(LastCheckedAt) ON dbo.ArticleUrlAliases TO [WebScraperIngest];
+END;
+IF OBJECT_ID('dbo.ArticleIdRedirects','U') IS NOT NULL
+ GRANT SELECT ON dbo.ArticleIdRedirects TO [WebScraperIngest];
+
+IF OBJECT_ID('dbo.MovieCommerceLinks','U') IS NOT NULL
+ GRANT SELECT,INSERT,UPDATE ON dbo.MovieCommerceLinks TO [WebScraperIngest];
+IF OBJECT_ID('dbo.MovieCommerce','V') IS NOT NULL
+ GRANT SELECT ON dbo.MovieCommerce TO [WebScraperIngest];

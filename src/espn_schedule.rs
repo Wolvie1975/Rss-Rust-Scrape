@@ -1,4 +1,5 @@
 //! Shared ESPN schedule parsing; scores and results are deliberately ignored.
+use crate::Result;
 use crate::events::Event;
 use chrono::{DateTime, Datelike, NaiveDate, Timelike, Utc};
 use chrono_tz::America::{Chicago, New_York};
@@ -6,7 +7,6 @@ use reqwest::blocking::Client;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use url::Url;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum League {
     Nwsl,
@@ -15,6 +15,8 @@ pub enum League {
     Championship,
     Epl,
     Mls,
+    Nhl,
+    Nfl,
 }
 impl League {
     pub fn path(self) -> &'static str {
@@ -25,6 +27,8 @@ impl League {
             Self::Championship => "/apis/site/v2/sports/soccer/eng.2/scoreboard",
             Self::Epl => "/apis/site/v2/sports/soccer/eng.1/scoreboard",
             Self::Mls => "/apis/site/v2/sports/soccer/usa.1/scoreboard",
+            Self::Nhl => "/apis/site/v2/sports/hockey/nhl/scoreboard",
+            Self::Nfl => "/apis/site/v2/sports/football/nfl/scoreboard",
         }
     }
     pub fn provider_key(self) -> &'static str {
@@ -35,6 +39,8 @@ impl League {
             Self::Championship => "espn-championship",
             Self::Epl => "espn-epl",
             Self::Mls => "espn-mls",
+            Self::Nhl => "espn-nhl",
+            Self::Nfl => "espn-nfl",
         }
     }
     pub fn canonical_key(self, id: i32) -> String {
@@ -47,6 +53,8 @@ impl League {
                 Self::Championship => "eng.2",
                 Self::Epl => "eng.1",
                 Self::Mls => "usa.1",
+                Self::Nhl => "nhl",
+                Self::Nfl => "nfl",
             }
         )
     }
@@ -57,6 +65,8 @@ impl League {
             }
             Self::Wnba => format!("https://www.espn.com/wnba/game/_/gameId/{id}"),
             Self::Mlb => format!("https://www.espn.com/mlb/game/_/gameId/{id}"),
+            Self::Nhl => format!("https://www.espn.com/nhl/game/_/gameId/{id}"),
+            Self::Nfl => format!("https://www.espn.com/nfl/game/_/gameId/{id}"),
         }
     }
     fn sport(self) -> &'static str {
@@ -64,6 +74,8 @@ impl League {
             Self::Nwsl | Self::Championship | Self::Epl | Self::Mls => "Soccer",
             Self::Wnba => "Basketball",
             Self::Mlb => "Baseball",
+            Self::Nhl => "Hockey",
+            Self::Nfl => "Football",
         }
     }
 }
@@ -107,9 +119,6 @@ pub(crate) fn fetch_from(
         .map(|(k, v)| (k.into_owned(), v.into_owned()))
         .collect();
     let filter = params.get("team").map(String::as_str);
-    if league == League::Nwsl && filter.is_some_and(|team| team != "20907") {
-        return Err("NWSL schedule provider supports Kansas City Current (team=20907)".into());
-    }
     if let Some(filter) = filter
         && filter
             .split(',')
@@ -188,8 +197,10 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
         let competitors = c["competitors"]
             .as_array()
             .ok_or("ESPN competition missing competitors")?;
+        // Explicit single-team NWSL feeds retain their team perspective. A
+        // league-wide (or multi-team) feed consistently uses the home side.
         let team = if league == League::Nwsl {
-            Some("20907")
+            filter.filter(|team| !team.contains(','))
         } else {
             None
         };
@@ -206,11 +217,7 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
             Some(team) => p["team"]["id"].as_str() == Some(team),
             None => p["homeAway"].as_str() == Some("home"),
         }) else {
-            if league == League::Nwsl {
-                continue;
-            } else {
-                return Err("league fixture missing home competitor".into());
-            }
+            return Err("league fixture missing home competitor".into());
         };
         if competitors.len() != 2 {
             return Err("ESPN fixture requires two competitors".into());
@@ -238,7 +245,7 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
             .or_else(|_| {
                 chrono::NaiveDateTime::parse_from_str(date, "%Y-%m-%dT%H:%MZ").map(|d| d.and_utc())
             })?;
-        let status = c["status"]["type"]["name"]
+        let mut status = c["status"]["type"]["name"]
             .as_str()
             .or(raw["status"]["type"]["name"].as_str())
             .ok_or("missing fixture status")?
@@ -248,6 +255,18 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
         } else {
             &raw["status"]["type"]
         };
+        // NHL uses STATUS_FINAL for regulation, OT and SO; retain the finish in storage.
+        if league == League::Nhl && status == "STATUS_FINAL" {
+            let detail = status_type["shortDetail"]
+                .as_str()
+                .or(status_type["detail"].as_str())
+                .unwrap_or("");
+            if detail.ends_with("/SO") {
+                status = "STATUS_FINAL_SO".into();
+            } else if detail.ends_with("OT") {
+                status = "STATUS_FINAL_OT".into();
+            }
+        }
         let reconciliation = matches!(
             status.as_str(),
             "STATUS_CANCELED"
@@ -279,6 +298,19 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
             );
         let opponent = text(&opp["team"], "displayName").ok_or("missing opponent name")?;
         let name = text(&own["team"], "displayName").ok_or("missing team name")?;
+        if league == League::Nfl {
+            let valid_team = |id: i32, display: &str, team: &Value| {
+                id > 0
+                    && !matches!(id, 31 | 32)
+                    && !matches!(display, "TBD" | "AFC" | "NFC")
+                    && !matches!(team["abbreviation"].as_str(), Some("TBD" | "AFC" | "NFC"))
+            };
+            if !valid_team(team_id, &name, &own["team"])
+                || !valid_team(opponent_id, &opponent, &opp["team"])
+            {
+                continue;
+            }
+        }
         let tv = c["broadcasts"]
             .as_array()
             .map(|bs| {
@@ -335,7 +367,11 @@ pub fn parse(root: &Value, league: League, filter: Option<&str>) -> Result<Vec<F
                 ),
                 sport: Some(league.sport().into()),
                 opponent: Some(opponent),
-                is_away: if neutral { None } else { away },
+                is_away: if neutral && league != League::Nfl {
+                    None
+                } else {
+                    away
+                },
                 location: text(&c["venue"], "fullName")
                     .or_else(|| text(&raw["venue"], "displayName")),
                 event_date,

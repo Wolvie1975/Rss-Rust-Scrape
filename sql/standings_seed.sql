@@ -2,6 +2,7 @@
 INSERT dbo.SportsStandingsSources(ProviderKey,Sport,DisplayName,Url,MinimumTeams)
 SELECT s.ProviderKey,s.Sport,s.DisplayName,s.Url,s.MinimumTeams
 FROM (VALUES
+ (N'espn-nhl',N'Hockey',N'NHL',N'https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings?level=3',32),
  (N'espn-epl',N'Soccer',N'Premier League',N'https://site.api.espn.com/apis/v2/sports/soccer/eng.1/standings',20),
  (N'espn-championship',N'Soccer',N'EFL Championship',N'https://site.api.espn.com/apis/v2/sports/soccer/eng.2/standings',24),
  (N'espn-nfl',N'Football',N'NFL',N'https://site.api.espn.com/apis/v2/sports/football/nfl/standings?level=3',32),

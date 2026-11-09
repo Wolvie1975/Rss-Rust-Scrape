@@ -2,6 +2,8 @@
 name = "web_scraper"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.97"
+default-run = "web_scraper"
 
 [dependencies]
 chrono = "0.4.45"
@@ -14,8 +16,12 @@ roxmltree = "0.21.1"
 rss = "2.1.2"
 scraper = "0.27.0"
 serde_json = "1.0.151"
+regex = "1.11.1"
 tiberius = { version = "0.12.3", default-features = false, features = ["tds73", "native-tls", "chrono"] }
 tokio = { version = "1.53.1", features = ["rt", "net", "time"] }
 tokio-util = { version = "0.7.19", features = ["compat"] }
 url = "2.5.8"
 tempfile = "3.23"
+
+[lints.rust]
+unsafe_code = "forbid"

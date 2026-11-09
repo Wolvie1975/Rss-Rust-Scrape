@@ -4,7 +4,7 @@ use scraper::{Html, Selector};
 use serde_json::Value;
 use url::Url;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use crate::Result;
 
 /// One game from a Sidearm-style calendar RSS feed (custom `ev:` / `s:` fields).
 #[derive(Clone)]
@@ -52,7 +52,7 @@ pub fn fetch_events(
             .get(url)
             .send()
             .and_then(|r| r.error_for_status())
-            .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })
+            .map_err(|e| -> crate::Error { Box::new(e) })
             .and_then(crate::http::response_text)
         {
             Ok(html) => Some(html),

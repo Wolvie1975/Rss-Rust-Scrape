@@ -1,9 +1,9 @@
 //! Current/future Premier League fixtures only. No historical result imports.
+use crate::Result;
 use crate::espn_schedule::{self, Fixture, League};
 use chrono::{Datelike, NaiveDate, Utc};
 use serde_json::Value;
 use std::collections::BTreeMap;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub fn is_feed(url: &str) -> bool {
     espn_schedule::is_feed(url, League::Epl)
 }

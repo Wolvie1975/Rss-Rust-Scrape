@@ -1,0 +1,175 @@
+{
+  "provenance": {
+    "summary": "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/summary?event=401892525",
+    "scoreboard": "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?dates=20261017&limit=1000",
+    "captured": "2026-10-19"
+  },
+  "game": {
+    "sport": "hockey",
+    "league": "nhl",
+    "eventId": "401892525",
+    "date": "20261017"
+  },
+  "format": {
+    "regulation": {
+      "periods": 3,
+      "displayName": "Period",
+      "slug": "period",
+      "clock": 1200.0
+    }
+  },
+  "summaryTeams": [
+    {
+      "id": "5",
+      "team": {
+        "id": "5",
+        "displayName": "Detroit Red Wings"
+      },
+      "homeAway": "home",
+      "score": "4",
+      "linescores": [
+        {
+          "displayValue": "1"
+        },
+        {
+          "displayValue": "0"
+        },
+        {
+          "displayValue": "2"
+        },
+        {
+          "displayValue": "0"
+        },
+        {
+          "displayValue": "1"
+        }
+      ]
+    },
+    {
+      "id": "18",
+      "team": {
+        "id": "18",
+        "displayName": "San Jose Sharks"
+      },
+      "homeAway": "away",
+      "score": "3",
+      "linescores": [
+        {
+          "displayValue": "1"
+        },
+        {
+          "displayValue": "1"
+        },
+        {
+          "displayValue": "1"
+        },
+        {
+          "displayValue": "0"
+        },
+        {
+          "displayValue": "0"
+        }
+      ]
+    }
+  ],
+  "scoreboard": {
+    "events": [
+      {
+        "id": "401892525",
+        "season": {
+          "year": 2027,
+          "type": 2,
+          "slug": "regular-season"
+        },
+        "competitions": [
+          {
+            "id": "401892525",
+            "status": {
+              "type": {
+                "id": "3",
+                "name": "STATUS_FINAL",
+                "state": "post",
+                "completed": true,
+                "description": "Final",
+                "detail": "Final/SO",
+                "shortDetail": "Final/SO",
+                "altDetail": "SO"
+              },
+              "period": 5
+            },
+            "competitors": [
+              {
+                "homeAway": "home",
+                "score": "4",
+                "linescores": [
+                  {
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "period": 1
+                  },
+                  {
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "period": 2
+                  },
+                  {
+                    "value": 2.0,
+                    "displayValue": "2",
+                    "period": 3
+                  },
+                  {
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "period": 4
+                  },
+                  {
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "period": 5
+                  }
+                ],
+                "team": {
+                  "id": "5"
+                }
+              },
+              {
+                "homeAway": "away",
+                "score": "3",
+                "linescores": [
+                  {
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "period": 1
+                  },
+                  {
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "period": 2
+                  },
+                  {
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "period": 3
+                  },
+                  {
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "period": 4
+                  },
+                  {
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "period": 5
+                  }
+                ],
+                "team": {
+                  "id": "18"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

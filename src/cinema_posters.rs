@@ -1,4 +1,5 @@
 //! Shared poster enrichment for box-office results and domestic forecasts.
+use crate::Result;
 use crate::{
     db::Db,
     movie_metadata::{self as meta, MovieIdentity},
@@ -7,7 +8,6 @@ use crate::{
 use chrono::{NaiveDateTime, Utc};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub struct Job {
     pub section: String,
     pub title: String,
@@ -32,7 +32,7 @@ fn number_movie(
     body: &str,
     url: &str,
     target: &MovieIdentity,
-) -> std::result::Result<meta::SourceMovie, String> {
+) -> Result<meta::SourceMovie, String> {
     let doc = scraper::Html::parse_document(body);
     let heading = doc
         .select(&scraper::Selector::parse("h1").unwrap())
@@ -58,8 +58,8 @@ fn number_movie(
 pub(crate) fn number_lookup(
     client: &reqwest::blocking::Client,
     target: &MovieIdentity,
-    memo: &mut BTreeMap<String, std::result::Result<String, String>>,
-) -> std::result::Result<Option<(meta::SourceMovie, String)>, String> {
+    memo: &mut BTreeMap<String, Result<String, String>>,
+) -> Result<Option<(meta::SourceMovie, String)>, String> {
     let Some(year) = target.year else {
         return Ok(None);
     };

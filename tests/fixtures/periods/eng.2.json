@@ -1,0 +1,151 @@
+{
+  "provenance": {
+    "summary": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.2/summary?event=401880218",
+    "scoreboard": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.2/scoreboard?dates=20261016&limit=1000",
+    "captured": "2026-10-19",
+    "core": [
+      "https://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.2/events/401880218/competitions/401880218/competitors/379/linescores?lang=en&region=us&limit=100",
+      "https://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.2/events/401880218/competitions/401880218/competitors/380/linescores?lang=en&region=us&limit=100"
+    ]
+  },
+  "game": {
+    "sport": "soccer",
+    "league": "eng.2",
+    "eventId": "401880218",
+    "date": "20261016"
+  },
+  "format": {
+    "regulation": {
+      "periods": 2,
+      "displayName": "Half",
+      "slug": "half",
+      "clock": 2700.0
+    }
+  },
+  "summaryTeams": [
+    {
+      "id": "379",
+      "team": {
+        "id": "379",
+        "displayName": "Burnley"
+      },
+      "homeAway": "home",
+      "score": "1",
+      "linescores": [
+        {
+          "displayValue": "1"
+        },
+        {
+          "displayValue": "0"
+        }
+      ]
+    },
+    {
+      "id": "380",
+      "team": {
+        "id": "380",
+        "displayName": "Wolverhampton Wanderers"
+      },
+      "homeAway": "away",
+      "score": "2",
+      "linescores": [
+        {
+          "displayValue": "1"
+        },
+        {
+          "displayValue": "1"
+        }
+      ]
+    }
+  ],
+  "scoreboard": {
+    "events": [
+      {
+        "id": "401880218",
+        "season": {
+          "year": 2026,
+          "type": 14327,
+          "slug": "regular-season"
+        },
+        "competitions": [
+          {
+            "id": "401880218",
+            "status": {
+              "type": {
+                "id": "28",
+                "name": "STATUS_FULL_TIME",
+                "state": "post",
+                "completed": true,
+                "description": "Full Time",
+                "detail": "FT",
+                "shortDetail": "FT"
+              },
+              "period": 2
+            },
+            "competitors": [
+              {
+                "homeAway": "home",
+                "score": "1",
+                "team": {
+                  "id": "379"
+                },
+                "linescores": [
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.2/events/401880218/competitions/401880218/competitors/379/linescores/38/1?lang=en&region=us",
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 1
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.2/events/401880218/competitions/401880218/competitors/379/linescores/38/2?lang=en&region=us",
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 2
+                  }
+                ]
+              },
+              {
+                "homeAway": "away",
+                "score": "2",
+                "team": {
+                  "id": "380"
+                },
+                "linescores": [
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.2/events/401880218/competitions/401880218/competitors/380/linescores/38/1?lang=en&region=us",
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 1
+                  },
+                  {
+                    "$ref": "http://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.2/events/401880218/competitions/401880218/competitors/380/linescores/38/2?lang=en&region=us",
+                    "value": 1.0,
+                    "displayValue": "1",
+                    "source": {
+                      "id": "38",
+                      "description": "SA.ENVOY"
+                    },
+                    "period": 2
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "periodCoreMetadata": true
+      }
+    ]
+  }
+}

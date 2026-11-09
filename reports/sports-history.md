@@ -4,6 +4,16 @@ Historical evidence, newest dates first. Counts, image tags and rollout details 
 
 ## Contents
 
+- [Big 12 news registration — October 18, 2026](#big12-news-2026-10-18)
+
+- [F1 production deployment — October 18, 2026](#f1-deployment-2026-10-18)
+
+- [Brewers–Dodgers finished-series schedule cleanup — October 16, 2026](#brewers-dodgers-cleanup-2026-10-16)
+
+- [NWSL all-team schedule expansion — October 16, 2026](#nwsl-league-deployment-2026-10-16)
+
+- [Big 12 soccer and men’s basketball standings verification — October 15, 2026](#big12-standings-review-2026-10-15)
+- [NHL schedules, standings and results deployment — October 14, 2026](#nhl-deployment-2026-10-14)
 - [WNBA correction and stale schedule review — October 13, 2026](#wnba-stale-correction-2026-10-13)
 - [WNBA schedule data review — October 13, 2026](#wnba-data-review-2026-10-13)
 - [NFL standings deployment — October 13, 2026](#nfl-standings-deployment-2026-10-13)
@@ -23,6 +33,238 @@ Historical evidence, newest dates first. Counts, image tags and rollout details 
 - [Kansas City Current schedule verification — 2026-10-09](#kansas-city-current-schedule-2026-10-09)
 - [ESPN schedule cutoff — 2026-10-09](#espn-upcoming-only-2026-10-09)
 - [Big 12 expansion verification — October 9, 2026](#big12-expansion-2026-10-09)
+
+<a id="big12-news-2026-10-18"></a>
+
+## Big 12 news registration — October 18, 2026
+
+Registered five enabled RSS sources in **Big 12 News**, excluding the dedicated
+women's basketball feed as requested. Production dry-run passed, followed by an
+import with five source successes, zero failures and 46 saved articles; four
+cross-source duplicate URLs were skipped by existing identity protection.
+Read-back verified updated timestamps, source enablement and no LastError.
+Both production containers were healthy. Existing hourly news collection handles
+the feeds; no rebuild/restart or structured Big 12 data changes were needed.
+[Source list and frontend contract](../docs/big12-news-frontend-integration.md).
+
+<a id="f1-deployment-2026-10-18"></a>
+
+## F1 production deployment — October 18, 2026
+
+F1 news was subsequently added through four enabled RSS sources in **F1 News**
+(BBC Sport, Autosport, Motorsport.com and The Guardian). The running image
+imported 40 articles successfully; hourly news collection needs no restart.
+[News UI contract](../docs/f1-news-frontend-integration.md) and
+[registration evidence](../docs/f1-operations.md#f1-news-registration).
+
+
+Deployed `web-scraper:f1-20261018`; deployed-container run 1206 succeeded.
+Season 2026 verification: 23 races, 374 Grand Prix classifications, 132 sprint
+classifications, 23 drivers and 11 constructors through round 17. The frontend
+production reader could query all four views. Hourly settings were preserved;
+the next scheduled slot was logged but not awaited. The previous container/image
+and protected host backup are retained. No frontend rendering was implemented.
+
+Full [deployment evidence and rollback](f1-production-20261018.md),
+[frontend contract](../docs/f1-frontend-integration.md) and
+[operations](../docs/f1-operations.md).
+
+<a id="brewers-dodgers-cleanup-2026-10-16"></a>
+
+## Brewers–Dodgers finished-series schedule cleanup — October 16, 2026
+
+User requested removal of remaining schedule games after the NLCS ended. A fresh
+ESPN October scoreboard omitted the three unused games and retained the four
+completed series games. SQL still held these scheduled placeholders because an
+absent provider observation does not automatically delete an existing fixture.
+
+Removed exactly three `SportsEvents` rows from MLB source 4193, guarded by row ID,
+GameId, provider, source and both team names inside one transaction:
+
+| Date (Central) | Row ID | ESPN GameId |
+| --- | --- | --- |
+| October 16 | 17861 | 401908034 |
+| October 18 | 17862 | 401908035 |
+| October 19 | 17863 | 401908036 |
+
+Archived complete original rows at
+`/var/opt/mssql/backup/webscraper-managed/manual/BrewersDodgers_schedule_cleanup_20261016.json`.
+Re-imported the normal MLB feed with runtime credentials: no failures, none of the
+three fixtures recreated. Remaining MLB schedule identities matched the prior
+snapshot minus exactly these three rows (11 retained). ResultGames remained at
+33 MLB rows; completed results were not deleted. The live MLB Events selection
+returned HTTP 200 with all three removed GameIds absent. No collector image,
+scheduler, source configuration or frontend code was changed.
+
+<a id="nwsl-league-deployment-2026-10-16"></a>
+
+## NWSL all-team schedule expansion — October 16, 2026
+
+Expanded the existing Kansas City Current schedule to all NWSL clubs, as requested.
+Final scraper image `web-scraper:nwsl-league-20261016`:
+`sha256:d49272ed529b8917c78fea455a5aea6b7e1bf69213a77f6e4ac7151d57df7f63`.
+The underlying shared ESPN parser no longer forces team 20907. No team parameter
+uses the home-team perspective; explicit single-team NWSL filters still preserve
+that selected team's perspective. Canonical event IDs/URLs remain unchanged.
+
+Applied the explicit NWSL seed update with migration credentials: source **4191**
+keeps its ID and Enabled flag, but uses the unfiltered scoreboard URL, display
+name NWSL and null source SchoolName. Its legacy ProviderSchoolId=20907 tag remains
+because the deployed frontend checks that tag to recognize NWSL; the collector
+uses the URL to select teams. Reconfiguration recognizes that expanded source
+without creating another source or changing its scope. New installs register a
+disabled source with tag 0. No table schema, results collection or other source
+configuration was changed.
+
+The existing frontend query's Kansas City source-tag guard initially hid the new
+source when tag 0 was tried. Retaining its original tag restored compatibility;
+no frontend code/image was changed. Separate dirty frontend theme/MyTeams files
+were inspected only and left untouched. Future frontend cleanup should accept
+both tags, label source selectors NWSL and support follow coverage for every team;
+see [frontend notes](../docs/nwsl-league-schedule.md#source-setup-and-frontend-compatibility).
+
+Validation: **162 offline tests** passed; strict Clippy and formatting passed.
+The opt-in isolated SQL test passed separately and validates legacy source ID and
+Enabled preservation, 24-event expansion, stable retained Current IDs/first-seen,
+repeat imports, reschedules/cancellations. Its database was removed. The October
+provider fixture spans all **16 clubs**, including Boston and Denver.
+
+Read-only new-image preview succeeded with zero failures. Initial production
+imports **168 and 169**, **3:14 p.m. Central**, succeeded and retained **24 upcoming
+fixtures / 24 distinct GameIds / 16 teams**. All three pre-existing Current event
+IDs, first-seen timestamps, dates and kickoff instants were unchanged. Only source
+4191's configuration changed. Home/opponent perspective now reflects league-wide
+home-team orientation rather than always Current. No duplicate fixtures were added
+on repeat. Final-image production run **170**, **3:21:41–3:21:43 p.m. Central**, also
+succeeded with the same 24 fixtures/16 teams. Final scraper/frontend health checks
+passed; the hourly scheduler remained set for 4:00 p.m. Central.
+
+The live `/events?schedule=espn-nwsl%7CSoccer` page returned 200, selected NWSL, and
+rendered eight known current-window matches, seven without Kansas City. This page
+retains its today-through-next-three-days display; the backend keeps all remaining
+upcoming 2026 schedule data. Source/team preferences must check both event team IDs
+for a specific club. Existing completed results remain independent.
+
+Verified copy-only/checksum backup:
+`/var/opt/mssql/backup/webscraper-managed/manual/WebScraper_before_nwsl_league_20261016.bak`.
+Protected source/config/evidence backup:
+`/home/jcarpio/Projects/Rss-Rust-Scrape/.deployment-backups/20261016-nwsl-league/`.
+Rollback image `web-scraper:before-nwsl-league-20261016` and stopped container
+`web-scraper-before-nwsl-league-20261016` retain the preceding direct-movie-links
+build. Rollback to Current-only also requires explicitly restoring the original
+source URL/name metadata; do not delete new league game rows without a separate
+cleanup scope. Runtime Env, scheduler, network, mounts, limits and security settings
+were preserved. No Git commit/push was performed.
+
+<a id="big12-standings-review-2026-10-15"></a>
+
+## Big 12 soccer and men’s basketball standings verification — October 15, 2026
+
+Compared the live production standings with the conference’s published tables in
+response to a soccer display discrepancy and a men’s basketball screenshot.
+
+- Soccer source **7**, season **2026**: all 16 teams, row order and 12 statistic
+  columns (192 values) matched the official explicit standings page
+  `https://big12sports.com/standings.aspx?standings=238&path=soc`.
+  Its latest successful refresh observed was 18:00 UTC / 1:00 p.m. Central.
+- The rendered app at `/standings?sourceId=7` also matched all conference records
+  and points after accounting for W–L–T record strings versus W/D/L columns.
+  It displayed conference GP/W/D/L/points and omitted other stored columns.
+  No stale or incorrect scraper data was found.
+- Men’s basketball source **5**, season **2025-26**: all 16 teams, row order and
+  10 statistic columns (160 values) matched
+  `https://big12sports.com/standings.aspx?path=mbball`, including the supplied
+  screenshot’s conference/overall records, percentages, home/away splits, neutral
+  records and streak. Latest successful refresh observed was 19:00 UTC /
+  2:00 p.m. Central.
+- Both sources were enabled and had no reported source error at inspection.
+  No scraper fixes, database writes, configuration changes, deployment or
+  scheduler restart were required. The user will adjust the soccer frontend;
+  frontend changes were not implemented or verified in this review.
+
+The consolidated [standings guide](../docs/sports-tables.md#big12-soccer-basketball-columns)
+now records both complete `StatsJson` mappings. Consumers must distinguish
+repeated column labels using their positional `name` within each source’s layout.
+These timestamps and values are historical observations, not live status.
+
+<a id="nhl-deployment-2026-10-14"></a>
+
+## NHL schedules, standings and results deployment — October 14, 2026
+
+Deployed `web-scraper:nhl-20261014`, image
+`sha256:8bb3315e1a9eb0ac714f2ca425579c5f230e32df35e16351f3aa0b5feb81c645`.
+The production `web-scraper` container and `mynewsfeed-web` were healthy at final
+verification. No front-end deployment or SQL Server restart was performed.
+
+### Production data
+
+NHL schedule/results source 5637 and division standings source 13 are enabled.
+ESPN season 2027 represents 2026–27.
+
+| Data | Verified rows |
+| --- | ---: |
+| Current/future NHL fixtures | 1,239 |
+| Final results | 170 |
+| Regulation finishes | 133 |
+| Overtime finishes | 23 |
+| Shootout finishes | 14 |
+| Current division standings teams | 32 |
+| Past NHL fixture rows | 0 |
+| Duplicate NHL canonical fixture keys | 0 |
+
+The collector read 1,409 schedule observations, including completed observations
+used for reconciliation. Completed games were stored as results independently of
+schedule retention. NHL standings retain division order and provider statistics.
+
+### Verification
+
+- Full offline suite: 144 passed; 18 opt-in tests skipped.
+- Formatting, strict Clippy and Cargo audit passed. Rustls was updated to 0.23.46.
+- Read-only NHL live feeds and a dry run using the release image passed.
+- SQL integration test passed in newly created isolated database
+  `WebScraper_NHL_Validation_20261014`; the database was removed afterward.
+- Targeted imports 104 and 105 succeeded. Fixtures, results and standings kept
+  identical IDs and first-seen timestamps on repeat import.
+- A real schedule/results import from the deployed image succeeded as run 106
+  at 08:33 Central, with one source success and zero failures. Its normal retention
+  cleanup succeeded. NHL IDs remained unchanged afterward.
+- Existing non-NHL sports source URLs, enabled flags and limits matched the
+  pre-deployment snapshot.
+- Runtime environment, scheduler arguments, TLS certificate mount, data volume,
+  network, restart policy, limits, security settings, logging and healthcheck
+  matched the previous container.
+- Startup logged the next aligned hourly collection for 09:00 Central on
+  October 14. That scheduled slot was not awaited during deployment verification.
+
+The host build inputs matched the pre-NHL source before applying the change.
+Only changed code, SQL, fixtures and new NHL documentation were synchronized;
+existing host documentation and credentials were preserved. No Git commits or
+pushes were performed.
+
+### Rollback
+
+Previous image: `web-scraper:before-nhl-20261014` (also retained as
+`web-scraper:cinema-posters-20261013`). Previous container is stopped and retained
+as `web-scraper-before-nhl-20261014`.
+
+Protected host backup:
+`/home/jcarpio/Projects/Rss-Rust-Scrape/.deployment-backups/20261014-nhl/`.
+It contains source/configuration and before/after verification snapshots. Keep its
+permissions private because the rollback configuration includes the runtime
+connection profile. No credentials are in this report.
+
+Before returning to the old image, disable only the NHL sources so the older
+collector does not attempt the new feeds:
+
+```sql
+UPDATE dbo.SportsEventsType SET Enabled=0 WHERE ProviderKey='espn-nhl';
+UPDATE dbo.SportsStandingsSources SET Enabled=0 WHERE ProviderKey='espn-nhl';
+```
+
+On the Docker host, stop the new container, rename it aside, rename the retained
+old container to `web-scraper`, retag the rollback image as `web-scraper:latest`,
+and start the old container. Restore changed host source from the protected backup
+before rebuilding. NHL rows can remain for later reactivation.
 
 <a id="wnba-stale-correction-2026-10-13"></a>
 

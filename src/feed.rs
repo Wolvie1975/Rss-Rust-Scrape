@@ -3,9 +3,9 @@ use reqwest::blocking::Client;
 use scraper::{Html, Selector};
 use url::Url;
 
-use crate::PageMeta;
+use crate::pages::PageMeta;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use crate::Result;
 
 /// Locations tried, relative to the site root, when a page doesn't advertise its feed.
 const COMMON_FEED_PATHS: &[&str] = &[
@@ -138,6 +138,7 @@ fn parse_entries(body: &str, feed_url: &str, source: &str) -> Result<Vec<PageMet
             Some(PageMeta {
                 source: source.to_string(),
                 url: link,
+                identity_urls: vec![],
                 title,
                 description: html.and_then(plain_text),
                 // Some feeds mislabel their time zone, which lands dates in the future.

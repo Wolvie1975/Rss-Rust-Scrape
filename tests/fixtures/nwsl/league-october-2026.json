@@ -1,0 +1,2409 @@
+{
+  "events": [
+    {
+      "id": "401854015",
+      "date": "2026-10-03T00:00Z",
+      "status": {
+        "clock": 5400.0,
+        "displayClock": "90'+13'",
+        "period": 2,
+        "type": {
+          "id": "28",
+          "name": "STATUS_FULL_TIME",
+          "state": "post",
+          "completed": true,
+          "description": "Full Time",
+          "detail": "FT",
+          "shortDetail": "FT"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854015/san-diego-wave-fc-orlando-pride",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "https://www.espn.com/soccer/video/_/gameId/401854015",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "team-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/team-stats/_/gameId/401854015/league/usa.nwsl",
+          "text": "Team Stats",
+          "shortText": "Team Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "player-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/player-stats/_/gameId/401854015/league/usa.nwsl",
+          "text": "Player Stats",
+          "shortText": "Player Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-03T00:00Z",
+          "status": {
+            "clock": 5400.0,
+            "displayClock": "90'+13'",
+            "period": 2,
+            "type": {
+              "id": "28",
+              "name": "STATUS_FULL_TIME",
+              "state": "post",
+              "completed": true,
+              "description": "Full Time",
+              "detail": "FT",
+              "shortDetail": "FT"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "Prime Video"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "6971",
+            "fullName": "Inter&Co Stadium",
+            "address": {
+              "city": "Orlando, Florida",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "18206",
+                "displayName": "Orlando Pride",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/18206.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "21423",
+                "displayName": "San Diego Wave FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/21423.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854016",
+      "date": "2026-10-03T02:00Z",
+      "status": {
+        "clock": 5400.0,
+        "displayClock": "90'+9'",
+        "period": 2,
+        "type": {
+          "id": "28",
+          "name": "STATUS_FULL_TIME",
+          "state": "post",
+          "completed": true,
+          "description": "Full Time",
+          "detail": "FT",
+          "shortDetail": "FT"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854016/north-carolina-courage-seattle-reign-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "https://www.espn.com/soccer/video/_/gameId/401854016",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "team-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/team-stats/_/gameId/401854016/league/usa.nwsl",
+          "text": "Team Stats",
+          "shortText": "Team Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "player-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/player-stats/_/gameId/401854016/league/usa.nwsl",
+          "text": "Player Stats",
+          "shortText": "Player Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-03T02:00Z",
+          "status": {
+            "clock": 5400.0,
+            "displayClock": "90'+9'",
+            "period": 2,
+            "type": {
+              "id": "28",
+              "name": "STATUS_FULL_TIME",
+              "state": "post",
+              "completed": true,
+              "description": "Full Time",
+              "detail": "FT",
+              "shortDetail": "FT"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ESPN2",
+                "ESPNU"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "4485",
+            "fullName": "Lumen Field",
+            "address": {
+              "city": "Seattle, Washington",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "15363",
+                "displayName": "Seattle Reign FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15363.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "15366",
+                "displayName": "North Carolina Courage",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15366.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854017",
+      "date": "2026-10-03T20:00Z",
+      "status": {
+        "clock": 5400.0,
+        "displayClock": "90'+9'",
+        "period": 2,
+        "type": {
+          "id": "28",
+          "name": "STATUS_FULL_TIME",
+          "state": "post",
+          "completed": true,
+          "description": "Full Time",
+          "detail": "FT",
+          "shortDetail": "FT"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854017/utah-royals-racing-louisville-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "https://www.espn.com/soccer/video/_/gameId/401854017",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "team-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/team-stats/_/gameId/401854017/league/usa.nwsl",
+          "text": "Team Stats",
+          "shortText": "Team Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "player-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/player-stats/_/gameId/401854017/league/usa.nwsl",
+          "text": "Player Stats",
+          "shortText": "Player Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-03T20:00Z",
+          "status": {
+            "clock": 5400.0,
+            "displayClock": "90'+9'",
+            "period": 2,
+            "type": {
+              "id": "28",
+              "name": "STATUS_FULL_TIME",
+              "state": "post",
+              "completed": true,
+              "description": "Full Time",
+              "detail": "FT",
+              "shortDetail": "FT"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ION"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "8390",
+            "fullName": "Lynn Family Stadium",
+            "address": {
+              "city": "Louisville, Kentucky",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "20905",
+                "displayName": "Racing Louisville FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/20905.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "19141",
+                "displayName": "Utah Royals",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/19141.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854018",
+      "date": "2026-10-03T22:30Z",
+      "status": {
+        "clock": 5400.0,
+        "displayClock": "90'+4'",
+        "period": 2,
+        "type": {
+          "id": "28",
+          "name": "STATUS_FULL_TIME",
+          "state": "post",
+          "completed": true,
+          "description": "Full Time",
+          "detail": "FT",
+          "shortDetail": "FT"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854018/bay-fc-kansas-city-current",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "https://www.espn.com/soccer/video/_/gameId/401854018",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "team-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/team-stats/_/gameId/401854018/league/usa.nwsl",
+          "text": "Team Stats",
+          "shortText": "Team Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "player-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/player-stats/_/gameId/401854018/league/usa.nwsl",
+          "text": "Player Stats",
+          "shortText": "Player Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-03T22:30Z",
+          "status": {
+            "clock": 5400.0,
+            "displayClock": "90'+4'",
+            "period": 2,
+            "type": {
+              "id": "28",
+              "name": "STATUS_FULL_TIME",
+              "state": "post",
+              "completed": true,
+              "description": "Full Time",
+              "detail": "FT",
+              "shortDetail": "FT"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ION"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "9895",
+            "fullName": "CPKC Stadium",
+            "address": {
+              "city": "Kansas City, Missouri",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "20907",
+                "displayName": "Kansas City Current",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/20907.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "22187",
+                "displayName": "Bay FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/22187.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854089",
+      "date": "2026-10-04T00:52Z",
+      "status": {
+        "clock": 5400.0,
+        "displayClock": "90'+9'",
+        "period": 2,
+        "type": {
+          "id": "28",
+          "name": "STATUS_FULL_TIME",
+          "state": "post",
+          "completed": true,
+          "description": "Full Time",
+          "detail": "FT",
+          "shortDetail": "FT"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854089/boston-legacy-fc-portland-thorns-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "https://www.espn.com/soccer/video/_/gameId/401854089",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "team-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/team-stats/_/gameId/401854089/league/usa.nwsl",
+          "text": "Team Stats",
+          "shortText": "Team Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "player-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/player-stats/_/gameId/401854089/league/usa.nwsl",
+          "text": "Player Stats",
+          "shortText": "Player Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-04T00:52Z",
+          "status": {
+            "clock": 5400.0,
+            "displayClock": "90'+9'",
+            "period": 2,
+            "type": {
+              "id": "28",
+              "name": "STATUS_FULL_TIME",
+              "state": "post",
+              "completed": true,
+              "description": "Full Time",
+              "detail": "FT",
+              "shortDetail": "FT"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ION"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "4383",
+            "fullName": "Providence Park",
+            "address": {
+              "city": "Portland, Oregon",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "15362",
+                "displayName": "Portland Thorns FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15362.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "131562",
+                "displayName": "Boston Legacy FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/131562.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854019",
+      "date": "2026-10-04T17:00Z",
+      "status": {
+        "clock": 5400.0,
+        "displayClock": "90'+7'",
+        "period": 2,
+        "type": {
+          "id": "28",
+          "name": "STATUS_FULL_TIME",
+          "state": "post",
+          "completed": true,
+          "description": "Full Time",
+          "detail": "FT",
+          "shortDetail": "FT"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854019/angel-city-fc-gotham-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "https://www.espn.com/soccer/video/_/gameId/401854019",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "team-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/team-stats/_/gameId/401854019/league/usa.nwsl",
+          "text": "Team Stats",
+          "shortText": "Team Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "player-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/player-stats/_/gameId/401854019/league/usa.nwsl",
+          "text": "Player Stats",
+          "shortText": "Player Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-04T17:00Z",
+          "status": {
+            "clock": 5400.0,
+            "displayClock": "90'+7'",
+            "period": 2,
+            "type": {
+              "id": "28",
+              "name": "STATUS_FULL_TIME",
+              "state": "post",
+              "completed": true,
+              "description": "Full Time",
+              "detail": "FT",
+              "shortDetail": "FT"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ESPN",
+                "ESPN Deportes"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "9606",
+            "fullName": "Sports Illustrated Stadium",
+            "address": {
+              "city": "Harrison, New Jersey",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "15364",
+                "displayName": "Gotham FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15364.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "21422",
+                "displayName": "Angel City FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/21422.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854090",
+      "date": "2026-10-04T20:00Z",
+      "status": {
+        "clock": 5400.0,
+        "displayClock": "90'+4'",
+        "period": 2,
+        "type": {
+          "id": "28",
+          "name": "STATUS_FULL_TIME",
+          "state": "post",
+          "completed": true,
+          "description": "Full Time",
+          "detail": "FT",
+          "shortDetail": "FT"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854090/denver-summit-fc-chicago-stars-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "https://www.espn.com/soccer/video/_/gameId/401854090",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "team-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/team-stats/_/gameId/401854090/league/usa.nwsl",
+          "text": "Team Stats",
+          "shortText": "Team Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "player-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/player-stats/_/gameId/401854090/league/usa.nwsl",
+          "text": "Player Stats",
+          "shortText": "Player Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-04T20:00Z",
+          "status": {
+            "clock": 5400.0,
+            "displayClock": "90'+4'",
+            "period": 2,
+            "type": {
+              "id": "28",
+              "name": "STATUS_FULL_TIME",
+              "state": "post",
+              "completed": true,
+              "description": "Full Time",
+              "detail": "FT",
+              "shortDetail": "FT"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "CBSSN"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "10469",
+            "fullName": "Northwestern Medicine Field at Martin Stadium",
+            "address": {
+              "city": "Evanston",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "15360",
+                "displayName": "Chicago Stars FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15360.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "131563",
+                "displayName": "Denver Summit FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/131563.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854020",
+      "date": "2026-10-04T23:00Z",
+      "status": {
+        "clock": 5400.0,
+        "displayClock": "90'+4'",
+        "period": 2,
+        "type": {
+          "id": "28",
+          "name": "STATUS_FULL_TIME",
+          "state": "post",
+          "completed": true,
+          "description": "Full Time",
+          "detail": "FT",
+          "shortDetail": "FT"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854020/washington-spirit-houston-dash",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "highlights",
+            "desktop"
+          ],
+          "href": "https://www.espn.com/soccer/video/_/gameId/401854020",
+          "text": "Highlights",
+          "shortText": "Highlights",
+          "isExternal": false,
+          "isPremium": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "team-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/team-stats/_/gameId/401854020/league/usa.nwsl",
+          "text": "Team Stats",
+          "shortText": "Team Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        },
+        {
+          "language": "en-US",
+          "rel": [
+            "player-stats",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/player-stats/_/gameId/401854020/league/usa.nwsl",
+          "text": "Player Stats",
+          "shortText": "Player Stats",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-04T23:00Z",
+          "status": {
+            "clock": 5400.0,
+            "displayClock": "90'+4'",
+            "period": 2,
+            "type": {
+              "id": "28",
+              "name": "STATUS_FULL_TIME",
+              "state": "post",
+              "completed": true,
+              "description": "Full Time",
+              "detail": "FT",
+              "shortDetail": "FT"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "Roku"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "4791",
+            "fullName": "Shell Energy Stadium",
+            "address": {
+              "city": "Houston, Texas",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "17346",
+                "displayName": "Houston Dash",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/17346.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "15365",
+                "displayName": "Washington Spirit",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15365.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854091",
+      "date": "2026-10-17T00:00Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Fri, October 16th at 8:00 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854091/racing-louisville-fc-boston-legacy-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-17T00:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Fri, October 16th at 8:00 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "Prime Video"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "10660",
+            "fullName": "Gillette Stadium",
+            "address": {
+              "city": "Foxborough, Massachusetts",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "131562",
+                "displayName": "Boston Legacy FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/131562.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "20905",
+                "displayName": "Racing Louisville FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/20905.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854021",
+      "date": "2026-10-17T16:30Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sat, October 17th at 12:30 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854021/gotham-fc-washington-spirit",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-17T16:30Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sat, October 17th at 12:30 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "CBS",
+                "Paramount+"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "7604",
+            "fullName": "Audi Field",
+            "address": {
+              "city": "Washington, District of Columbia",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "15365",
+                "displayName": "Washington Spirit",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15365.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "15364",
+                "displayName": "Gotham FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15364.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854022",
+      "date": "2026-10-17T22:30Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sat, October 17th at 6:30 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854022/kansas-city-current-utah-royals",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-17T22:30Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sat, October 17th at 6:30 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ION"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "3714",
+            "fullName": "America First Field",
+            "address": {
+              "city": "Sandy, Utah",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "19141",
+                "displayName": "Utah Royals",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/19141.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "20907",
+                "displayName": "Kansas City Current",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/20907.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854023",
+      "date": "2026-10-17T23:00Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sat, October 17th at 7:00 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854023/san-diego-wave-fc-north-carolina-courage",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-17T23:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sat, October 17th at 7:00 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "NWSL+"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "6541",
+            "fullName": "WakeMed Soccer Park",
+            "address": {
+              "city": "Cary, North Carolina",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "15366",
+                "displayName": "North Carolina Courage",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15366.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "21423",
+                "displayName": "San Diego Wave FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/21423.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854092",
+      "date": "2026-10-18T00:45Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sat, October 17th at 8:45 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854092/angel-city-fc-denver-summit-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-18T00:45Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sat, October 17th at 8:45 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ION"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "11017",
+            "fullName": "Centennial Stadium",
+            "address": {
+              "city": "Centennial",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "131563",
+                "displayName": "Denver Summit FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/131563.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "21422",
+                "displayName": "Angel City FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/21422.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854024",
+      "date": "2026-10-18T17:00Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sun, October 18th at 1:00 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854024/orlando-pride-houston-dash",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-18T17:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sun, October 18th at 1:00 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "CBSSN"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "4791",
+            "fullName": "Shell Energy Stadium",
+            "address": {
+              "city": "Houston, Texas",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "17346",
+                "displayName": "Houston Dash",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/17346.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "18206",
+                "displayName": "Orlando Pride",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/18206.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854025",
+      "date": "2026-10-18T21:00Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sun, October 18th at 5:00 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854025/portland-thorns-fc-bay-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-18T21:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sun, October 18th at 5:00 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ESPN",
+                "ESPN Deportes"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "6072",
+            "fullName": "PayPal Park",
+            "address": {
+              "city": "San Jose, California",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "22187",
+                "displayName": "Bay FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/22187.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "15362",
+                "displayName": "Portland Thorns FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15362.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854026",
+      "date": "2026-10-18T23:00Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sun, October 18th at 7:00 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854026/seattle-reign-fc-chicago-stars-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-18T23:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sun, October 18th at 7:00 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "Roku"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "10469",
+            "fullName": "Northwestern Medicine Field at Martin Stadium",
+            "address": {
+              "city": "Evanston",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "15360",
+                "displayName": "Chicago Stars FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15360.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "15363",
+                "displayName": "Seattle Reign FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15363.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854027",
+      "date": "2026-10-24T00:00Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Fri, October 23rd at 8:00 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854027/houston-dash-chicago-stars-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-24T00:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Fri, October 23rd at 8:00 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "NWSL+"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "10469",
+            "fullName": "Northwestern Medicine Field at Martin Stadium",
+            "address": {
+              "city": "Evanston",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "15360",
+                "displayName": "Chicago Stars FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15360.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "17346",
+                "displayName": "Houston Dash",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/17346.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854028",
+      "date": "2026-10-24T01:30Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Fri, October 23rd at 9:30 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854028/seattle-reign-fc-utah-royals",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-24T01:30Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Fri, October 23rd at 9:30 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "NWSL+"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "3714",
+            "fullName": "America First Field",
+            "address": {
+              "city": "Sandy, Utah",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "19141",
+                "displayName": "Utah Royals",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/19141.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "15363",
+                "displayName": "Seattle Reign FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15363.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854029",
+      "date": "2026-10-24T02:00Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Fri, October 23rd at 10:00 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854029/north-carolina-courage-portland-thorns-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-24T02:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Fri, October 23rd at 10:00 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "Prime Video"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "4383",
+            "fullName": "Providence Park",
+            "address": {
+              "city": "Portland, Oregon",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "15362",
+                "displayName": "Portland Thorns FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15362.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "15366",
+                "displayName": "North Carolina Courage",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15366.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854093",
+      "date": "2026-10-24T22:30Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sat, October 24th at 6:30 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854093/racing-louisville-fc-denver-summit-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-24T22:30Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sat, October 24th at 6:30 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ION"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "11017",
+            "fullName": "Centennial Stadium",
+            "address": {
+              "city": "Centennial",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "131563",
+                "displayName": "Denver Summit FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/131563.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "20905",
+                "displayName": "Racing Louisville FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/20905.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854030",
+      "date": "2026-10-25T00:45Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sat, October 24th at 8:45 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854030/bay-fc-angel-city-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-25T00:45Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sat, October 24th at 8:45 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ION"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "7605",
+            "fullName": "BMO Stadium",
+            "address": {
+              "city": "Los Angeles, California",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "21422",
+                "displayName": "Angel City FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/21422.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "22187",
+                "displayName": "Bay FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/22187.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854031",
+      "date": "2026-10-25T19:00Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sun, October 25th at 3:00 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854031/gotham-fc-orlando-pride",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-25T19:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sun, October 25th at 3:00 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "CBSSN"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "6971",
+            "fullName": "Inter&Co Stadium",
+            "address": {
+              "city": "Orlando, Florida",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "18206",
+                "displayName": "Orlando Pride",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/18206.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "15364",
+                "displayName": "Gotham FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15364.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854032",
+      "date": "2026-10-25T21:00Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sun, October 25th at 5:00 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854032/washington-spirit-kansas-city-current",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-25T21:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sun, October 25th at 5:00 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "ESPN",
+                "ESPN Deportes"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "9895",
+            "fullName": "CPKC Stadium",
+            "address": {
+              "city": "Kansas City, Missouri",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "20907",
+                "displayName": "Kansas City Current",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/20907.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "15365",
+                "displayName": "Washington Spirit",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/15365.png"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401854094",
+      "date": "2026-10-25T23:00Z",
+      "status": {
+        "clock": 0.0,
+        "displayClock": "0'",
+        "type": {
+          "id": "1",
+          "name": "STATUS_SCHEDULED",
+          "state": "pre",
+          "completed": false,
+          "description": "Scheduled",
+          "detail": "Sun, October 25th at 7:00 PM EDT",
+          "shortDetail": "Scheduled"
+        }
+      },
+      "links": [
+        {
+          "language": "en-US",
+          "rel": [
+            "summary",
+            "desktop",
+            "event"
+          ],
+          "href": "https://www.espn.com/soccer/match/_/gameId/401854094/boston-legacy-fc-san-diego-wave-fc",
+          "text": "Summary",
+          "shortText": "Summary",
+          "isExternal": false,
+          "isPremium": false,
+          "isHidden": false
+        }
+      ],
+      "competitions": [
+        {
+          "date": "2026-10-25T23:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0'",
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sun, October 25th at 7:00 PM EDT",
+              "shortDetail": "Scheduled"
+            }
+          },
+          "timeValid": true,
+          "broadcasts": [
+            {
+              "market": "national",
+              "names": [
+                "Roku"
+              ]
+            }
+          ],
+          "venue": {
+            "id": "9195",
+            "fullName": "Snapdragon Stadium",
+            "address": {
+              "city": "San Diego, California",
+              "country": "USA"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "21423",
+                "displayName": "San Diego Wave FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/21423.png"
+              }
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "131562",
+                "displayName": "Boston Legacy FC",
+                "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/131562.png"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 //! Public HTTP boundaries shared by collectors. No proxy bypass of DNS checks.
+use crate::Result;
 use reqwest::blocking::{Client, ClientBuilder, Response};
 use std::{
     io::Read,
@@ -10,7 +11,6 @@ use std::{
     time::Duration,
 };
 use url::Url;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 static TEXT_RESPONSES: AtomicU64 = AtomicU64::new(0);
 static TEXT_BYTES: AtomicU64 = AtomicU64::new(0);
 pub fn text_metrics() -> (u64, u64) {

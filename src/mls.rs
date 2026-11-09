@@ -1,9 +1,9 @@
 //! League-wide current calendar-season MLS fixtures and final results.
+use crate::Result;
 use crate::espn_schedule::{Fixture, League};
 use chrono::{Datelike, Utc};
 use serde_json::Value;
 use std::collections::BTreeMap;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub struct Batch {
     pub season: i32,
     pub fixtures: Vec<Fixture>,
@@ -13,7 +13,7 @@ pub fn is_feed(url: &str) -> bool {
     crate::espn_schedule::is_feed(url, League::Mls)
 }
 pub fn parse(root: &Value, season: i32) -> Result<(Vec<Fixture>, Vec<Value>)> {
-    crate::championship::parse_soccer(root, season, League::Mls, "770")
+    crate::match_results::parse(root, season, League::Mls, "770")
 }
 pub fn fetch(client: &reqwest::blocking::Client, raw: &str) -> Result<Batch> {
     if !is_feed(raw) {

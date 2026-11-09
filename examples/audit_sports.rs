@@ -2,7 +2,7 @@
 use tiberius::{Client, Config};
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), web_scraper::Error> {
     let _ = dotenvy::dotenv();
     let mut cfg = Config::from_ado_string(&std::env::var("MSSQL_CONNECTION_STRING")?)?;
     let args: Vec<_> = std::env::args().skip(1).collect();
@@ -26,6 +26,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
   let text=serde_json::to_string_pretty(&audit)?;
   if let Some(path)=args.get(1) {std::fs::write(path,text)?;}else{println!("{text}");}
   println!("{} event rows; {} feed rows; {} source rows; {} duplicate canonical keys",audit["events"].as_array().unwrap().len(),audit["feeds"].as_array().unwrap().len(),audit["sources"].as_array().unwrap().len(),audit["canonical_duplicates"].as_array().unwrap().len());
-  Ok::<_,Box<dyn std::error::Error>>(())
+  Ok::<_,web_scraper::Error>(())
  })
 }

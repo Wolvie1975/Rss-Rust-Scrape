@@ -1,0 +1,131 @@
+{
+  "provenance": {
+    "summary": "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event=401856600",
+    "scoreboard": "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=20260406&limit=1000",
+    "captured": "2026-10-19"
+  },
+  "game": {
+    "sport": "basketball",
+    "league": "mens-college-basketball",
+    "eventId": "401856600",
+    "date": "20260406"
+  },
+  "format": {
+    "regulation": {
+      "periods": 2,
+      "displayName": "Half",
+      "slug": "half",
+      "clock": 1200.0
+    },
+    "overtime": {
+      "displayName": "Half",
+      "slug": "half",
+      "clock": 300.0
+    }
+  },
+  "summaryTeams": [
+    {
+      "id": "130",
+      "team": {
+        "id": "130",
+        "displayName": "Michigan Wolverines"
+      },
+      "homeAway": "home",
+      "score": "69",
+      "linescores": [
+        {
+          "displayValue": "33"
+        },
+        {
+          "displayValue": "36"
+        }
+      ]
+    },
+    {
+      "id": "41",
+      "team": {
+        "id": "41",
+        "displayName": "UConn Huskies"
+      },
+      "homeAway": "away",
+      "score": "63",
+      "linescores": [
+        {
+          "displayValue": "29"
+        },
+        {
+          "displayValue": "34"
+        }
+      ]
+    }
+  ],
+  "scoreboard": {
+    "events": [
+      {
+        "id": "401856600",
+        "season": {
+          "year": 2026,
+          "type": 3,
+          "slug": "post-season"
+        },
+        "competitions": [
+          {
+            "id": "401856600",
+            "status": {
+              "type": {
+                "id": "3",
+                "name": "STATUS_FINAL",
+                "state": "post",
+                "completed": true,
+                "description": "Final",
+                "detail": "Final",
+                "shortDetail": "Final"
+              },
+              "period": 2
+            },
+            "competitors": [
+              {
+                "homeAway": "home",
+                "score": "69",
+                "linescores": [
+                  {
+                    "value": 33.0,
+                    "displayValue": "33",
+                    "period": 1
+                  },
+                  {
+                    "value": 36.0,
+                    "displayValue": "36",
+                    "period": 2
+                  }
+                ],
+                "team": {
+                  "id": "130"
+                }
+              },
+              {
+                "homeAway": "away",
+                "score": "63",
+                "linescores": [
+                  {
+                    "value": 29.0,
+                    "displayValue": "29",
+                    "period": 1
+                  },
+                  {
+                    "value": 34.0,
+                    "displayValue": "34",
+                    "period": 2
+                  }
+                ],
+                "team": {
+                  "id": "41"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

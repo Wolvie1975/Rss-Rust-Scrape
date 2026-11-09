@@ -1,0 +1,185 @@
+{
+  "provenance": {
+    "summary": "https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=401872988",
+    "scoreboard": "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=20261011&limit=1000",
+    "captured": "2026-10-19"
+  },
+  "game": {
+    "sport": "football",
+    "league": "nfl",
+    "eventId": "401872988",
+    "date": "20261011"
+  },
+  "format": {
+    "regulation": {
+      "periods": 4,
+      "displayName": "Quarter",
+      "slug": "quarter",
+      "clock": 900.0
+    },
+    "overtime": {
+      "periods": 1,
+      "displayName": "sudden-death",
+      "slug": "sudden-death",
+      "clock": 600.0
+    },
+    "suddenDeath": {
+      "periods": 1,
+      "clock": 600.0
+    }
+  },
+  "summaryTeams": [
+    {
+      "id": "28",
+      "team": {
+        "id": "28",
+        "displayName": "Washington Commanders"
+      },
+      "homeAway": "home",
+      "score": "27",
+      "linescores": [
+        {
+          "displayValue": "6"
+        },
+        {
+          "displayValue": "6"
+        },
+        {
+          "displayValue": "7"
+        },
+        {
+          "displayValue": "8"
+        },
+        {
+          "displayValue": "0"
+        }
+      ]
+    },
+    {
+      "id": "19",
+      "team": {
+        "id": "19",
+        "displayName": "New York Giants"
+      },
+      "homeAway": "away",
+      "score": "27",
+      "linescores": [
+        {
+          "displayValue": "3"
+        },
+        {
+          "displayValue": "0"
+        },
+        {
+          "displayValue": "10"
+        },
+        {
+          "displayValue": "14"
+        },
+        {
+          "displayValue": "0"
+        }
+      ]
+    }
+  ],
+  "scoreboard": {
+    "events": [
+      {
+        "id": "401872988",
+        "season": {
+          "year": 2026,
+          "type": 2,
+          "slug": "regular-season"
+        },
+        "competitions": [
+          {
+            "id": "401872988",
+            "status": {
+              "type": {
+                "id": "3",
+                "name": "STATUS_FINAL",
+                "state": "post",
+                "completed": true,
+                "description": "Final",
+                "detail": "Final/OT",
+                "shortDetail": "Final/OT",
+                "altDetail": "OT"
+              },
+              "period": 5
+            },
+            "competitors": [
+              {
+                "homeAway": "home",
+                "score": "27",
+                "linescores": [
+                  {
+                    "value": 6.0,
+                    "displayValue": "6",
+                    "period": 1
+                  },
+                  {
+                    "value": 6.0,
+                    "displayValue": "6",
+                    "period": 2
+                  },
+                  {
+                    "value": 7.0,
+                    "displayValue": "7",
+                    "period": 3
+                  },
+                  {
+                    "value": 8.0,
+                    "displayValue": "8",
+                    "period": 4
+                  },
+                  {
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "period": 5
+                  }
+                ],
+                "team": {
+                  "id": "28"
+                }
+              },
+              {
+                "homeAway": "away",
+                "score": "27",
+                "linescores": [
+                  {
+                    "value": 3.0,
+                    "displayValue": "3",
+                    "period": 1
+                  },
+                  {
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "period": 2
+                  },
+                  {
+                    "value": 10.0,
+                    "displayValue": "10",
+                    "period": 3
+                  },
+                  {
+                    "value": 14.0,
+                    "displayValue": "14",
+                    "period": 4
+                  },
+                  {
+                    "value": 0.0,
+                    "displayValue": "0",
+                    "period": 5
+                  }
+                ],
+                "team": {
+                  "id": "19"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

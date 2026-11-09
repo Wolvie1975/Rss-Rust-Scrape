@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use reqwest::blocking::Client;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use crate::Result;
 
 /// One video from a YouTube channel's Atom feed (`/feeds/videos.xml?channel_id=...`).
 pub struct Video {

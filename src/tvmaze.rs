@@ -1,11 +1,11 @@
 //! TVmaze original scheduling, not country-specific streaming availability.
+use crate::Result;
 use crate::db::Db;
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use reqwest::blocking::Client;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[cfg(test)]
 pub const SEEDS: [i32; 5] = [83073, 64950, 45039, 33352, 90632];
 fn positive(v: &Value) -> Option<i32> {
@@ -16,7 +16,7 @@ fn positive(v: &Value) -> Option<i32> {
 fn raw(v: &Value) -> Option<&str> {
     v.as_str()
 }
-fn date(v: &Value) -> std::result::Result<Option<NaiveDate>, String> {
+fn date(v: &Value) -> Result<Option<NaiveDate>, String> {
     match raw(v).filter(|s| !s.is_empty()) {
         Some(s) => NaiveDate::parse_from_str(s, "%Y-%m-%d")
             .map(Some)
@@ -30,7 +30,7 @@ fn https(v: &Value) -> Option<String> {
     (u.scheme() == "https" && u.username().is_empty() && u.password().is_none())
         .then(|| u.to_string())
 }
-fn source_url(v: &Value, kind: &str, id: i32) -> std::result::Result<String, String> {
+fn source_url(v: &Value, kind: &str, id: i32) -> Result<String, String> {
     let u = url::Url::parse(v.as_str().ok_or("missing source URL")?).map_err(|e| e.to_string())?;
     if u.scheme() != "https"
         || u.host_str() != Some("www.tvmaze.com")
@@ -41,7 +41,7 @@ fn source_url(v: &Value, kind: &str, id: i32) -> std::result::Result<String, Str
     }
     Ok(u.to_string())
 }
-fn number(v: &Value) -> std::result::Result<Option<i32>, String> {
+fn number(v: &Value) -> Result<Option<i32>, String> {
     if v.is_null() {
         return Ok(None);
     }
@@ -56,7 +56,7 @@ pub fn normalize(
     show_id: i32,
     show: &Value,
     episodes: &Value,
-) -> std::result::Result<(Value, Vec<String>), String> {
+) -> Result<(Value, Vec<String>), String> {
     if positive(&show["id"]) != Some(show_id) {
         return Err("show ID mismatch; no name-based fallback is allowed".into());
     }
@@ -151,7 +151,7 @@ struct Api {
     last: Option<Instant>,
 }
 impl Api {
-    fn get(&mut self, path: &str) -> std::result::Result<Value, RequestError> {
+    fn get(&mut self, path: &str) -> Result<Value, RequestError> {
         for attempt in 0..3 {
             if let Some(last) = self.last {
                 let wait = self.pacing.saturating_sub(last.elapsed());
@@ -196,10 +196,10 @@ impl Api {
     }
 }
 trait JsonResponse {
-    fn json_value(self) -> std::result::Result<Value, RequestError>;
+    fn json_value(self) -> Result<Value, RequestError>;
 }
 impl JsonResponse for reqwest::blocking::Response {
-    fn json_value(self) -> std::result::Result<Value, RequestError> {
+    fn json_value(self) -> Result<Value, RequestError> {
         let text = crate::http::response_text(self).map_err(|e| RequestError {
             message: e.to_string(),
             retry_seconds: 900,
@@ -247,7 +247,7 @@ pub fn collect(db: &mut Db, dry_run: bool, force: bool) -> Result<Value> {
             results.push(json!({"show_id":id,"title":title,"status":"cached_or_leased"}));
             continue;
         };
-        let result = (|| -> std::result::Result<(Value, Vec<String>), RequestError> {
+        let result = (|| -> Result<(Value, Vec<String>), RequestError> {
             let show = api.get(&format!("/shows/{id}"))?;
             let episodes = api.get(&format!("/shows/{id}/episodes?specials=1"))?;
             normalize(id, &show, &episodes).map_err(|message| RequestError {

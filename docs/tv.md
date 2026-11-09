@@ -236,7 +236,7 @@ cargo run --locked -- --tv-from-db --tv-force-refresh -o /tmp/tv-preview.xml
 cargo run --locked --example audit_tv -- WebScraper /tmp/tv-audit.json
 cargo test --locked --all-targets
 # Requires the populated TV staging database; this test alters only staging fixtures/status.
-cargo test --locked --bin web_scraper tv_snapshots -- --ignored
+cargo test --locked --lib tv_snapshots -- --ignored
 ```
 
 The hourly service adds `--tv-from-db`. Enabling/disabling is managed through
