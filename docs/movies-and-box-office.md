@@ -129,7 +129,8 @@ pros/cons text are copied; link readers to the original article for analysis.
 DECLARE @Today DATE = CONVERT(date, SYSUTCDATETIME() AT TIME ZONE 'UTC'
                               AT TIME ZONE 'Central Standard Time');
 SELECT Kind, TargetDate, PeriodEnd, MovieTitle, Distributor, PredictedRank,
-       ForecastLow, ForecastHigh, ForecastAsOf, PublishedAtUtc, UpdatedAtUtc,
+       ForecastLow, ForecastHigh, ExtendedForecastDays, ExtendedForecastLow,
+       ExtendedForecastHigh, ForecastAsOf, PublishedAtUtc, UpdatedAtUtc,
        SourceUrl, FetchedAtUtc
 FROM dbo.BoxOfficeForecasts
 WHERE PeriodEnd >= @Today
@@ -147,7 +148,8 @@ FROM dbo.BoxOfficeForecastSources;
 | PeriodEnd | Preview end date; equals TargetDate for long-range forecasts |
 | MovieTitle / Distributor | Provider's movie title and distributor |
 | PredictedRank | Preview rank, otherwise null |
-| ForecastLow / ForecastHigh | Predicted domestic gross range, integer USD |
+| ForecastLow / ForecastHigh | Predicted domestic gross range for the standard 3-day weekend, integer USD |
+| ExtendedForecastDays / ExtendedForecastLow / ExtendedForecastHigh | Optional longer holiday frame (4–7 days, e.g. Thanksgiving's 5-day), integer USD; all three are set or all are null |
 | ForecastAsOf | Date of this prediction; older tracking tables retain their explicit as-of date |
 | PublishedAtUtc / UpdatedAtUtc | Article publication and modification timestamps |
 | SourceUrl | Original article; attribution and analysis link |
@@ -169,7 +171,9 @@ Keep **Weekend results — Top 10** from The Numbers. Add:
 - **Upcoming movie forecasts — Predictions**: group `long-range` by release date,
   display title, distributor, predicted opening range and ForecastAsOf.
 
-Format ranges such as `$25M–$35M`. Show **Source: Boxoffice Pro** linked to each
+Format ranges such as `$25M–$35M`. When ExtendedForecastDays is set, show the
+3-day range first and the holiday frame beside it, e.g.
+`$35M–$45M (3-day) · $50M–$70M (5-day)`. Show **Source: Boxoffice Pro** linked to each
 row's SourceUrl. The preview is not necessarily a top ten; show only provider
 ranks. Do not fill missing ranks or supply your own predictions.
 
@@ -186,6 +190,8 @@ refresh warning if an import failed; LastError is diagnostic data for admins.
 `--configure-boxoffice` creates both the actuals and forecast schemas with
 migration credentials. Hourly production collection adds `--boxoffice-forecasts`.
 `--boxoffice-forecasts --dry-run` fetches and validates without database changes.
+Re-run `--configure-boxoffice` before deploying a collector that writes the
+holiday `ExtendedForecast*` columns; the migration is additive and idempotent.
 
 The collector selects the newest domestic weekend-preview article and newest
 long-range article from the category listing, using publication timestamps.

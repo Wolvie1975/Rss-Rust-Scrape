@@ -93,7 +93,7 @@ impl Db {
         Self::open_named(ado, DB_NAME)
     }
 
-    const CONNECT_NAMED_SQL: &str = "SELECT CASE WHEN OBJECT_ID('dbo.ScraperRuns','U') IS NOT NULL AND COL_LENGTH('dbo.SportsEvents','ScheduleStatus') IS NOT NULL AND OBJECT_ID('dbo.UpsertArticleIdentity','P') IS NOT NULL THEN 1 ELSE 0 END";
+    const CONNECT_NAMED_SQL: &str = "SELECT CASE WHEN OBJECT_ID('dbo.ScraperRuns','U') IS NOT NULL AND COL_LENGTH('dbo.SportsEvents','ScheduleStatus') IS NOT NULL AND (OBJECT_ID('dbo.UpsertArticleIdentity','P') IS NOT NULL OR OBJECT_ID('dbo.ArticleUrlAliases','U') IS NOT NULL) THEN 1 ELSE 0 END";
     /// Ingestion only: no master connection, DDL or automatic migrations.
     pub fn connect_named(ado: &str, database: &str) -> Result<Db> {
         if database.is_empty()
@@ -1808,6 +1808,44 @@ END CATCH
             &batch.results,
         )
     }
+    /// Explicit tech section migration; repeatable and idempotent.
+    pub fn configure_tech(&mut self) -> Result<()> {
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .simple_query("BEGIN TRANSACTION")
+                    .await?
+                    .into_results()
+                    .await?;
+                let result = async {
+                    for sql in [
+                        include_str!("../sql/tech_schema.sql"),
+                        include_str!("../sql/tech_seed.sql"),
+                        include_str!("../sql/tech_permissions.sql"),
+                    ] {
+                        self.client.simple_query(sql).await?.into_results().await?;
+                    }
+                    Ok::<_, crate::Error>(())
+                }
+                .await;
+                if let Err(e) = result {
+                    let _ = self
+                        .client
+                        .simple_query("IF @@TRANCOUNT > 0 ROLLBACK")
+                        .await;
+                    return Err(e);
+                }
+                self.client
+                    .simple_query("COMMIT")
+                    .await?
+                    .into_results()
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
     /// Explicit migration only; runtime does no DDL.
     pub fn configure_f1(&mut self) -> Result<()> {
         self.rt.block_on(bounded(
@@ -2152,6 +2190,20 @@ END CATCH;
             async {
                 self.client
                     .simple_query(include_str!("../sql/mlb_seed.sql"))
+                    .await?
+                    .into_results()
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    pub fn configure_nfl(&mut self) -> Result<()> {
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .simple_query(include_str!("../sql/nfl_seed.sql"))
                     .await?
                     .into_results()
                     .await?;
@@ -2564,6 +2616,640 @@ END CATCH;
                     .execute(Self::PRUNE_VIDEOS_SQL, &[&keep])
                     .await?;
                 Ok(res.total())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    // ==========================================
+    // Tech Section database queries
+    // ==========================================
+
+    /// Load enabled TechReleaseProjects.
+    pub fn load_enabled_tech_projects(&mut self) -> Result<Vec<crate::tech::ReleaseProject>> {
+        let sql = "SELECT Id, Slug, Name, Kind, SourceKind, SourceUrl, SourceFilter, NotesLabel, IncludePrerelease, InYourStack
+                   FROM dbo.TechReleaseProjects
+                   WHERE Enabled = 1
+                   ORDER BY SortOrder, Id;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
+                let mut out = Vec::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("Id").ok_or("Id missing")?;
+                    let slug = r.get::<&str, _>("Slug").ok_or("Slug missing")?.to_string();
+                    let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
+                    let kind = r.get::<&str, _>("Kind").ok_or("Kind missing")?.to_string();
+                    let source_kind = r
+                        .get::<&str, _>("SourceKind")
+                        .ok_or("SourceKind missing")?
+                        .to_string();
+                    let source_url = r
+                        .get::<&str, _>("SourceUrl")
+                        .ok_or("SourceUrl missing")?
+                        .to_string();
+                    let source_filter = r.get::<&str, _>("SourceFilter").map(String::from);
+                    let notes_label = r
+                        .get::<&str, _>("NotesLabel")
+                        .ok_or("NotesLabel missing")?
+                        .to_string();
+                    let include_prerelease = r.get::<bool, _>("IncludePrerelease").unwrap_or(false);
+                    let in_your_stack = r.get::<bool, _>("InYourStack").unwrap_or(false);
+
+                    out.push(crate::tech::ReleaseProject {
+                        id,
+                        slug,
+                        name,
+                        kind,
+                        source_kind,
+                        source_url,
+                        source_filter,
+                        notes_label,
+                        include_prerelease,
+                        in_your_stack,
+                    });
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Upsert a release item into dbo.TechReleases without deleting history.
+    pub fn upsert_tech_release(&mut self, rel: &crate::tech::ReleaseItem) -> Result<()> {
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.TechReleases WITH(UPDLOCK, HOLDLOCK) WHERE ProjectId = @P1 AND Version = @P2)
+                   BEGIN
+                       INSERT INTO dbo.TechReleases (ProjectId, Version, ReleasedAt, NotesUrl, Title, IsPrerelease)
+                       VALUES (@P1, @P2, @P3, @P4, @P5, @P6);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.TechReleases
+                       SET ReleasedAt = @P3, NotesUrl = @P4, Title = @P5, IsPrerelease = @P6
+                       WHERE ProjectId = @P1 AND Version = @P2;
+                   END;";
+        let is_pre = rel.is_prerelease;
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .execute(
+                        sql,
+                        &[
+                            &rel.project_id,
+                            &rel.version.as_str(),
+                            &rel.released_at,
+                            &rel.notes_url.as_deref(),
+                            &rel.title.as_deref(),
+                            &is_pre,
+                        ],
+                    )
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Update project status (LastCheckedAt and LastError).
+    pub fn update_tech_project_status(
+        &mut self,
+        project_id: i32,
+        last_error: Option<&str>,
+    ) -> Result<()> {
+        let sql = "UPDATE dbo.TechReleaseProjects
+                   SET LastCheckedAt = SYSUTCDATETIME(), LastError = @P2
+                   WHERE Id = @P1;";
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .execute(sql, &[&project_id, &last_error])
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Replace TechDevReading items for a given site (hn or lobsters) atomically in one transaction.
+    pub fn replace_tech_dev_reading(
+        &mut self,
+        site: &str,
+        items: &[crate::tech::DevReadingItem],
+    ) -> Result<()> {
+        if items.is_empty() {
+            return Ok(());
+        }
+        self.rt.block_on(bounded(
+            async {
+                self.client.simple_query("BEGIN TRANSACTION;").await?.into_results().await?;
+                let del_sql = "DELETE FROM dbo.TechDevReading WHERE Site = @P1;";
+                if let Err(e) = self.client.execute(del_sql, &[&site]).await {
+                    let _ = self.client.simple_query("IF @@TRANCOUNT > 0 ROLLBACK;").await;
+                    return Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
+                }
+
+                let ins_sql = "INSERT INTO dbo.TechDevReading (Site, Rank, ExternalId, Title, Url, Domain, Points, Comments, DiscussionUrl, PostedAt, SnapshotAt)
+                               VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11);";
+                for item in items {
+                    if let Err(e) = self.client.execute(ins_sql, &[
+                        &item.site.as_str(),
+                        &item.rank,
+                        &item.external_id.as_str(),
+                        &item.title.as_str(),
+                        &item.url.as_deref(),
+                        &item.domain.as_deref(),
+                        &item.points,
+                        &item.comments,
+                        &item.discussion_url.as_str(),
+                        &item.posted_at,
+                        &item.snapshot_at,
+                    ]).await {
+                        let _ = self.client.simple_query("IF @@TRANCOUNT > 0 ROLLBACK;").await;
+                        return Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
+                    }
+                }
+
+                self.client.simple_query("COMMIT;").await?.into_results().await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Load enabled TechStatusServices.
+    pub fn load_enabled_tech_status_services(&mut self) -> Result<Vec<crate::tech::StatusService>> {
+        let sql = "SELECT Id, Slug, Name, Kind, ApiUrl, PageUrl
+                   FROM dbo.TechStatusServices
+                   WHERE Enabled = 1
+                   ORDER BY SortOrder, Id;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
+                let mut out = Vec::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("Id").ok_or("Id missing")?;
+                    let slug = r.get::<&str, _>("Slug").ok_or("Slug missing")?.to_string();
+                    let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
+                    let kind = r.get::<&str, _>("Kind").ok_or("Kind missing")?.to_string();
+                    let api_url = r
+                        .get::<&str, _>("ApiUrl")
+                        .ok_or("ApiUrl missing")?
+                        .to_string();
+                    let page_url = r
+                        .get::<&str, _>("PageUrl")
+                        .ok_or("PageUrl missing")?
+                        .to_string();
+
+                    out.push(crate::tech::StatusService {
+                        id,
+                        slug,
+                        name,
+                        kind,
+                        api_url,
+                        page_url,
+                    });
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Upsert service status update.
+    pub fn upsert_tech_service_status(
+        &mut self,
+        st: &crate::tech::ServiceStatusUpdate,
+    ) -> Result<()> {
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.TechServiceStatus WITH(UPDLOCK, HOLDLOCK) WHERE ServiceId = @P1)
+                   BEGIN
+                       INSERT INTO dbo.TechServiceStatus (ServiceId, Indicator, Description, IncidentName, IncidentComponent, IncidentStartedAt, IncidentUrl, CheckedAt, LastError)
+                       VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.TechServiceStatus
+                       SET Indicator = @P2,
+                           Description = @P3,
+                           IncidentName = @P4,
+                           IncidentComponent = @P5,
+                           IncidentStartedAt = @P6,
+                           IncidentUrl = @P7,
+                           CheckedAt = @P8,
+                           LastError = @P9
+                       WHERE ServiceId = @P1;
+                   END;";
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .execute(
+                        sql,
+                        &[
+                            &st.service_id,
+                            &st.indicator.as_str(),
+                            &st.description.as_deref(),
+                            &st.incident_name.as_deref(),
+                            &st.incident_component.as_deref(),
+                            &st.incident_started_at,
+                            &st.incident_url.as_deref(),
+                            &st.checked_at,
+                            &st.last_error.as_deref(),
+                        ],
+                    )
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Record a service check failure, setting Indicator='unknown' only after 3 consecutive failures.
+    pub fn record_tech_service_failure(&mut self, service_id: i32, err_msg: &str) -> Result<()> {
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.TechServiceStatus WITH(UPDLOCK, HOLDLOCK) WHERE ServiceId = @P1)
+                   BEGIN
+                       INSERT INTO dbo.TechServiceStatus (ServiceId, Indicator, Description, CheckedAt, LastError)
+                       VALUES (@P1, 'unknown', 'Initial check failed', SYSUTCDATETIME(), @P2);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.TechServiceStatus
+                       SET CheckedAt = SYSUTCDATETIME(),
+                           LastError = @P2,
+                           Indicator = CASE
+                               WHEN LastError IS NOT NULL THEN 'unknown'
+                               ELSE Indicator
+                           END
+                       WHERE ServiceId = @P1;
+                   END;";
+        self.rt.block_on(bounded(
+            async {
+                self.client.execute(sql, &[&service_id, &err_msg]).await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Load enabled HomelabServices.
+    pub fn load_enabled_homelab_services(&mut self) -> Result<Vec<crate::tech::HomelabService>> {
+        let sql = "SELECT ID, Slug, Name, CheckKind, CheckUrl, ExpectBody, SecretEnv, SlowMs, LinkUrl, Enabled, SortOrder
+                   FROM dbo.HomelabServices
+                   WHERE Enabled = 1
+                   ORDER BY SortOrder, ID;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
+                let mut out = Vec::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("ID").ok_or("ID missing")?;
+                    let slug = r.get::<&str, _>("Slug").ok_or("Slug missing")?.to_string();
+                    let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
+                    let check_kind = r
+                        .get::<&str, _>("CheckKind")
+                        .ok_or("CheckKind missing")?
+                        .to_string();
+                    let check_url = r.get::<&str, _>("CheckUrl").map(String::from);
+                    let expect_body = r.get::<&str, _>("ExpectBody").map(String::from);
+                    let secret_env = r.get::<&str, _>("SecretEnv").map(String::from);
+                    let slow_ms = r.get::<i32, _>("SlowMs").unwrap_or(1500);
+                    let link_url = r.get::<&str, _>("LinkUrl").map(String::from);
+                    let enabled = r.get::<bool, _>("Enabled").unwrap_or(true);
+                    let sort_order = r.get::<i32, _>("SortOrder").unwrap_or(0);
+
+                    out.push(crate::tech::HomelabService {
+                        id,
+                        slug,
+                        name,
+                        check_kind,
+                        check_url,
+                        expect_body,
+                        secret_env,
+                        slow_ms,
+                        link_url,
+                        enabled,
+                        sort_order,
+                    });
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Load the current statuses for all HomelabServices.
+    pub fn load_homelab_service_statuses(
+        &mut self,
+    ) -> Result<std::collections::HashMap<i32, (String, chrono::NaiveDateTime, i32)>> {
+        let sql = "SELECT ServiceId, State, StateSince, FailCount
+                   FROM dbo.HomelabServiceStatus;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
+                let mut out = std::collections::HashMap::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("ServiceId").ok_or("ServiceId missing")?;
+                    let state = r
+                        .get::<&str, _>("State")
+                        .ok_or("State missing")?
+                        .to_string();
+                    let since = r
+                        .get::<chrono::NaiveDateTime, _>("StateSince")
+                        .ok_or("StateSince missing")?;
+                    let fail_count = r.get::<i32, _>("FailCount").unwrap_or(0);
+                    out.insert(id, (state, since, fail_count));
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Upsert status into dbo.HomelabServiceStatus.
+    pub fn upsert_homelab_service_status(
+        &mut self,
+        st: &crate::tech::HomelabServiceStatusUpdate,
+    ) -> Result<()> {
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.HomelabServiceStatus WITH(UPDLOCK, HOLDLOCK) WHERE ServiceId = @P1)
+                   BEGIN
+                       INSERT INTO dbo.HomelabServiceStatus (ServiceId, State, LatencyMs, Detail, StateSince, CheckedAt, FailCount)
+                       VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.HomelabServiceStatus
+                       SET State = @P2, LatencyMs = @P3, Detail = @P4, StateSince = @P5, CheckedAt = @P6, FailCount = @P7
+                       WHERE ServiceId = @P1;
+                   END;";
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .execute(
+                        sql,
+                        &[
+                            &st.service_id,
+                            &st.state.as_str(),
+                            &st.latency_ms,
+                            &st.detail.as_deref(),
+                            &st.state_since,
+                            &st.checked_at,
+                            &st.fail_count,
+                        ],
+                    )
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Get the newest successful feed run timestamp.
+    pub fn get_last_successful_feed_run(&mut self) -> Result<Option<chrono::NaiveDateTime>> {
+        let sql = "SELECT TOP 1 FinishedAt
+                   FROM dbo.ScraperRuns
+                   WHERE Status = 'succeeded' AND FinishedAt IS NOT NULL
+                   ORDER BY FinishedAt DESC;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
+                if let Some(r) = rows.first() {
+                    Ok(r.get::<chrono::NaiveDateTime, _>(0))
+                } else {
+                    Ok(None)
+                }
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Load all models from dbo.OllamaLibraryModels.
+    pub fn load_ollama_library_models(&mut self) -> Result<Vec<crate::tech::OllamaModelSummary>> {
+        let sql = "SELECT ID, Name, Description, Change, ChangedAt, UpdatedText, LibraryUrl, FirstSeenAt, SnapshotAt
+                   FROM dbo.OllamaLibraryModels
+                   ORDER BY ID;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(sql, &[])
+                    .await?
+                    .into_first_result()
+                    .await?;
+                let mut out = Vec::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("ID").ok_or("ID missing")?;
+                    let name = r.get::<&str, _>("Name").ok_or("Name missing")?.to_string();
+                    let description = r.get::<&str, _>("Description").map(String::from);
+                    let change = r
+                        .get::<&str, _>("Change")
+                        .ok_or("Change missing")?
+                        .to_string();
+                    let changed_at = r
+                        .get::<chrono::NaiveDateTime, _>("ChangedAt")
+                        .ok_or("ChangedAt missing")?;
+                    let updated_text = r.get::<&str, _>("UpdatedText").map(String::from);
+                    let library_url = r
+                        .get::<&str, _>("LibraryUrl")
+                        .ok_or("LibraryUrl missing")?
+                        .to_string();
+                    let first_seen_at = r
+                        .get::<chrono::NaiveDateTime, _>("FirstSeenAt")
+                        .ok_or("FirstSeenAt missing")?;
+                    let snapshot_at = r
+                        .get::<chrono::NaiveDateTime, _>("SnapshotAt")
+                        .ok_or("SnapshotAt missing")?;
+
+                    out.push(crate::tech::OllamaModelSummary {
+                        id,
+                        name,
+                        description,
+                        change,
+                        changed_at,
+                        updated_text,
+                        library_url,
+                        first_seen_at,
+                        snapshot_at,
+                    });
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Upsert model into dbo.OllamaLibraryModels and return its ID.
+    pub fn upsert_ollama_library_model(
+        &mut self,
+        m: &crate::tech::OllamaModelUpsert<'_>,
+    ) -> Result<i32> {
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.OllamaLibraryModels WITH(UPDLOCK, HOLDLOCK) WHERE Name = @P1)
+                   BEGIN
+                       INSERT INTO dbo.OllamaLibraryModels (Name, Description, Change, ChangedAt, UpdatedText, LibraryUrl, FirstSeenAt, SnapshotAt)
+                       OUTPUT INSERTED.ID
+                       VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P7);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.OllamaLibraryModels
+                       SET Description = @P2, Change = @P3, ChangedAt = @P4, UpdatedText = @P5, LibraryUrl = @P6, SnapshotAt = @P7
+                       OUTPUT INSERTED.ID
+                       WHERE Name = @P1;
+                   END;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(
+                        sql,
+                        &[
+                            &m.name,
+                            &m.description,
+                            &m.change,
+                            &m.changed_at,
+                            &m.updated_text,
+                            &m.library_url,
+                            &m.now,
+                        ],
+                    )
+                    .await?
+                    .into_first_result()
+                    .await?;
+                let id = rows
+                    .first()
+                    .and_then(|r| r.get::<i32, _>(0))
+                    .ok_or("inserted ID missing")?;
+                Ok(id)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Load tags for an Ollama model.
+    pub fn load_ollama_library_tags(
+        &mut self,
+        model_id: i32,
+    ) -> Result<Vec<crate::tech::OllamaTag>> {
+        let sql =
+            "SELECT ID, ModelId, Tag, CONVERT(float, SizeGb) AS SizeGb, Fits, Installed, SortOrder
+                   FROM dbo.OllamaLibraryTags
+                   WHERE ModelId = @P1
+                   ORDER BY SortOrder, ID;";
+        self.rt.block_on(bounded(
+            async {
+                let rows = self
+                    .client
+                    .query(sql, &[&model_id])
+                    .await?
+                    .into_first_result()
+                    .await?;
+                let mut out = Vec::new();
+                for r in rows {
+                    let id = r.get::<i32, _>("ID");
+                    let mid = r.get::<i32, _>("ModelId").unwrap_or(model_id);
+                    let tag = r.get::<&str, _>("Tag").ok_or("Tag missing")?.to_string();
+                    let size_gb = r.get::<f64, _>("SizeGb");
+                    let fits = r.get::<bool, _>("Fits").unwrap_or(false);
+                    let installed = r.get::<bool, _>("Installed").unwrap_or(false);
+                    let sort_order = r.get::<i32, _>("SortOrder").unwrap_or(0);
+                    out.push(crate::tech::OllamaTag {
+                        id,
+                        model_id: mid,
+                        tag,
+                        size_gb,
+                        fits,
+                        installed,
+                        sort_order,
+                    });
+                }
+                Ok(out)
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Upsert a single tag into dbo.OllamaLibraryTags.
+    pub fn upsert_ollama_library_tag(
+        &mut self,
+        model_id: i32,
+        tag: &str,
+        size_gb: Option<f64>,
+        fits: bool,
+        installed: bool,
+        sort_order: i32,
+    ) -> Result<()> {
+        let size_str = size_gb.map(|s| format!("{s:.1}"));
+        let sql = "IF NOT EXISTS (SELECT 1 FROM dbo.OllamaLibraryTags WITH(UPDLOCK, HOLDLOCK) WHERE ModelId = @P1 AND Tag = @P2)
+                   BEGIN
+                       INSERT INTO dbo.OllamaLibraryTags (ModelId, Tag, SizeGb, Fits, Installed, SortOrder)
+                       VALUES (@P1, @P2, CONVERT(decimal(6,1), @P3), @P4, @P5, @P6);
+                   END
+                   ELSE
+                   BEGIN
+                       UPDATE dbo.OllamaLibraryTags
+                       SET SizeGb = CONVERT(decimal(6,1), @P3), Fits = @P4, Installed = @P5, SortOrder = @P6
+                       WHERE ModelId = @P1 AND Tag = @P2;
+                   END;";
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .execute(
+                        sql,
+                        &[
+                            &model_id,
+                            &tag,
+                            &size_str.as_deref(),
+                            &fits,
+                            &installed,
+                            &sort_order,
+                        ],
+                    )
+                    .await?;
+                Ok(())
+            },
+            &self.poisoned,
+        ))
+    }
+
+    /// Update Installed and Fits for an Ollama tag.
+    pub fn update_ollama_tag_installed_and_fits(
+        &mut self,
+        model_id: i32,
+        tag: &str,
+        installed: bool,
+        fits: bool,
+    ) -> Result<()> {
+        let sql = "UPDATE dbo.OllamaLibraryTags
+                   SET Installed = @P1, Fits = @P2
+                   WHERE ModelId = @P3 AND Tag = @P4;";
+        self.rt.block_on(bounded(
+            async {
+                self.client
+                    .execute(sql, &[&installed, &fits, &model_id, &tag])
+                    .await?;
+                Ok(())
             },
             &self.poisoned,
         ))

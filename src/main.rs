@@ -10,8 +10,8 @@ use web_scraper::Result;
 use web_scraper::pages::{self, PageMeta};
 use web_scraper::{
     article_identity, big12, boxoffice, boxoffice_forecasts, championship, cinema_posters, db, epl,
-    espn_schedule, events, f1, http, metrics, mlb, mls, movie_commerce, movies, nhl, nwsl, posters,
-    rankings, sports_boxscores, sports_periods, standings, tvmaze, wnba, youtube,
+    espn_schedule, events, f1, http, metrics, mlb, mls, movie_commerce, movies, nfl, nhl, nwsl,
+    posters, rankings, sports_boxscores, sports_periods, standings, tvmaze, wnba, youtube,
 };
 
 /// Build an RSS feed from the metadata of scraped web pages.
@@ -71,6 +71,9 @@ struct Cli {
     /// Register NHL fixtures/results and division standings disabled.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_nhl: bool,
+    /// Register the NFL league schedule disabled; preserve existing settings.
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_nfl: bool,
     /// Configure F1 calendar, race/sprint results and championships disabled.
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     configure_f1: bool,
@@ -107,6 +110,27 @@ struct Cli {
     /// Explicitly enable registered Big 12 feeds (also configures current members).
     #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
     enable_big12: bool,
+    /// Apply Tech section schema and seeds (implies migration profile).
+    #[arg(long, conflicts_with_all=["dry_run","every_hours"])]
+    configure_tech: bool,
+    /// Collect enabled Tech release tracker projects (implies --db).
+    #[arg(long)]
+    tech_releases: bool,
+    /// Collect Developer Reading feeds (Hacker News & Lobsters) (implies --db).
+    #[arg(long)]
+    tech_reading: bool,
+    /// Collect Service Status indicators from configured status pages (implies --db).
+    #[arg(long)]
+    tech_status: bool,
+    /// Collect all Tech section feeds: releases, reading, and service status (implies --db).
+    #[arg(long)]
+    tech_from_db: bool,
+    /// Collect Homelab service statuses (implies --db).
+    #[arg(long)]
+    homelab: bool,
+    /// Collect Ollama library models and sync with local Ollama (implies --db).
+    #[arg(long)]
+    ollama_library: bool,
     /// Page URLs to include in the feed
     urls: Vec<String>,
 
@@ -239,6 +263,7 @@ impl Cli {
             || self.configure_boxoffice
             || self.configure_mls
             || self.configure_nhl
+            || self.configure_nfl
             || self.configure_boxscores
             || self.repair_boxscore_periods
             || self.boxscores_from_db
@@ -251,11 +276,19 @@ impl Cli {
             || self.movie_posters
             || self.configure_big12
             || self.enable_big12
+            || self.configure_tech
             || self.movies
+            || self.tech_releases
+            || self.tech_reading
+            || self.tech_status
+            || self.tech_from_db
+            || self.homelab
+            || self.ollama_library
+            || self.configure_tech
             || self.db
             || self.from_db
             || self.save_sources
-            || !self.events_feed.is_empty()
+            || (!self.events_feed.is_empty() && !self.dry_run)
             || self.events_from_db
             || !self.youtube_feed.is_empty()
             || self.youtube_from_db
@@ -274,12 +307,14 @@ impl Cli {
             || self.configure_boxoffice
             || self.configure_mls
             || self.configure_nhl
+            || self.configure_nfl
             || self.configure_f1
             || self.configure_epl
             || self.configure_nwsl
             || self.configure_tv
             || self.configure_big12
             || self.enable_big12
+            || self.configure_tech
     }
 
     fn dry_suffix(&self) -> &'static str {
@@ -299,8 +334,11 @@ fn connect_db(cli: &Cli) -> Result<Option<db::Db>> {
         std::env::var("MSSQL_CONNECTION_STRING")
     }
     .map_err(|_| "database options require MSSQL_CONNECTION_STRING to be set")?;
-    // F1 and box-score setup apply their own additive migrations to an existing database.
-    let db = if setup && !cli.configure_f1 && !cli.configure_boxscores {
+    // F1, box-office and box-score setup apply their own additive migrations to an existing database.
+    let db = if cli.configure_nfl || cli.configure_boxoffice {
+        db::Db::connect_named(&ado, &cli.database)
+            .or_else(|_| db::Db::open_named(&ado, &cli.database))?
+    } else if setup && !cli.configure_f1 && !cli.configure_boxscores {
         db::Db::open_named(&ado, &cli.database)?
     } else {
         db::Db::connect_named(&ado, &cli.database)?
@@ -344,6 +382,9 @@ fn run_setup(cli: &Cli, db: Option<&mut db::Db>) -> Result<bool> {
     } else if cli.configure_nhl {
         require(db)?.configure_nhl()?;
         "NHL schedule/results and standings registered disabled"
+    } else if cli.configure_nfl {
+        require(db)?.configure_nfl()?;
+        "NFL schedule registered; enable it in SportsEventsType to import"
     } else if cli.configure_mls {
         require(db)?.configure_mls()?;
         "MLS schedule/results registered disabled"
@@ -359,6 +400,9 @@ fn run_setup(cli: &Cli, db: Option<&mut db::Db>) -> Result<bool> {
     } else if cli.configure_nwsl {
         require(db)?.configure_nwsl()?;
         "League-wide NWSL schedule registered; existing Enabled setting preserved"
+    } else if cli.configure_tech {
+        require(db)?.configure_tech()?;
+        "Tech section tables, seeds, and permissions configured"
     } else if cli.configure_tv {
         require(db)?.setup_tv(true)?;
         "TVmaze schema ready; five tracking rows seeded without changing existing Enabled settings"
@@ -481,6 +525,12 @@ impl Run<'_> {
             && !cli.boxoffice_forecasts
             && !cli.standings_from_db
             && !cli.rankings_from_db
+            && !cli.tech_releases
+            && !cli.tech_reading
+            && !cli.tech_status
+            && !cli.tech_from_db
+            && !cli.homelab
+            && !cli.ollama_library
             && cli.youtube_feed.is_empty()
             && !cli.youtube_from_db
         {
@@ -506,6 +556,21 @@ impl Run<'_> {
         }
         if cli.standings_from_db {
             self.collect_standings()?;
+        }
+        if cli.tech_releases || cli.tech_from_db {
+            self.collect_tech_releases(&client)?;
+        }
+        if cli.tech_reading || cli.tech_from_db {
+            self.collect_tech_reading(&client)?;
+        }
+        if cli.tech_status || cli.tech_from_db {
+            self.collect_tech_status(&client)?;
+        }
+        if cli.homelab || cli.tech_from_db {
+            self.collect_homelab_services(&client)?;
+        }
+        if cli.ollama_library || cli.tech_from_db {
+            self.collect_ollama_library(&client, cli.ollama_library)?;
         }
         let pages = self.collect_news(&client, urls)?;
         self.collect_event_feeds(&client)?;
@@ -587,6 +652,474 @@ impl Run<'_> {
                 self.failures.push(format!("F1: {e}"));
             }
         }
+        Ok(())
+    }
+
+    fn collect_tech_releases(&mut self, client: &reqwest::blocking::Client) -> Result<()> {
+        let _timer = metrics::Stage::new("tech_releases");
+        let dry = self.cli.dry_run;
+        let projects = self.db()?.load_enabled_tech_projects()?;
+        eprintln!(
+            "tech releases: checking {} enabled projects",
+            projects.len()
+        );
+
+        let mut kernel_cache: Option<String> = None;
+        let mut total_saved = 0;
+
+        for p in &projects {
+            let p_res = (|| -> Result<usize> {
+                let releases = match p.source_kind.as_str() {
+                    "kernel_org" => {
+                        let body = match &kernel_cache {
+                            Some(b) => b.clone(),
+                            None => {
+                                let b = client
+                                    .get(&p.source_url)
+                                    .header("User-Agent", web_scraper::tech::USER_AGENT)
+                                    .send()?
+                                    .error_for_status()?
+                                    .text()?;
+                                kernel_cache = Some(b.clone());
+                                b
+                            }
+                        };
+                        web_scraper::tech::collect_kernel_org(
+                            client,
+                            &body,
+                            std::slice::from_ref(p),
+                        )?
+                    }
+                    "github_releases" => {
+                        let body = client
+                            .get(&p.source_url)
+                            .header("User-Agent", web_scraper::tech::USER_AGENT)
+                            .header(
+                                "Accept",
+                                "application/vnd.github+json, application/atom+xml, */*",
+                            )
+                            .timeout(Duration::from_secs(30))
+                            .send()?
+                            .error_for_status()?
+                            .text()?;
+                        web_scraper::tech::collect_github_releases(client, &body, p)?
+                    }
+                    "gitlab_tags" => {
+                        let body = client
+                            .get(&p.source_url)
+                            .header("User-Agent", web_scraper::tech::USER_AGENT)
+                            .send()?
+                            .error_for_status()?
+                            .text()?;
+                        web_scraper::tech::collect_gitlab_tags(client, &body, p)?
+                    }
+                    "rss" => {
+                        let body = client
+                            .get(&p.source_url)
+                            .header("User-Agent", web_scraper::tech::USER_AGENT)
+                            .header("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml, */*")
+                            .timeout(Duration::from_secs(30))
+                            .send()?
+                            .error_for_status()?
+                            .text()?;
+                        web_scraper::tech::collect_rss_releases(client, &body, p)?
+                    }
+                    "dotnet_releases" => {
+                        let body = client
+                            .get(&p.source_url)
+                            .header("User-Agent", web_scraper::tech::USER_AGENT)
+                            .timeout(Duration::from_secs(30))
+                            .send()?
+                            .error_for_status()?
+                            .text()?;
+                        web_scraper::tech::collect_dotnet_releases(client, &body, p)?
+                    }
+                    other => return Err(format!("unknown source kind: {other}").into()),
+                };
+
+                let count = releases.len();
+                if !dry {
+                    for rel in &releases {
+                        self.db()?.upsert_tech_release(rel)?;
+                    }
+                    self.db()?.update_tech_project_status(p.id, None)?;
+                }
+                eprintln!(
+                    "tech release project {}: {} releases found{}",
+                    p.slug,
+                    count,
+                    self.cli.dry_suffix()
+                );
+                Ok(count)
+            })();
+
+            match p_res {
+                Ok(count) => {
+                    self.succeeded += 1;
+                    total_saved += count;
+                }
+                Err(e) => {
+                    let err_msg = e.to_string();
+                    eprintln!("tech release project {} failed: {}", p.slug, err_msg);
+                    self.failures
+                        .push(format!("tech release {}: {err_msg}", p.slug));
+                    if !dry {
+                        let _ = self.db()?.update_tech_project_status(p.id, Some(&err_msg));
+                    }
+                }
+            }
+        }
+
+        eprintln!("tech releases: finished with {total_saved} releases");
+        Ok(())
+    }
+
+    fn collect_tech_reading(&mut self, client: &reqwest::blocking::Client) -> Result<()> {
+        let _timer = metrics::Stage::new("tech_reading");
+        let dry = self.cli.dry_run;
+
+        // HN
+        match web_scraper::tech::collect_hn_top10(client) {
+            Ok(items) => {
+                eprintln!(
+                    "tech reading (HN): {} stories collected{}",
+                    items.len(),
+                    self.cli.dry_suffix()
+                );
+                if !dry {
+                    self.db()?.replace_tech_dev_reading("hn", &items)?;
+                }
+                self.succeeded += 1;
+            }
+            Err(e) => {
+                let err_msg = format!("tech reading HN: {e}");
+                eprintln!("{err_msg}");
+                self.failures.push(err_msg);
+            }
+        }
+
+        // Lobsters
+        match web_scraper::tech::collect_lobsters_top10(client) {
+            Ok(items) => {
+                eprintln!(
+                    "tech reading (Lobsters): {} stories collected{}",
+                    items.len(),
+                    self.cli.dry_suffix()
+                );
+                if !dry {
+                    self.db()?.replace_tech_dev_reading("lobsters", &items)?;
+                }
+                self.succeeded += 1;
+            }
+            Err(e) => {
+                let err_msg = format!("tech reading Lobsters: {e}");
+                eprintln!("{err_msg}");
+                self.failures.push(err_msg);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn collect_tech_status(&mut self, client: &reqwest::blocking::Client) -> Result<()> {
+        let _timer = metrics::Stage::new("tech_status");
+        let dry = self.cli.dry_run;
+        let services = self.db()?.load_enabled_tech_status_services()?;
+        eprintln!("tech status: checking {} enabled services", services.len());
+
+        for s in &services {
+            let s_res = (|| -> Result<web_scraper::tech::ServiceStatusUpdate> {
+                let resp = client
+                    .get(&s.api_url)
+                    .header("User-Agent", web_scraper::tech::USER_AGENT)
+                    .timeout(Duration::from_secs(15))
+                    .send()?
+                    .error_for_status()?;
+                let body = resp.text()?;
+                let checked_at = Utc::now().naive_utc();
+                web_scraper::tech::parse_statuspage_summary(s.id, &body, checked_at)
+            })();
+
+            match s_res {
+                Ok(st) => {
+                    eprintln!(
+                        "tech status {}: indicator={} desc={:?}{}",
+                        s.slug,
+                        st.indicator,
+                        st.description,
+                        self.cli.dry_suffix()
+                    );
+                    if !dry {
+                        self.db()?.upsert_tech_service_status(&st)?;
+                    }
+                    self.succeeded += 1;
+                }
+                Err(e) => {
+                    let err_msg = e.to_string();
+                    eprintln!("tech status {} failed: {}", s.slug, err_msg);
+                    self.failures
+                        .push(format!("tech status {}: {err_msg}", s.slug));
+                    if !dry {
+                        let _ = self.db()?.record_tech_service_failure(s.id, &err_msg);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn collect_homelab_services(&mut self, client: &reqwest::blocking::Client) -> Result<()> {
+        let _timer = metrics::Stage::new("homelab_services");
+        let dry = self.cli.dry_run;
+        let services = self.db()?.load_enabled_homelab_services()?;
+        if services.is_empty() {
+            return Ok(());
+        }
+        let statuses = self.db()?.load_homelab_service_statuses()?;
+        let last_feed_run = self.db()?.get_last_successful_feed_run()?;
+        let now = chrono::Utc::now().naive_utc();
+
+        let mut shared_tautulli = None;
+        if let Some(ts) = services.iter().find(|s| s.slug == "tautulli")
+            && let Some(ref u) = ts.check_url
+        {
+            let mut url = u.clone();
+            if let Some(ref sec_var) = ts.secret_env
+                && let Ok(val) = std::env::var(sec_var)
+            {
+                let sep = if url.contains('?') { "&" } else { "?" };
+                url.push_str(&format!("{sep}apikey={}", val.trim()));
+            }
+            let start = std::time::Instant::now();
+            if let Ok(resp) = client.get(&url).send() {
+                let lat = start.elapsed().as_millis() as i32;
+                if resp.status().is_success()
+                    && let Ok(val) =
+                        serde_json::from_str::<serde_json::Value>(&resp.text().unwrap_or_default())
+                    && val["response"]["result"].as_str() == Some("success")
+                {
+                    let sc = val["response"]["data"]["stream_count"]
+                        .as_str()
+                        .map(|s| s.to_string())
+                        .or_else(|| {
+                            val["response"]["data"]["stream_count"]
+                                .as_i64()
+                                .map(|v| v.to_string())
+                        });
+                    shared_tautulli = Some(web_scraper::tech::TautulliActivity {
+                        is_success: true,
+                        latency_ms: lat,
+                        stream_count: sc,
+                    });
+                }
+            }
+        }
+
+        for s in &services {
+            let prev = statuses.get(&s.id);
+            let prev_state = prev.map(|(st, _, _)| st.as_str());
+            let prev_since = prev.map(|(_, since, _)| *since);
+            let prev_fails = prev.map(|(_, _, f)| *f).unwrap_or(0);
+
+            let cx = web_scraper::tech::HomelabCheckContext {
+                prev_state,
+                prev_state_since: prev_since,
+                prev_fail_count: prev_fails,
+                now,
+                last_feed_run_utc: last_feed_run,
+                shared_tautulli: shared_tautulli.as_ref(),
+            };
+
+            let update = web_scraper::tech::check_homelab_service(client, s, &cx);
+
+            eprintln!(
+                "homelab {}: state={} latency={:?}ms detail={:?}{}",
+                s.slug,
+                update.state,
+                update.latency_ms,
+                update.detail,
+                self.cli.dry_suffix()
+            );
+
+            if !dry {
+                self.db()?.upsert_homelab_service_status(&update)?;
+            }
+            if update.state != "down" {
+                self.succeeded += 1;
+            } else {
+                self.failures.push(format!("homelab {}: down", s.slug));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn collect_ollama_library(
+        &mut self,
+        client: &reqwest::blocking::Client,
+        force_search: bool,
+    ) -> Result<()> {
+        let _timer = metrics::Stage::new("ollama_library");
+        let dry = self.cli.dry_run;
+        let ollama_url = std::env::var("OLLAMA_URL")
+            .unwrap_or_else(|_| "http://ai-machine.local:11434".to_string());
+        let ollama_mem_gb = std::env::var("OLLAMA_MEMORY_GB")
+            .ok()
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap_or(16.0);
+
+        let now = chrono::Utc::now().naive_utc();
+        let existing_models = self.db()?.load_ollama_library_models()?;
+        let is_baseline = existing_models.is_empty();
+
+        let should_search = force_search || is_baseline || {
+            let newest_snap = existing_models.iter().map(|m| m.snapshot_at).max();
+            match newest_snap {
+                Some(snap) => (now - snap).num_hours() >= 6,
+                None => true,
+            }
+        };
+
+        if should_search {
+            eprintln!("ollama library: fetching newest models from ollama.com...");
+            let search_url = "https://ollama.com/search?o=newest";
+            let resp = client
+                .get(search_url)
+                .header("User-Agent", web_scraper::tech::USER_AGENT)
+                .timeout(Duration::from_secs(30))
+                .send();
+
+            match resp {
+                Ok(r) if r.status().is_success() => {
+                    let html = r.text().unwrap_or_default();
+                    if let Ok(scraped_models) = web_scraper::tech::parse_ollama_search_page(&html) {
+                        eprintln!(
+                            "ollama library: parsed {} models from search",
+                            scraped_models.len()
+                        );
+                        let existing_map: std::collections::HashMap<_, _> = existing_models
+                            .into_iter()
+                            .map(|m| (m.name.clone(), m))
+                            .collect();
+
+                        for sm in scraped_models {
+                            let (change, changed_at, needs_tags_fetch) =
+                                if let Some(em) = existing_map.get(&sm.name) {
+                                    let updated_changed = sm.updated_text.is_some()
+                                        && sm.updated_text != em.updated_text;
+                                    if updated_changed {
+                                        ("updated", now, true)
+                                    } else {
+                                        (em.change.as_str(), em.changed_at, false)
+                                    }
+                                } else {
+                                    let c_at = if is_baseline {
+                                        chrono::NaiveDate::from_ymd_opt(2000, 1, 1)
+                                            .unwrap()
+                                            .and_hms_opt(0, 0, 0)
+                                            .unwrap()
+                                    } else {
+                                        now
+                                    };
+                                    ("new", c_at, true)
+                                };
+
+                            let model_id = if !dry {
+                                let upsert_req = web_scraper::tech::OllamaModelUpsert {
+                                    name: &sm.name,
+                                    description: sm.description.as_deref(),
+                                    change,
+                                    changed_at,
+                                    updated_text: sm.updated_text.as_deref(),
+                                    library_url: &sm.library_url,
+                                    now,
+                                };
+                                self.db()?.upsert_ollama_library_model(&upsert_req)?
+                            } else {
+                                0
+                            };
+
+                            if needs_tags_fetch && !dry {
+                                let tags_url =
+                                    format!("https://ollama.com/library/{}/tags", sm.name);
+                                if let Ok(t_resp) = client
+                                    .get(&tags_url)
+                                    .header("User-Agent", web_scraper::tech::USER_AGENT)
+                                    .timeout(Duration::from_secs(15))
+                                    .send()
+                                    && t_resp.status().is_success()
+                                {
+                                    let tags_html = t_resp.text().unwrap_or_default();
+                                    if let Ok(scraped_tags) =
+                                        web_scraper::tech::parse_ollama_tags_page(
+                                            &sm.name, &tags_html,
+                                        )
+                                    {
+                                        for (idx, st) in scraped_tags.into_iter().enumerate() {
+                                            let fits = web_scraper::tech::calculate_ollama_fits(
+                                                st.size_gb,
+                                                &st.tag,
+                                                ollama_mem_gb,
+                                            );
+                                            let _ = self.db()?.upsert_ollama_library_tag(
+                                                model_id,
+                                                &st.tag,
+                                                st.size_gb,
+                                                fits,
+                                                false,
+                                                (idx + 1) as i32,
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(r) => eprintln!("ollama search returned HTTP {}", r.status().as_u16()),
+                Err(e) => eprintln!("ollama search error: {e}"),
+            }
+        }
+
+        // Refresh Installed & Fits against local Ollama API
+        if !dry {
+            let api_url = format!("{ollama_url}/api/tags");
+            let local_models = client
+                .get(&api_url)
+                .timeout(Duration::from_secs(5))
+                .send()
+                .ok()
+                .filter(|r| r.status().is_success())
+                .and_then(|r| r.text().ok())
+                .and_then(|body| serde_json::from_str::<serde_json::Value>(&body).ok())
+                .and_then(|val| {
+                    val["models"].as_array().map(|arr| {
+                        arr.iter()
+                            .filter_map(|m| m["name"].as_str().map(|s| s.to_string()))
+                            .collect::<std::collections::HashSet<_>>()
+                    })
+                });
+
+            let models = self.db()?.load_ollama_library_models()?;
+            for m in models {
+                let tags = self.db()?.load_ollama_library_tags(m.id)?;
+                for t in tags {
+                    let fits =
+                        web_scraper::tech::calculate_ollama_fits(t.size_gb, &t.tag, ollama_mem_gb);
+                    let installed = if let Some(ref local) = local_models {
+                        local.contains(&format!("{}:{}", m.name, t.tag))
+                            || (t.tag == "latest" && local.contains(&m.name))
+                    } else {
+                        t.installed
+                    };
+                    let _ = self
+                        .db()?
+                        .update_ollama_tag_installed_and_fits(m.id, &t.tag, installed, fits);
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -882,7 +1415,11 @@ impl Run<'_> {
         if cli.events_feed.is_empty() && !cli.events_from_db {
             return Ok(feeds);
         }
-        let known = self.db()?.sports_event_feeds()?;
+        let known = if cli.events_from_db || self.db.is_some() {
+            self.db()?.sports_event_feeds()?
+        } else {
+            Vec::new()
+        };
         for url in &cli.events_feed {
             let row = known.iter().find(|f| f.url == *url);
             feeds.push(EventFeedRef {
@@ -1198,7 +1735,9 @@ impl Run<'_> {
                 },
             );
         }
-        let league = if mlb::is_feed(url) {
+        let league = if nfl::is_feed(url) {
+            Some(("nfl_schedule", "NFL", nfl::fetch as FixtureFetch))
+        } else if mlb::is_feed(url) {
             Some(("mlb_schedule", "MLB", mlb::fetch as FixtureFetch))
         } else if wnba::is_feed(url) {
             Some(("wnba_schedule", "WNBA", wnba::fetch as FixtureFetch))
@@ -1712,6 +2251,12 @@ fn main() -> Result<()> {
         && !cli.boxoffice_forecasts
         && !cli.standings_from_db
         && !cli.rankings_from_db
+        && !cli.tech_releases
+        && !cli.tech_reading
+        && !cli.tech_status
+        && !cli.tech_from_db
+        && !cli.homelab
+        && !cli.ollama_library
         && cli.youtube_feed.is_empty()
         && !cli.youtube_from_db
     {
@@ -1721,6 +2266,92 @@ fn main() -> Result<()> {
                 "provide at least one URL, --urls-file, --from-db, or a collector such as --standings-from-db",
             )
             .exit();
+    }
+
+    if let Ok(ado) = std::env::var("MSSQL_CONNECTION_STRING") {
+        let homelab_db = cli.database.clone();
+        std::thread::spawn(move || {
+            let client = reqwest::blocking::Client::builder()
+                .timeout(Duration::from_secs(5))
+                .redirect(reqwest::redirect::Policy::limited(1))
+                .user_agent(web_scraper::tech::USER_AGENT)
+                .build()
+                .unwrap_or_else(|_| reqwest::blocking::Client::new());
+
+            loop {
+                let check_res = (|| -> web_scraper::Result<()> {
+                    let mut db = web_scraper::db::Db::connect_named(&ado, &homelab_db)?;
+                    let services = db.load_enabled_homelab_services()?;
+                    if services.is_empty() {
+                        return Ok(());
+                    }
+                    let statuses = db.load_homelab_service_statuses()?;
+                    let last_feed_run = db.get_last_successful_feed_run()?;
+                    let now = chrono::Utc::now().naive_utc();
+
+                    let mut shared_tautulli = None;
+                    if let Some(ts) = services.iter().find(|s| s.slug == "tautulli")
+                        && let Some(ref u) = ts.check_url
+                    {
+                        let mut url = u.clone();
+                        if let Some(ref sec_var) = ts.secret_env
+                            && let Ok(val) = std::env::var(sec_var)
+                        {
+                            let sep = if url.contains('?') { "&" } else { "?" };
+                            url.push_str(&format!("{sep}apikey={}", val.trim()));
+                        }
+                        let start = std::time::Instant::now();
+                        if let Ok(resp) = client.get(&url).send() {
+                            let lat = start.elapsed().as_millis() as i32;
+                            if resp.status().is_success()
+                                && let Ok(val) = serde_json::from_str::<serde_json::Value>(
+                                    &resp.text().unwrap_or_default(),
+                                )
+                                && val["response"]["result"].as_str() == Some("success")
+                            {
+                                let sc = val["response"]["data"]["stream_count"]
+                                    .as_str()
+                                    .map(|s| s.to_string())
+                                    .or_else(|| {
+                                        val["response"]["data"]["stream_count"]
+                                            .as_i64()
+                                            .map(|v| v.to_string())
+                                    });
+                                shared_tautulli = Some(web_scraper::tech::TautulliActivity {
+                                    is_success: true,
+                                    latency_ms: lat,
+                                    stream_count: sc,
+                                });
+                            }
+                        }
+                    }
+
+                    for s in &services {
+                        let prev = statuses.get(&s.id);
+                        let prev_state = prev.map(|(st, _, _)| st.as_str());
+                        let prev_since = prev.map(|(_, since, _)| *since);
+                        let prev_fails = prev.map(|(_, _, f)| *f).unwrap_or(0);
+
+                        let cx = web_scraper::tech::HomelabCheckContext {
+                            prev_state,
+                            prev_state_since: prev_since,
+                            prev_fail_count: prev_fails,
+                            now,
+                            last_feed_run_utc: last_feed_run,
+                            shared_tautulli: shared_tautulli.as_ref(),
+                        };
+
+                        let update = web_scraper::tech::check_homelab_service(&client, s, &cx);
+                        let _ = db.upsert_homelab_service_status(&update);
+                    }
+                    Ok(())
+                })();
+                if let Err(e) = check_res {
+                    eprintln!("[homelab-monitor] error: {e}");
+                }
+                std::thread::sleep(Duration::from_secs(60));
+            }
+        });
     }
 
     loop {

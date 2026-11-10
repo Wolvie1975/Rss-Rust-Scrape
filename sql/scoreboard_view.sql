@@ -18,4 +18,5 @@ WHERE EXISTS(
  OR (f.Kind='team' AND f.TeamId IN(g.HomeTeamId,g.AwayTeamId))
  OR (f.Kind='conference' AND EXISTS(SELECT 1 FROM dbo.ResultFollowTeams ft
   WHERE ft.FollowId=f.ID AND ft.TeamId IN(g.HomeTeamId,g.AwayTeamId)))
+ OR (s.SourceKind='rankings' AND (g.HomeRank IS NOT NULL OR g.AwayRank IS NOT NULL))
  ));

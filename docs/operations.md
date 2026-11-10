@@ -132,6 +132,27 @@ Indie Retro News also had an active feed but was not needed for this addition.
 The Indie Game Website feed was stale (latest entry December 2021), Indie Game
 Fans returned HTTP 500, and Indie Game Bundles mostly covered deals; none was added.
 
+## Xbox Wire — October 27, 2026
+
+**Xbox Wire** (source **11830**, https://news.xbox.com/en-us/feed/) was added to
+**Video Games** (ID 11), now nine enabled sources. Repeatable registration:
+[`sql/xbox_wire_news_seed.sql`](../sql/xbox_wire_news_seed.sql) registers it
+**disabled**; apply with the migration profile (`examples/scoreboard_sql`
+targets WebScraper). A repeat inserted zero rows before and after enablement.
+
+The dry-run reported one success and zero failures. Targeted `--db --per-source 10`
+collection stored **ten articles** (nine with images, from `content:encoded`) with
+no `LastError`; ID 11830 was then enabled in a transaction guarded by category,
+URL hash, clean error state and stored content. No rebuild, restart or scheduler
+change; hourly `--from-db` collection includes it.
+
+The feed is behind Cloudflare: a generic browser user agent receives HTTP 403,
+while `My-Newsfeed/1.0` receives the RSS. A future block appears as `LastError`
+on 11830; do not work around it. Xbox Wire occasionally posts off-site cross-links
+(for example minecraft.net with a `#new_tab` fragment); article identity skips
+the canonical check on failure and stores the feed link, which may lack an image.
+To stop collection, disable 11830 only.
+
 <a id="big12-news-sources"></a>
 
 ## Big 12 news sources

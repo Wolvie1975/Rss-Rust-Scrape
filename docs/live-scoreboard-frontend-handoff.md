@@ -86,6 +86,7 @@ used as stable preferences. Do not join participants by their display names.
 | HomeName, AwayName | Required NVARCHAR(200), fallback TBD |
 | HomeLogoUrl, AwayLogoUrl | Nullable safe HTTP(S) URL strings |
 | HomeScore, AwayScore | Nullable DECIMAL(12,3) → decimal?; do not zero-fill |
+| HomeRank, AwayRank | Nullable TINYINT → byte?; team rank (1–25) at game time, else NULL |
 | Status | Required normalized string; vocabulary below |
 | Completed | BIT; true only for supported provider-completed finals |
 | ProviderStatus, StatusText | Raw code (required) and optional descriptive label |
@@ -271,6 +272,35 @@ calendar sports can remain in their existing schedule section. Avoid appending
 both covered calendar fixtures and scoreboard games into one list without a
 validated deduplication strategy. This is an explicit limitation, not a silent
 change to the existing homepage filtering helper.
+
+## Top 25 scoreboard and weekly ranked view
+
+Two additional capabilities are available for **college football (FBS)** and **men's college basketball**:
+
+### 1. Top 25 Scoreboard Filter
+A game qualifies when **either** team is ranked 1–25 at game time. Ranks update while upcoming/live and freeze when final. Unranked teams have `NULL` rank (never `#99` or `#0`). Big 12 games with ranked teams are included.
+
+Query `dbo.SportsScoreboard`:
+```sql
+SELECT * FROM dbo.SportsScoreboard
+WHERE League IN ('college-football', 'mens-college-basketball')
+  AND (HomeRank IS NOT NULL OR AwayRank IS NOT NULL)
+  AND ScoreboardDate = @Date
+ORDER BY StartsAtUtc;
+```
+
+### 2. Upcoming Ranked Games This Week
+The view `dbo.SportsScoreboardTop25Week` provides Monday–Sunday (Central) games where at least one team is ranked:
+- Filters to `college-football` and `mens-college-basketball`.
+- **Excludes Big 12 matchups** (where either team belongs to Big 12 membership, as those already appear in the Big 12 schedule).
+- Excludes `cancelled` games (`final` games remain so the frontend can choose whether to display them).
+
+Query `dbo.SportsScoreboardTop25Week`:
+```sql
+SELECT * FROM dbo.SportsScoreboardTop25Week
+ORDER BY ScoreboardDate, StartsAtUtc;
+```
+Permissions: `SELECT` on `dbo.SportsScoreboardTop25Week` is granted to `WebScraperScoreboardReader`.
 
 ## Examples and validation
 

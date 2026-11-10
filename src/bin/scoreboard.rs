@@ -120,6 +120,15 @@ fn load(db: &mut Db, dry: bool) -> Result<Vec<Coverage>> {
             eprintln!("coverage unavailable: {sport}/{league} {label}: no validated member IDs");
             continue;
         }
+        if kind == "rankings"
+            && (scope != "top25"
+                || !matches!(
+                    (sport.as_str(), league.as_str()),
+                    ("football", "college-football") | ("basketball", "mens-college-basketball")
+                ))
+        {
+            return Err("unsupported rankings coverage definition".into());
+        }
         let id = if dry {
             origin
         } else {

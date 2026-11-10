@@ -14,6 +14,8 @@ BEGIN TRY
   AwayTeamId nvarchar(80) '$.awayTeamId',
   AwayName nvarchar(200) '$.awayName',
   AwayLogoUrl nvarchar(2048) '$.awayLogoUrl',
+  HomeRank tinyint '$.homeRank',
+  AwayRank tinyint '$.awayRank',
   HomeScore decimal(12,3) '$.homeScore',
   AwayScore decimal(12,3) '$.awayScore',
   Status varchar(12) '$.status',
@@ -53,6 +55,8 @@ BEGIN TRY
   AwayTeamId=i.AwayTeamId,
   AwayName=i.AwayName,
   AwayLogoUrl=i.AwayLogoUrl,
+  HomeRank=CASE WHEN g.Status='final' THEN g.HomeRank ELSE i.HomeRank END,
+  AwayRank=CASE WHEN g.Status='final' THEN g.AwayRank ELSE i.AwayRank END,
   HomeScore=CASE WHEN i.Status IN('postponed','suspended','delayed','unknown') THEN COALESCE(i.HomeScore,g.HomeScore) ELSE i.HomeScore END,
   AwayScore=CASE WHEN i.Status IN('postponed','suspended','delayed','unknown') THEN COALESCE(i.AwayScore,g.AwayScore) ELSE i.AwayScore END,
   Status=i.Status,
@@ -72,8 +76,8 @@ BEGIN TRY
   ProviderUpdatedAtUtc=i.ProviderUpdatedAtUtc
  FROM dbo.SportsScoreboardGames g JOIN #ScoreboardIncoming i ON g.Provider='espn'
  AND g.Sport=@P1 AND g.League=@P2 AND g.EventId=i.EventId;
- INSERT dbo.SportsScoreboardGames(Provider,Sport,League,EventId,ProviderDate,ScoreboardDate,StartsAtUtc,TimeTbd,HomeTeamId,HomeName,HomeLogoUrl,AwayTeamId,AwayName,AwayLogoUrl,HomeScore,AwayScore,Status,Completed,ProviderStatus,StatusText,Period,DisplayClock,NeutralSite,HomeShootout,AwayShootout,WinnerSide,Venue,Broadcasts,SourceUrl,LiveDetailsJson,ProviderUpdatedAtUtc,OriginalScoreboardDate,OriginalStartsAtUtc,LastObservedAtUtc,FirstSeenAtUtc,FinalFirstObservedAtUtc)
- SELECT 'espn',@P1,@P2,i.EventId,i.ProviderDate,i.ScoreboardDate,i.StartsAtUtc,i.TimeTbd,i.HomeTeamId,i.HomeName,i.HomeLogoUrl,i.AwayTeamId,i.AwayName,i.AwayLogoUrl,i.HomeScore,i.AwayScore,i.Status,i.Completed,i.ProviderStatus,i.StatusText,i.Period,i.DisplayClock,i.NeutralSite,i.HomeShootout,i.AwayShootout,i.WinnerSide,i.Venue,i.Broadcasts,i.SourceUrl,i.LiveDetailsJson,i.ProviderUpdatedAtUtc,i.ScoreboardDate,i.StartsAtUtc,@P4,@P4,CASE WHEN i.Status='final' THEN @P4 END
+ INSERT dbo.SportsScoreboardGames(Provider,Sport,League,EventId,ProviderDate,ScoreboardDate,StartsAtUtc,TimeTbd,HomeTeamId,HomeName,HomeLogoUrl,AwayTeamId,AwayName,AwayLogoUrl,HomeRank,AwayRank,HomeScore,AwayScore,Status,Completed,ProviderStatus,StatusText,Period,DisplayClock,NeutralSite,HomeShootout,AwayShootout,WinnerSide,Venue,Broadcasts,SourceUrl,LiveDetailsJson,ProviderUpdatedAtUtc,OriginalScoreboardDate,OriginalStartsAtUtc,LastObservedAtUtc,FirstSeenAtUtc,FinalFirstObservedAtUtc)
+ SELECT 'espn',@P1,@P2,i.EventId,i.ProviderDate,i.ScoreboardDate,i.StartsAtUtc,i.TimeTbd,i.HomeTeamId,i.HomeName,i.HomeLogoUrl,i.AwayTeamId,i.AwayName,i.AwayLogoUrl,i.HomeRank,i.AwayRank,i.HomeScore,i.AwayScore,i.Status,i.Completed,i.ProviderStatus,i.StatusText,i.Period,i.DisplayClock,i.NeutralSite,i.HomeShootout,i.AwayShootout,i.WinnerSide,i.Venue,i.Broadcasts,i.SourceUrl,i.LiveDetailsJson,i.ProviderUpdatedAtUtc,i.ScoreboardDate,i.StartsAtUtc,@P4,@P4,CASE WHEN i.Status='final' THEN @P4 END
  FROM #ScoreboardIncoming i WHERE NOT EXISTS(SELECT 1 FROM dbo.SportsScoreboardGames g WITH(UPDLOCK,HOLDLOCK) WHERE g.Provider='espn' AND g.Sport=@P1 AND g.League=@P2 AND g.EventId=i.EventId);
 
  INSERT dbo.SportsScoreboardEventSources(GameId,SourceId)

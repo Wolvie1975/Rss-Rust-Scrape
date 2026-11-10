@@ -19,6 +19,7 @@ Read [HANDOFF.md](HANDOFF.md) for the current documented deployment and working 
 | Fandango ticket and Fandango digital links | [Purchase-link handoff](docs/movie-purchase-links.md), [frontend request](docs/movie-commerce-frontend-integration.md) |
 | TVmaze tracking, series and episodes | [TV series and episodes](docs/tv.md) |
 | Article URL identity, retention, SQL backups, security and performance | [Operations](docs/operations.md) |
+| SQL Server database backup and porting (.bak) | [Backup and restore guide](docs/database-backup-and-restore.md) |
 
 Each guide contains a linked contents list and preserves its SQL examples and provider-specific contracts. Read the guide introduction and operations policy before applying older examples.
 

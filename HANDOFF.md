@@ -1,5 +1,101 @@
 # Scraper handoff
 
+## NFL schedule scraper (`espn-nfl`) — deployed November 7, 2026 CST
+
+Deployed **web-scraper:nfl-20261107**, tagged as `web-scraper:latest` and healthy.
+Added league-wide NFL schedule collection:
+
+1. **Schedule Registration (`--configure-nfl`):**
+   - Registered enabled source `8503` in `dbo.SportsEventsType` (`EventsTypeName = 'NFL'`, `ProviderKey = 'espn-nfl'`, `ProviderSchoolId = 0`, `SchoolName = NULL`).
+   - Idempotent configuration preserves edited URLs and `Enabled` flags.
+2. **Weekly League Coverage & Perspective:**
+   - Scoreboard weekly loop queries `dates=<season>&seasontype=<2|3>&week=<n>&limit=1000` across regular season weeks 1–18 and postseason weeks 1–5.
+   - Handled season rollover across the new year (`season_for` uses year - 1 for January–June).
+   - Saved with `IsAway = 0`, `Sport = 'Football'`, `CanonicalKey = 'espn:nfl:<id>'`, `Url = 'https://www.espn.com/nfl/game/_/gameId/<id>'`, and `CalendarTimeZone = 'America/Chicago'`.
+   - International neutral-site games maintain `IsAway = 0` and `IsNeutral = 1`.
+   - Postseason placeholder matchups (`team_id <= 0` or `"TBD"`) and the Pro Bowl are skipped.
+3. **Production Data:**
+   - 150 upcoming games populated in `dbo.SportsEvents`.
+   - Initial run completed with 1 source success, 0 errors, 2 SQL batches.
+   - Retained rollback container: `web-scraper-before-nfl-20261107`.
+   - Full deployment report: [`reports/nfl-production-20261107.md`](reports/nfl-production-20261107.md).
+
+## Tech front panels (Your Stack, Homelab Services, Ollama Library) — deployed November 1, 2026 CST
+
+Deployed **web-scraper:tech-panels-20261101**, tagged as `web-scraper:latest` and healthy.
+Added scraper support for the three new panels on the Tech front page:
+
+1. **Your stack (`InYourStack = 1`):**
+   - Added column `InYourStack BIT NOT NULL DEFAULT 0` to `dbo.TechReleaseProjects`.
+   - Expanded project types (`sdk`, `toolchain`, `framework`, `runtime`, `compiler`) and source types (`dotnet_releases`).
+   - Flagged existing projects with `InYourStack = 1`: `linux-mainline`, `fedora`, `mesa`, `proton`.
+   - Added and seeded 5 new projects: `.NET` (official Microsoft `releases-index.json`), `Rust` (GitHub releases), `Qt` (Atom RSS), `Node.js` (GitHub releases), and `TypeScript` (GitHub releases).
+   - 135 releases tracked across all enabled stack projects.
+2. **Homelab service monitoring (`dbo.HomelabServices`, `dbo.HomelabServiceStatus`):**
+   - Schema and status tables for homelab services with tracking for status, latency, detail, consecutive failures, and check timestamps.
+   - Supports check types: `http`, `http_body`, `tautulli` (Plex stream parsing via API key from environment), and `self` (scraper heartbeat verifying last successful feed run < 120m).
+   - Robust debouncing: requires 2 consecutive failures before reporting `down`; single timeouts report `slow`.
+   - Seeded services: `plex`, `jellyfin`, `tautulli`, `ollama`, `open-webui`, `portainer`, `scraper`.
+   - High-cadence monitoring: dedicated background daemon thread runs a 60-second checking loop alongside the hourly scraper, plus on-demand check via `--homelab`.
+3. **Ollama library tracker (`dbo.OllamaLibraryModels`, `dbo.OllamaLibraryTags`):**
+   - Scrapes newest Ollama models from `https://ollama.com/search?o=newest` and tag metadata/sizes from `/library/<name>/tags`.
+   - Baseline seed of 20 models populated with `Change = 'new'` and `ScrapedAt = '2000-01-01'`.
+   - Local Ollama verification against `OLLAMA_URL` (defaults to `http://ai-machine.local:11434`): marks installed tags; preserves flags if Ollama host is unreachable.
+   - Hardware fit calculation: compares tag sizes and parameter counts against `OLLAMA_MEMORY_GB` (default 16GB) to set `Fits = 1`.
+   - Supported via CLI flag `--ollama-library` and integrated into `--tech-from-db`.
+4. **Permissions & Migration:**
+   - Created and executed repeatable [`sql/tech_panels_migration.sql`](sql/tech_panels_migration.sql).
+   - Updated canonical [`sql/tech_schema.sql`](sql/tech_schema.sql), [`sql/tech_seed.sql`](sql/tech_seed.sql), and [`sql/tech_permissions.sql`](sql/tech_permissions.sql).
+   - Granted read permissions to `[WebScraperReader]`, `[WebScraperScoreboardReader]`, `[web_reader]`, and `[mynewspaper]`, and ingest to `[WebScraperIngest]`.
+   - Added `extra_hosts: ["host.docker.internal:host-gateway"]` to `docker-compose.yml`.
+
+## Top 25 scoreboard and upcoming ranked games — deployed November 1, 2026 CST
+
+Deployed **web-scoreboard:top25-20261101**, tagged as `web-scoreboard:latest` and healthy.
+Added Top 25 scoreboard support and weekly upcoming ranked games view:
+
+1. **Rank Storage & Parsing:**
+   - Added `HomeRank TINYINT NULL` and `AwayRank TINYINT NULL` to `dbo.SportsScoreboardGames` with `CHECK (... IS NULL OR ... BETWEEN 1 AND 25)`.
+   - `src/scoreboard.rs` extracts `competitors[].curatedRank.current` (1–25, treating `99` as unranked `NULL`).
+   - `sql/scoreboard_upsert.sql` updates ranks on live/upcoming games and freezes them when games are `final`.
+2. **Top 25 Coverage (`SourceKind = 'rankings'`, `Scope = 'top25'`):**
+   - Added union in `sql/scoreboard_config.sql` for enabled `dbo.SportsRankingSources` rows (`PollId = '1'`) for Football and Men's Basketball.
+   - Updated `dbo.SportsScoreboardCoverage` to include rankings sources, and extended `SportsScoreboardSources.SourceKind` check to allow `'rankings'`.
+   - `Coverage::accepts` in `src/scoreboard.rs` accepts regular/postseason games when either team is ranked.
+3. **Views & Permissions:**
+   - Updated `dbo.SportsScoreboard` to expose `HomeRank` / `AwayRank` and include games covered by rankings sources where at least one team is ranked.
+   - Created `dbo.SportsScoreboardTop25Week` for upcoming games: filters to `college-football` and `mens-college-basketball`, current Monday–Sunday week (Central time), `Status <> 'cancelled'`, at least one ranked team, and excludes Big 12 matchups via `ResultFollowTeams`.
+   - Granted `SELECT` on `dbo.SportsScoreboardTop25Week` to `WebScraperScoreboardReader` and `WebScraperIngest`.
+
+Applied repeatable migration [`sql/scoreboard_top25_migration.sql`](sql/scoreboard_top25_migration.sql), view scripts, and verified clean health check.
+
+## Tech section feeds (Release Tracker, Dev Reading, Service Status) — deployed November 1, 2026 CST
+
+Deployed **web-scraper:tech-20261101**, tagged as `web-scraper:latest` and healthy.
+Added three new background feeds for myNewspaper's upcoming Tech section:
+
+1. **Release tracker (`dbo.TechReleaseProjects`, `dbo.TechReleases`):**
+   - Tracks 9 enabled projects: Linux kernel mainline & LTS (`kernel_org`), Proton (`github_releases`), GNOME & Mesa (`gitlab_tags`), and Fedora, Ubuntu, KDE Plasma, and Linux Mint (`rss`).
+   - Verified live collection imports 58 unique releases with zero errors. Upserts on `(ProjectId, Version)` preserve history; failures update `LastError` per project without blocking others.
+2. **What developers are reading (`dbo.TechDevReading`):**
+   - Collects top 10 stories from Hacker News (Firebase API) and Lobsters (`hottest.json`).
+   - Atomic replacement per site in a single transaction; failed fetches preserve last good snapshot.
+3. **Service status (`dbo.TechStatusServices`, `dbo.TechServiceStatus`):**
+   - Tracks GitHub, Cloudflare, and Discord using Atlassian Statuspage `summary.json`.
+   - Records indicator, description, active incidents, components, and links. Flipping to `unknown` requires 3 consecutive check failures.
+
+Applied repeatable migrations [`sql/tech_schema.sql`](sql/tech_schema.sql), [`sql/tech_seed.sql`](sql/tech_seed.sql), and [`sql/tech_permissions.sql`](sql/tech_permissions.sql) granting `SELECT` to the web application and ingest permissions to `WebScraperIngest`.
+Included in hourly collection via `--tech-from-db` in `docker-compose.yml`.
+
+## KCTV5 and KMBC in Kansas City News — October 28, 2026 CDT
+
+Added enabled sources **12137 (KCTV5)** and **12138 (KMBC 9)** to Kansas City News
+using [the repeatable disabled-first seed](sql/kansas_city_news_seed.sql). The targeted
+import had two successes and zero failures and saved 20 dated articles with images.
+LastError is NULL for both. Hourly `--from-db` picks them up, so no rebuild or restart
+is needed. KCTV5 uses its site-wide feed, which includes some national stories. See
+[Kansas City news](docs/kansas-city-news.md#kctv5-and-kmbc--added-october-28-2026).
+
 ## Code structure cleanup — deployed October 25, 2026 CDT
 
 Code-only refactor, merged to `main` and deployed as **web-scraper:code-cleanup-20261025**

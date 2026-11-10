@@ -14,11 +14,12 @@ BEGIN TRY
   IF EXISTS(SELECT 1 FROM dbo.BoxOfficeForecastSources WHERE Kind=@Kind AND LatestPublishedAt>@Published)
    THROW 50000,'Refusing older forecast publication',1;
   DELETE dbo.BoxOfficeForecasts WHERE Kind=@Kind;
-  INSERT dbo.BoxOfficeForecasts(Kind,TargetDate,PeriodEnd,MovieTitle,Distributor,PredictedRank,ForecastLow,ForecastHigh,ForecastAsOf,PublishedAtUtc,UpdatedAtUtc,SourceUrl,FetchedAtUtc)
-  SELECT @Kind,TargetDate,PeriodEnd,MovieTitle,Distributor,PredictedRank,ForecastLow,ForecastHigh,ForecastAsOf,PublishedAtUtc,UpdatedAtUtc,SourceUrl,SYSUTCDATETIME()
+  INSERT dbo.BoxOfficeForecasts(Kind,TargetDate,PeriodEnd,MovieTitle,Distributor,PredictedRank,ForecastLow,ForecastHigh,ExtendedForecastDays,ExtendedForecastLow,ExtendedForecastHigh,ForecastAsOf,PublishedAtUtc,UpdatedAtUtc,SourceUrl,FetchedAtUtc)
+  SELECT @Kind,TargetDate,PeriodEnd,MovieTitle,Distributor,PredictedRank,ForecastLow,ForecastHigh,ExtendedForecastDays,ExtendedForecastLow,ExtendedForecastHigh,ForecastAsOf,PublishedAtUtc,UpdatedAtUtc,SourceUrl,SYSUTCDATETIME()
   FROM OPENJSON(@RowPayload) WITH (
    TargetDate DATE '$.targetDate',PeriodEnd DATE '$.endDate',MovieTitle NVARCHAR(300) '$.title',Distributor NVARCHAR(300) '$.distributor',
-   PredictedRank INT '$.rank',ForecastLow BIGINT '$.low',ForecastHigh BIGINT '$.high',ForecastAsOf DATE '$.asOf',
+   PredictedRank INT '$.rank',ForecastLow BIGINT '$.low',ForecastHigh BIGINT '$.high',
+   ExtendedForecastDays TINYINT '$.extendedDays',ExtendedForecastLow BIGINT '$.extendedLow',ExtendedForecastHigh BIGINT '$.extendedHigh',ForecastAsOf DATE '$.asOf',
    PublishedAtUtc DATETIME2 '$.publishedAt',UpdatedAtUtc DATETIME2 '$.updatedAt',SourceUrl NVARCHAR(2048) '$.sourceUrl'
   ) WHERE PeriodEnd>=@P2;
   DECLARE @Count INT=@@ROWCOUNT;

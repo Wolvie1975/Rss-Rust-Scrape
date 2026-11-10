@@ -11,4 +11,13 @@ SELECT 'events',e.ID,
  WHEN 'espn-mls' THEN 'usa.1' WHEN 'espn-epl' THEN 'eng.1' WHEN 'espn-championship' THEN 'eng.2' END,
  e.EventsTypeName,'schedule',NULL,NULL,e.RssUrl,N'[]'
 FROM dbo.SportsEventsType e WHERE e.Enabled=1 AND e.ProviderKey IN(
- 'espn-mlb','espn-wnba','espn-nhl','espn-nwsl','espn-mls','espn-epl','espn-championship');
+ 'espn-mlb','espn-wnba','espn-nhl','espn-nwsl','espn-mls','espn-epl','espn-championship')
+UNION ALL
+SELECT 'rankings', r.ID,
+ CASE r.Sport WHEN 'Football' THEN 'football' WHEN 'Men''s Basketball' THEN 'basketball' END,
+ CASE r.Sport WHEN 'Football' THEN 'college-football' WHEN 'Men''s Basketball' THEN 'mens-college-basketball' END,
+ r.DisplayName, 'top25', NULL, NULL, r.Url, N'[]'
+FROM dbo.SportsRankingSources r
+WHERE r.Enabled = 1
+  AND r.PollId = '1'
+  AND r.Sport IN ('Football', 'Men''s Basketball');

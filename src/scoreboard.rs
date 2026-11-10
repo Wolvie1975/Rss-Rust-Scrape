@@ -146,6 +146,12 @@ impl Coverage {
         {
             return false;
         }
+        if self.scope == "top25" {
+            if !matches!(e["season"]["type"].as_i64(), Some(2 | 3)) {
+                return false;
+            }
+            return row["homeRank"].as_i64().is_some() || row["awayRank"].as_i64().is_some();
+        }
         if self.scope == "league" {
             return true;
         }
@@ -228,6 +234,17 @@ fn parse_event(e: &Value, sport: &str, day: NaiveDate) -> Result<Value> {
     if home_id.is_some() && home_id == away_id {
         return Err("self opponent".into());
     }
+
+    let rank = |v: &Value| -> Option<u8> {
+        let r = v["curatedRank"]["current"].as_i64()?;
+        if (1..=25).contains(&r) {
+            u8::try_from(r).ok()
+        } else {
+            None
+        }
+    };
+    let home_rank = rank(h);
+    let away_rank = rank(a);
     let name = |v: &Value| -> Result<String> {
         Ok(text(&v["team"]["displayName"], 200)?
             .or(text(&v["team"]["name"], 200)?)
@@ -288,6 +305,7 @@ fn parse_event(e: &Value, sport: &str, day: NaiveDate) -> Result<Value> {
         "startsAtUtc":if tbd{None}else{start.map(|d|d.naive_utc().to_string())},"timeTbd":tbd,
         "homeTeamId":home_id,"awayTeamId":away_id,"homeName":name(h)?,"awayName":name(a)?,
         "homeLogoUrl":safe(&h["team"]["logo"]),"awayLogoUrl":safe(&a["team"]["logo"]),
+        "homeRank":home_rank,"awayRank":away_rank,
         "homeScore":hs,"awayScore":ascore,"status":norm,"completed":norm=="final",
         "providerStatus":code,"statusText":detail,"period":integer(&status["period"])?,
         "displayClock":if sport=="baseball"||sport=="volleyball"{None}else{text(&status["displayClock"],80)?},
@@ -596,5 +614,42 @@ mod tests {
             assert_eq!(r["liveDetails"]["homePeriods"][0]["score"], 25.0);
             assert_eq!(r["statusText"], "Overtime");
         }
+    }
+    #[test]
+    fn top25_scope_and_rank_parsing() {
+        let (league, mut root) = fixture("football");
+        root["events"][0]["season"] = json!({"year":2026,"type":2});
+        let c = &mut root["events"][0]["competitions"][0];
+        c["competitors"][0]["curatedRank"] = json!({"current": 5});
+        c["competitors"][1]["curatedRank"] = json!({"current": 99}); // Unranked
+        let cov = vec![Coverage {
+            id: 10,
+            sport: "football".into(),
+            league: league.clone(),
+            scope: "top25".into(),
+            teams: BTreeSet::new(),
+            season: None,
+        }];
+        let day = NaiveDate::from_ymd_opt(2026, 10, 23).unwrap();
+        let r = parse(&root, "football", &league, day, &cov).unwrap();
+        assert_eq!(r.rows.len(), 1);
+        let row = &r.rows[0];
+        let h_rank = row["homeRank"].as_i64();
+        let a_rank = row["awayRank"].as_i64();
+        assert!(h_rank == Some(5) || a_rank == Some(5));
+        assert!(h_rank.is_none() || a_rank.is_none());
+
+        // Preseason rejected
+        root["events"][0]["season"]["type"] = json!(1);
+        let r2 = parse(&root, "football", &league, day, &cov).unwrap();
+        assert_eq!(r2.rows.len(), 0);
+
+        // Both unranked rejected
+        root["events"][0]["season"]["type"] = json!(2);
+        let c2 = &mut root["events"][0]["competitions"][0];
+        c2["competitors"][0]["curatedRank"] = json!({"current": 99});
+        c2["competitors"][1]["curatedRank"] = json!({"current": 0});
+        let r3 = parse(&root, "football", &league, day, &cov).unwrap();
+        assert_eq!(r3.rows.len(), 0);
     }
 }
